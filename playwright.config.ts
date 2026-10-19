@@ -1,0 +1,24 @@
+import { defineConfig, devices } from '@playwright/test';
+
+const PORT = 4174;
+
+export default defineConfig({
+  testDir: 'tests/e2e',
+  timeout: 90_000,
+  fullyParallel: false,
+  workers: 1,
+  reporter: [['list'], ['json', { outputFile: 'test-results/e2e-results.json' }]],
+  use: { baseURL: `http://localhost:${PORT}/`, trace: 'retain-on-failure', actionTimeout: 15_000 },
+  webServer: {
+    command: `npx vite preview --port ${PORT} --strictPort`,
+    url: `http://localhost:${PORT}/`,
+    reuseExistingServer: false,
+  },
+  projects: [
+    { name: 'desktop-1440', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    { name: 'laptop-1280', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 } } },
+    { name: 'tablet-ipad-mini', use: { ...devices['iPad Mini'], browserName: 'chromium' } },
+    { name: 'phone-pixel-7', use: { ...devices['Pixel 7'] } },
+    { name: 'phone-iphone-se', use: { ...devices['iPhone SE'], browserName: 'chromium' } },
+  ],
+});
