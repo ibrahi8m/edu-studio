@@ -60,4 +60,4 @@ export const PHASES: { n: number; title: string }[] = [
   { n: 8, title: 'التغليف والتسليم' },
 ];
 
-export const CURRENT_PHASE = 0;
+export const CURRENT_PHASE = 1;

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 const launch = (userData: string) =>
   electron.launch({ args: ['.', '--no-sandbox'], env: { ...process.env, IBRAHI8M_USER_DATA: userData } });
 
-test('desktop app runs from disk, blocks the network and keeps data across restarts', async () => {
+test('desktop app runs from disk, blocks the network and keeps settings, projects and lessons across restarts', async () => {
   const userData = mkdtempSync(join(tmpdir(), 'ibrahi8m-desktop-'));
 
   // First launch: no service worker, no server, files come from dist/ on disk.
@@ -45,6 +45,20 @@ test('desktop app runs from disk, blocks the network and keeps data across resta
   await f.fill('جامعة — اختبار سطح المكتب');
   await f.blur();
   await expect(w1.getByText('تم الحفظ')).toBeVisible();
+
+  // Phase 1: a project with lessons, written to the desktop app's own database
+  await w1.goto('app://edu/index.html#/projects');
+  await w1.getByTestId('new-project').click();
+  await w1.getByTestId('project-title').fill('مشروع سطح المكتب');
+  await w1.getByTestId('project-subject').fill('العلوم');
+  await w1.getByTestId('project-save').click();
+  await expect(w1.getByTestId('project-heading')).toHaveText('مشروع سطح المكتب');
+  for (const t of ['الدرس الأول', 'الدرس الثاني']) {
+    await w1.getByTestId('new-lesson').first().click();
+    await w1.getByTestId('lesson-title').fill(t);
+    await w1.getByTestId('lesson-save').click();
+    await expect(w1.getByTestId('lesson-dialog')).toBeHidden();
+  }
   await app1.close();
 
   // Second launch: data is still there.
@@ -55,5 +69,10 @@ test('desktop app runs from disk, blocks the network and keeps data across resta
   await w2.goto('app://edu/index.html#/about');
   await expect(w2.getByText('جامعة — اختبار سطح المكتب')).toBeVisible();
   await w2.screenshot({ path: 'docs/screenshots/desktop-app/about-light.png' });
+  await w2.goto('app://edu/index.html#/projects');
+  await w2.getByTestId('project-card').first().click();
+  await expect(w2.getByTestId('project-heading')).toHaveText('مشروع سطح المكتب');
+  await expect(w2.getByTestId('project-lessons').locator('.lesson-title')).toHaveText(['الدرس الأول', 'الدرس الثاني']);
+  await w2.screenshot({ path: 'docs/screenshots/desktop-app/project.png' });
   await app2.close();
 });

@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { FolderKanban, HardDrive, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BookOpen, FolderKanban, HardDrive, Plus, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
+import { useAllLessons, useAllProjects } from '../app/data';
+import { LessonRow, ProjectCard } from '../components/ProjectBits';
+import type { Project } from '../db/db';
 import { CURRENT_PHASE, NAV, PHASES } from '../app/nav';
 import { OFFLINE_LABEL, useOnline, useRuntime } from '../app/runtime';
 import { useSettings } from '../app/SettingsContext';
@@ -20,6 +23,21 @@ export function Dashboard() {
   const online = useOnline();
   const { offline } = useRuntime();
   const [storage, setStorage] = useState<StorageInfo | null>(null);
+  const projects = useAllProjects();
+  const lessons = useAllLessons();
+  const navigate = useNavigate();
+  const projectMap = useMemo(() => new Map((projects ?? []).map((p) => [p.id, p] as [string, Project])), [projects]);
+  const counts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of lessons ?? []) m.set(l.projectId, (m.get(l.projectId) ?? 0) + 1);
+    return m;
+  }, [lessons]);
+  const recentProjects = useMemo(
+    () => [...(projects ?? [])].filter((p) => p.status !== 'archived').sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
+    [projects],
+  );
+  const recentLessons = useMemo(() => [...(lessons ?? [])].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5), [lessons]);
+  const readyLessons = (lessons ?? []).filter((l) => l.status === 'ready').length;
 
   useEffect(() => {
     void getStorageInfo().then(setStorage);
@@ -50,6 +68,56 @@ export function Dashboard() {
         </div>
       </section>
 
+      <div className="stat-row" data-testid="stats">
+        <Link to="/projects" className="stat">
+          <span className="stat-n" data-testid="stat-projects">{(projects?.length ?? 0).toLocaleString('ar')}</span>
+          <span className="stat-l">مشروع</span>
+        </Link>
+        <Link to="/projects?tab=lessons" className="stat">
+          <span className="stat-n" data-testid="stat-lessons">{(lessons?.length ?? 0).toLocaleString('ar')}</span>
+          <span className="stat-l">درس</span>
+        </Link>
+        <Link to="/projects?tab=lessons&lstatus=ready" className="stat">
+          <span className="stat-n">{readyLessons.toLocaleString('ar')}</span>
+          <span className="stat-l">درس جاهز</span>
+        </Link>
+      </div>
+
+      <Card title="المشاريع الأخيرة" icon={FolderKanban} testId="recent-projects">
+        {projects && projects.length === 0 ? (
+          <div className="empty">
+            <p>لا توجد مشاريع بعد.</p>
+            <Link to="/projects" className="btn btn-primary btn-sm">
+              <Plus size={16} aria-hidden="true" /> إنشاء أول مشروع
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="project-grid project-grid-compact">
+              {recentProjects.map((p) => (
+                <ProjectCard key={p.id} project={p} lessonCount={counts.get(p.id) ?? 0} />
+              ))}
+            </div>
+            <Link to="/projects" className="card-link">كل المشاريع</Link>
+          </>
+        )}
+      </Card>
+
+      {recentLessons.length > 0 && (
+        <Card title="آخر الدروس المعدّلة" icon={BookOpen} testId="recent-lessons">
+          <ul className="lesson-list">
+            {recentLessons.map((l) => (
+              <LessonRow
+                key={l.id}
+                lesson={l}
+                project={projectMap.get(l.projectId)}
+                onOpen={() => navigate(`/projects/${l.projectId}?lesson=${l.id}`)}
+              />
+            ))}
+          </ul>
+        </Card>
+      )}
+
       <div className="status-grid">
         <Card title="التشغيل دون إنترنت" icon={ShieldCheck} testId="status-offline">
           <Pill tone={off.tone}>{off.text}</Pill>
@@ -68,13 +136,6 @@ export function Dashboard() {
           </p>
         </Card>
       </div>
-
-      <Card title="المشاريع الأخيرة" icon={FolderKanban}>
-        <div className="empty">
-          <p>لا توجد مشاريع بعد.</p>
-          <p className="muted">إنشاء المشاريع والدروس يُبنى في المرحلة 1، وستظهر آخر المشاريع هنا.</p>
-        </div>
-      </Card>
 
       <section>
         <h2 className="section-title">الوحدات</h2>

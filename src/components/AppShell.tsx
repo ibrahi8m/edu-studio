@@ -90,6 +90,7 @@ function UpdateToast() {
   const { needRefresh } = useRuntime();
   if (!needRefresh) return null;
   return (
+    <div className="toast-stack toast-stack-update">
     <div className="toast" role="status">
       <RefreshCw size={18} aria-hidden="true" />
       <span>يتوفر إصدار أحدث من التطبيق.</span>
@@ -99,6 +100,7 @@ function UpdateToast() {
       <button type="button" className="icon-btn" aria-label="لاحقًا" onClick={dismissUpdate}>
         <X size={18} />
       </button>
+    </div>
     </div>
   );
 }

@@ -6,10 +6,13 @@ import { About } from '../pages/About';
 import { ComingSoon } from '../pages/ComingSoon';
 import { Dashboard } from '../pages/Dashboard';
 import { More } from '../pages/More';
+import { ProjectDetail } from '../pages/ProjectDetail';
+import { ProjectsPage } from '../pages/Projects';
 import { SettingsPage } from '../pages/Settings';
+import { ToastProvider } from './Toasts';
 import { SettingsProvider, useSettings } from './SettingsContext';
 
-const PLANNED_ROUTES = ['/projects', '/builder', '/studio', '/quizzes', '/student', '/results', '/library', '/backup'];
+const PLANNED_ROUTES = ['/builder', '/studio', '/quizzes', '/student', '/results', '/library', '/backup'];
 
 function Root() {
   const { settings, ready } = useSettings();
@@ -24,6 +27,8 @@ function Root() {
         <Routes>
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:id" element={<ProjectDetail />} />
             {PLANNED_ROUTES.map((p) => (
               <Route key={p} path={p.slice(1)} element={<ComingSoon path={p} />} />
             ))}
@@ -42,7 +47,9 @@ function Root() {
 export function App() {
   return (
     <SettingsProvider>
-      <Root />
+      <ToastProvider>
+        <Root />
+      </ToastProvider>
     </SettingsProvider>
   );
 }
