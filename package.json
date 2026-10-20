@@ -4,6 +4,68 @@
   "version": "0.7.0",
   "description": "IBRAHI8M EDU STUDIO — Offline Arabic digital learning content studio",
   "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && node scripts/check-offline.mjs",
+    "preview": "vite preview --port 4173 --strictPort",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "brand": "node scripts/build-brand.mjs",
+    "desktop": "npm run build && electron .",
+    "test:desktop": "playwright test -c playwright.desktop.config.ts",
+    "dist:desktop": "npm run build && electron-builder --linux dir --win dir"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
+    "@fontsource/readex-pro": "^5.3.0",
+    "@playwright/test": "^1.56.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "dexie": "^4.4.6",
+    "dexie-react-hooks": "^4.4.0",
+    "electron": "^38.8.6",
+    "electron-builder": "^25.1.8",
+    "fake-indexeddb": "^6.2.6",
+    "fflate": "^0.8.2",
+    "lucide-react": "^1.59.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6",
+    "sharp": "^0.35.5",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vite-plugin-pwa": "^0.21.2",
+    "vitest": "^2.1.9",
+    "workbox-window": "^7.4.1",
+    "zod": "^3.25.76"
+  },
   "main": "electron/main.cjs",
+  "build": {
+    "appId": "app.ibrahi8m.edustudio",
+    "productName": "IBRAHI8M EDU STUDIO",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json",
+      "!node_modules/**"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "icon": "public/icon-512.png"
+    },
+    "linux": {
+      "icon": "public/icon-512.png",
+      "category": "Education"
+    },
+    "extraMetadata": {
+      "main": "electron/main.cjs"
+    }
+  },
   "author": "Ibrahim"
 }
