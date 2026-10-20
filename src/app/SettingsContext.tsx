@@ -61,13 +61,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Until the saved settings are read, keep the theme painted from the last session;
+    // applying the defaults here would flash the dark theme and overwrite that memory.
+    if (!ready) return;
     applyToDocument(settings);
     if (settings.theme !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: light)');
     const onChange = () => applyToDocument(settings);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
-  }, [settings]);
+  }, [settings, ready]);
 
   const update = useCallback(async <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));

@@ -111,7 +111,7 @@ export function Dashboard() {
                 key={l.id}
                 lesson={l}
                 project={projectMap.get(l.projectId)}
-                onOpen={() => navigate(`/projects/${l.projectId}?lesson=${l.id}`)}
+                onOpen={() => navigate(`/projects/${l.projectId}/lessons/${l.id}`)}
               />
             ))}
           </ul>

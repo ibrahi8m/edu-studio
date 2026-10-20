@@ -46,13 +46,44 @@ test.describe('Phase 0 — responsive shell', () => {
   });
 
   test('splash screen is captured and can be skipped', async ({ page }, info) => {
+    // Pause the page clock so the splash cannot close on its own while it is
+    // photographed and clicked (it auto-closes after 1.8 s; under load that can pass).
+    // clock.install() alone does not stop time; pauseAt() does.
+    await page.clock.install();
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.goto('./#/');
     await page.reload();
     await expect(page.getByTestId('splash')).toBeVisible();
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(700); // real time, for the entrance animation
     await page.screenshot({ path: `docs/screenshots/${info.project.name}/splash.png` });
     await page.getByRole('button', { name: 'تخطي' }).click();
     await expect(page.getByTestId('splash')).toBeHidden();
+    // and it also closes by itself once its time is up
+    await page.reload();
+    await expect(page.getByTestId('splash')).toBeVisible();
+    await page.clock.runFor(2000);
+    await expect(page.getByTestId('splash')).toBeHidden();
+  });
+
+  test('a saved light theme never flashes dark while the app starts', async ({ page }) => {
+    await page.goto('./#/settings');
+    await page.getByRole('radio', { name: 'فاتح' }).click();
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+    // Record every theme the page paints from the very first script onwards.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __themes: string[] };
+      w.__themes = [];
+      // Observe the document (the <html> element may not exist yet when this runs).
+      new MutationObserver((records) => {
+        for (const r of records) if (r.type === 'attributes' && r.target === document.documentElement) w.__themes.push(document.documentElement.dataset.theme ?? '');
+      }).observe(document, { attributes: true, attributeFilter: ['data-theme'], subtree: true });
+    });
+    await page.reload();
+    await expect(page.getByTestId('splash')).toBeVisible();
+    await page.waitForTimeout(800); // settings have loaded from the database by now
+    const painted = await page.evaluate(() => (window as unknown as { __themes: string[] }).__themes);
+    expect(painted.length).toBeGreaterThan(0);
+    expect(painted).not.toContain('dark');
   });
 
   test('disabling the splash takes effect on next launch', async ({ page }) => {

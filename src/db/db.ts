@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import type { Asset, LessonDoc } from '../lesson/types';
 
 /**
  * Local database (IndexedDB) — one per device. No cloud, no sync.
@@ -7,6 +8,7 @@ import Dexie, { type Table } from 'dexie';
  *
  *   v1 (phase 0): settings, meta
  *   v2 (phase 1): projects, lessons
+ *   v3 (phase 2): lessonDocs (objectives, plan, content blocks), assets (local media)
  */
 export interface SettingRow {
   key: string;
@@ -51,13 +53,15 @@ export interface Lesson {
 }
 
 export const DB_NAME = 'ibrahi8m-edu';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export class EduDB extends Dexie {
   settings!: Table<SettingRow, string>;
   meta!: Table<MetaRow, string>;
   projects!: Table<Project, string>;
   lessons!: Table<Lesson, string>;
+  lessonDocs!: Table<LessonDoc, string>;
+  assets!: Table<Asset, string>;
 
   constructor(name: string = DB_NAME) {
     super(name);
@@ -68,6 +72,11 @@ export class EduDB extends Dexie {
     this.version(2).stores({
       projects: 'id, updatedAt, createdAt, title, subject, grade, status, *tags',
       lessons: 'id, projectId, [projectId+order], updatedAt, status, *tags',
+    });
+    // Adds tables only: existing projects, lessons and settings are untouched.
+    this.version(3).stores({
+      lessonDocs: 'lessonId, updatedAt',
+      assets: 'id, lessonId, kind, createdAt',
     });
   }
 }

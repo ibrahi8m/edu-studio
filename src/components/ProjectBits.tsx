@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronUp, Clock, FolderKanban } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, FolderKanban, Pencil } from 'lucide-react';
 import type { Lesson, Project } from '../db/db';
 import { STATUS_LABEL, STATUS_TONE } from '../db/catalog';
 import { lessonsLabel, minutesLabel, relativeTime } from '../app/format';
@@ -50,20 +50,26 @@ export function LessonRow({
   index,
   project,
   onOpen,
+  onEdit,
   onMove,
   isFirst,
   isLast,
   highlight,
+  badge,
 }: {
   lesson: Lesson;
   index?: number;
   project?: Project;
   onOpen: () => void;
+  /** Quick edit of the lesson card (title, summary, status) without opening the editor. */
+  onEdit?: () => void;
   onMove?: (dir: -1 | 1) => void;
+  badge?: string;
   isFirst?: boolean;
   isLast?: boolean;
   highlight?: boolean;
 }) {
+  // Lesson rows open the full lesson editor.
   return (
     <li className={`lesson-row ${highlight ? 'is-highlight' : ''}`} data-testid="lesson-row" id={`lesson-${lesson.id}`}>
       {index != null && (
@@ -71,7 +77,7 @@ export function LessonRow({
           {index}
         </span>
       )}
-      <button type="button" className="lesson-main" onClick={onOpen} aria-label={`فتح الدرس: ${lesson.title}`}>
+      <button type="button" className="lesson-main" onClick={onOpen} aria-label={`فتح محرر الدرس: ${lesson.title}`}>
         <span className="lesson-title">{lesson.title}</span>
         <span className="lesson-meta">
           {project && <span className="lesson-project">{project.title}</span>}
@@ -85,7 +91,13 @@ export function LessonRow({
         {lesson.summary && <span className="lesson-summary">{lesson.summary}</span>}
       </button>
       <span className="lesson-side">
+        {badge && <span className="pill pill-neutral">{badge}</span>}
         <StatusPill status={lesson.status} />
+        {onEdit && (
+          <button type="button" className="icon-btn" aria-label={`تعديل بيانات الدرس: ${lesson.title}`} onClick={onEdit} data-testid="lesson-quick-edit">
+            <Pencil size={16} />
+          </button>
+        )}
         {onMove && (
           <span className="lesson-move">
             <button type="button" className="icon-btn" aria-label={`نقل «${lesson.title}» إلى الأعلى`} disabled={isFirst} onClick={() => onMove(-1)}>

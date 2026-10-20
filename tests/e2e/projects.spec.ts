@@ -91,13 +91,13 @@ test.describe('Phase 1 — projects and lessons', () => {
     await expect(page.getByRole('button', { name: 'نقل «أشكال الطاقة» إلى الأعلى' })).toBeDisabled();
 
     // Edit a lesson
-    await page.getByRole('button', { name: 'فتح الدرس: ترشيد الاستهلاك' }).click();
+    await page.getByRole('button', { name: 'تعديل بيانات الدرس: ترشيد الاستهلاك' }).click();
     await page.getByTestId('lesson-title').fill('ترشيد استهلاك الطاقة');
     await page.getByTestId('lesson-save').click();
     await expect.poll(() => lessonTitles(page)).toContain('ترشيد استهلاك الطاقة');
 
     // Delete a lesson, then undo
-    await page.getByRole('button', { name: 'فتح الدرس: ترشيد استهلاك الطاقة' }).click();
+    await page.getByRole('button', { name: 'تعديل بيانات الدرس: ترشيد استهلاك الطاقة' }).click();
     await page.getByTestId('lesson-delete').click();
     await page.getByTestId('confirm-delete-lesson').getByRole('button', { name: 'حذف الدرس' }).click();
     await expect.poll(() => lessonTitles(page)).toEqual(['أشكال الطاقة', 'مصادر الطاقة المتجددة']);
@@ -210,7 +210,7 @@ test.describe('Phase 1 — projects and lessons', () => {
     expect(await lessonTitles(page)).toEqual(['الكسور العادية', 'جمع الكسور']);
     // still editable offline after the restart
     await addLesson(page, 'طرح الكسور');
-    expect(await lessonTitles(page)).toHaveLength(3);
+    await expect.poll(() => lessonTitles(page)).toEqual(['الكسور العادية', 'جمع الكسور', 'طرح الكسور']);
     expect(net.external).toEqual([]);
     expect(net.failed).toEqual([]);
     expect(errors).toEqual([]);

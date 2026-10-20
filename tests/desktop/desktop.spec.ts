@@ -1,12 +1,12 @@
 import { _electron as electron, expect, test } from '@playwright/test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 const launch = (userData: string) =>
   electron.launch({ args: ['.', '--no-sandbox'], env: { ...process.env, IBRAHI8M_USER_DATA: userData } });
 
-test('desktop app runs from disk, blocks the network and keeps settings, projects and lessons across restarts', async () => {
+test('desktop app runs from disk, blocks the network and keeps settings, projects, lessons, lesson content and images across restarts', async () => {
   const userData = mkdtempSync(join(tmpdir(), 'ibrahi8m-desktop-'));
 
   // First launch: no service worker, no server, files come from dist/ on disk.
@@ -59,6 +59,21 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
     await w1.getByTestId('lesson-save').click();
     await expect(w1.getByTestId('lesson-dialog')).toBeHidden();
   }
+
+  // Phase 2: lesson editor with an objective and a local image
+  await w1.getByRole('button', { name: 'فتح محرر الدرس: الدرس الأول' }).click();
+  await w1.getByTestId('add-objective').click();
+  await w1.getByRole('radio', { name: '1 التذكر' }).click();
+  await w1.getByTestId('verb-bank').getByRole('button', { name: 'يعدّد', exact: true }).click();
+  await w1.getByTestId('objective-content').fill('مصادر الطاقة');
+  await w1.getByTestId('tab-content').click();
+  await w1.getByTestId('add-block').click();
+  await w1.getByTestId('add-image').click();
+  await w1.getByTestId('image-input').setInputFiles(resolve('tests/fixtures/energy-diagram.png'));
+  await expect(w1.getByTestId('image-preview')).toBeVisible();
+  await w1.waitForTimeout(150);
+  await expect(w1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+  const editorHash = new URL(w1.url()).hash;
   await app1.close();
 
   // Second launch: data is still there.
@@ -74,5 +89,13 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
   await expect(w2.getByTestId('project-heading')).toHaveText('مشروع سطح المكتب');
   await expect(w2.getByTestId('project-lessons').locator('.lesson-title')).toHaveText(['الدرس الأول', 'الدرس الثاني']);
   await w2.screenshot({ path: 'docs/screenshots/desktop-app/project.png' });
+  await w2.goto(`app://edu/index.html${editorHash}`);
+  await w2.getByTestId('tab-plan').click();
+  await expect(w2.getByTestId('objective-statement')).toHaveText('أن يعدّد الطالب مصادر الطاقة.');
+  await w2.getByTestId('tab-content').click();
+  await expect.poll(() => w2.getByTestId('image-preview').evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(1600);
+  await w2.getByTestId('open-preview').click();
+  await expect.poll(() => w2.getByTestId('lv-image').evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(1600);
+  await w2.screenshot({ path: 'docs/screenshots/desktop-app/preview.png' });
   await app2.close();
 });

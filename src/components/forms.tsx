@@ -304,7 +304,7 @@ export function LessonFormDialog({
             data-testid="lesson-title"
           />
         </Field>
-        <Field label="ملخص الدرس" htmlFor={`${uid}-s`} error={errors.summary} hint="الأهداف والمحتوى التفصيلي يُبنيان في منشئ الدروس (المرحلة 2).">
+        <Field label="ملخص الدرس" htmlFor={`${uid}-s`} error={errors.summary} hint="الأهداف والمحتوى التفصيلي تُبنى في محرر الدرس.">
           <textarea
             id={`${uid}-s`}
             className="input textarea"

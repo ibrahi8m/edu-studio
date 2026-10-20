@@ -51,3 +51,21 @@ export function watchNetwork(page: Page, origin: string) {
   page.on('requestfailed', (r) => failed.push(`${r.url()} — ${r.failure()?.errorText}`));
   return { external, failed };
 }
+
+/**
+ * After a block is added the editor scrolls smoothly to it and focuses its first
+ * field (~250 ms). Wait for both, so the next click does not land on a target
+ * that is still moving.
+ */
+export async function settleAfterAdd(page: Page) {
+  await page.waitForTimeout(300);
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((done) => {
+        const y = window.scrollY;
+        requestAnimationFrame(() => requestAnimationFrame(() => done(window.scrollY === y)));
+      }),
+    undefined,
+    { polling: 100, timeout: 5000 },
+  );
+}

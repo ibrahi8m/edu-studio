@@ -1,14 +1,12 @@
+import type { Asset, LessonDoc } from '../lesson/types';
 import type { EduDB, ItemStatus, Lesson, Project, ProjectColor } from './db';
 import { GRADES, LIMITS, STATUSES } from './catalog';
+import { newId } from './ids';
 import { matchesQuery, normalizeArabic } from './search';
 
 /* ───────── ids & input cleaning ───────── */
 
-export function newId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
-  // Fallback for non-secure contexts: time + random, still unique per device.
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
-}
+export { newId };
 
 export function cleanTags(input: string[] | string): string[] {
   const parts = Array.isArray(input) ? input : input.split(/[,،\n]/);
@@ -128,24 +126,35 @@ export async function updateProject(database: EduDB, id: string, patch: Partial<
 export interface ProjectSnapshot {
   project: Project;
   lessons: Lesson[];
+  docs: LessonDoc[];
+  assets: Asset[];
 }
 
-/** Deletes a project and all its lessons atomically; returns what was removed so it can be restored. */
+/** Deletes a project with all its lessons, their content and media, atomically; returns what was removed so it can be restored. */
 export async function deleteProject(database: EduDB, id: string): Promise<ProjectSnapshot> {
-  return database.transaction('rw', database.projects, database.lessons, async () => {
+  return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets], async () => {
     const project = await database.projects.get(id);
     if (!project) throw new Error('المشروع غير موجود.');
     const lessons = await database.lessons.where('projectId').equals(id).toArray();
+    const ids = lessons.map((l) => l.id);
+    const docs = (await database.lessonDocs.bulkGet(ids)).filter((d): d is LessonDoc => !!d);
+    const assets = ids.length ? await database.assets.where('lessonId').anyOf(ids).toArray() : [];
+    if (ids.length) {
+      await database.assets.where('lessonId').anyOf(ids).delete();
+      await database.lessonDocs.bulkDelete(ids);
+    }
     await database.lessons.where('projectId').equals(id).delete();
     await database.projects.delete(id);
-    return { project, lessons };
+    return { project, lessons, docs, assets };
   });
 }
 
 export async function restoreProject(database: EduDB, snap: ProjectSnapshot): Promise<void> {
-  await database.transaction('rw', database.projects, database.lessons, async () => {
+  await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets], async () => {
     await database.projects.put(snap.project);
     if (snap.lessons.length) await database.lessons.bulkPut(snap.lessons);
+    if (snap.docs?.length) await database.lessonDocs.bulkPut(snap.docs);
+    if (snap.assets?.length) await database.assets.bulkPut(snap.assets);
   });
 }
 
@@ -205,21 +214,34 @@ export async function updateLesson(database: EduDB, id: string, patch: Partial<L
   });
 }
 
-export async function deleteLesson(database: EduDB, id: string): Promise<Lesson> {
-  return database.transaction('rw', database.projects, database.lessons, async () => {
+export interface LessonSnapshot {
+  lesson: Lesson;
+  doc: LessonDoc | null;
+  assets: Asset[];
+}
+
+/** Deletes a lesson with its content and media; returns a snapshot for undo. */
+export async function deleteLesson(database: EduDB, id: string): Promise<LessonSnapshot> {
+  return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets], async () => {
     const lesson = await database.lessons.get(id);
     if (!lesson) throw new Error('الدرس غير موجود.');
+    const doc = (await database.lessonDocs.get(id)) ?? null;
+    const assets = await database.assets.where('lessonId').equals(id).toArray();
+    await database.assets.where('lessonId').equals(id).delete();
+    await database.lessonDocs.delete(id);
     await database.lessons.delete(id);
     await touchProject(database, lesson.projectId);
-    return lesson;
+    return { lesson, doc, assets };
   });
 }
 
-export async function restoreLesson(database: EduDB, lesson: Lesson): Promise<void> {
-  await database.transaction('rw', database.projects, database.lessons, async () => {
-    if (!(await database.projects.get(lesson.projectId))) throw new Error('المشروع الأصلي لم يعد موجودًا.');
-    await database.lessons.put(lesson);
-    await touchProject(database, lesson.projectId);
+export async function restoreLesson(database: EduDB, snap: LessonSnapshot): Promise<void> {
+  await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets], async () => {
+    if (!(await database.projects.get(snap.lesson.projectId))) throw new Error('المشروع الأصلي لم يعد موجودًا.');
+    await database.lessons.put(snap.lesson);
+    if (snap.doc) await database.lessonDocs.put(snap.doc);
+    if (snap.assets.length) await database.assets.bulkPut(snap.assets);
+    await touchProject(database, snap.lesson.projectId);
   });
 }
 

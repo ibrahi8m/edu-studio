@@ -143,7 +143,8 @@ export function ProjectDetail() {
                   lesson={l}
                   index={index + 1}
                   highlight={highlight === l.id}
-                  onOpen={() => setLessonDialog({ open: true, lesson: l })}
+                  onOpen={() => navigate(`/projects/${project.id}/lessons/${l.id}`)}
+                  onEdit={() => setLessonDialog({ open: true, lesson: l })}
                   onMove={
                     q
                       ? undefined
@@ -162,7 +163,7 @@ export function ProjectDetail() {
             })}
           </ol>
         )}
-        <p className="muted builder-note">إضافة الأهداف والمحتوى والأنشطة داخل كل درس تأتي في المرحلة 2 (منشئ الدروس).</p>
+        <p className="muted builder-note">افتح أي درس لكتابة أهدافه وبناء محتواه ومعاينته كما يراه الطالب. زر القلم يعدّل بيانات الدرس فقط.</p>
       </section>
 
       <ProjectFormDialog
@@ -232,7 +233,10 @@ export function ProjectDetail() {
               toast({ message: 'حُفظت تعديلات الدرس.' });
             } else {
               const l = await createLesson(db, project.id, input);
-              toast({ message: `أُضيف الدرس «${l.title}».` });
+              toast({
+                message: `أُضيف الدرس «${l.title}».`,
+                action: { label: 'فتح المحرر', run: () => navigate(`/projects/${project.id}/lessons/${l.id}`) },
+              });
             }
             setLessonDialog({ open: false, lesson: null });
             if (highlight) setParams({}, { replace: true });
@@ -255,7 +259,7 @@ export function ProjectDetail() {
             const removed = await deleteLesson(db, confirmLesson.id);
             setConfirmLesson(null);
             toast({
-              message: `حُذف الدرس «${removed.title}».`,
+              message: `حُذف الدرس «${removed.lesson.title}».`,
               action: { label: 'تراجع', run: () => restoreLesson(db, removed) },
             });
           } catch (e) {

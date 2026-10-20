@@ -6,13 +6,16 @@ import { About } from '../pages/About';
 import { ComingSoon } from '../pages/ComingSoon';
 import { Dashboard } from '../pages/Dashboard';
 import { More } from '../pages/More';
+import { BuilderPage } from '../pages/Builder';
+import { LessonEditorPage } from '../pages/LessonEditor';
+import { LessonPreview } from '../pages/LessonPreview';
 import { ProjectDetail } from '../pages/ProjectDetail';
 import { ProjectsPage } from '../pages/Projects';
 import { SettingsPage } from '../pages/Settings';
 import { ToastProvider } from './Toasts';
 import { SettingsProvider, useSettings } from './SettingsContext';
 
-const PLANNED_ROUTES = ['/builder', '/studio', '/quizzes', '/student', '/results', '/library', '/backup'];
+const PLANNED_ROUTES = ['/studio', '/quizzes', '/student', '/results', '/library', '/backup'];
 
 function Root() {
   const { settings, ready } = useSettings();
@@ -25,10 +28,14 @@ function Root() {
     <>
       <HashRouter>
         <Routes>
+          {/* Student preview: full screen, outside the app shell */}
+          <Route path="preview/:lessonId" element={<LessonPreview />} />
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetail />} />
+            <Route path="projects/:id/lessons/:lessonId" element={<LessonEditorPage />} />
+            <Route path="builder" element={<BuilderPage />} />
             {PLANNED_ROUTES.map((p) => (
               <Route key={p} path={p.slice(1)} element={<ComingSoon path={p} />} />
             ))}
