@@ -49,7 +49,11 @@ export function isSettingKey(key: string): key is keyof Settings {
 
 /** Reads all settings; unknown or invalid stored values fall back to defaults. */
 export async function loadSettings(database: EduDB): Promise<Settings> {
-  const rows = await database.settings.toArray();
+  return loadSettingsFromRows(await database.settings.toArray());
+}
+
+/** Settings from stored rows (also used to check rows inside an imported file). */
+export function loadSettingsFromRows(rows: { key: string; value: unknown }[]): Settings {
   const out: Settings = { ...DEFAULT_SETTINGS };
   for (const row of rows) {
     if (isSettingKey(row.key) && VALIDATORS[row.key](row.value)) {

@@ -7,6 +7,7 @@ import './styles/editor.css';
 import './styles/quiz.css';
 import './styles/student.css';
 import './styles/studio.css';
+import './styles/library.css';
 import { App } from './app/App';
 import { paintMirroredTheme } from './app/SettingsContext';
 import { initServiceWorker } from './app/runtime';

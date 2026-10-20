@@ -3,6 +3,7 @@ import type { Asset, LessonDoc } from '../lesson/types';
 import type { Attempt, Quiz } from '../quiz/types';
 import type { LessonProgress } from '../student/types';
 import type { Design } from '../studio/types';
+import type { LibraryItem } from '../library/types';
 
 /**
  * Local database (IndexedDB) — one per device. No cloud, no sync.
@@ -15,6 +16,7 @@ import type { Design } from '../studio/types';
  *   v4 (phase 3): quizzes (questions and settings), attempts (student answers and results)
  *   v5 (phase 4): progress (each student's progress through each lesson)
  *   v6 (phase 5): designs (studio: cards, visual summaries, concept maps)
+ *   v7 (phase 6): library (reusable lesson templates, blocks, designs and media)
  */
 export interface SettingRow {
   key: string;
@@ -59,7 +61,7 @@ export interface Lesson {
 }
 
 export const DB_NAME = 'ibrahi8m-edu';
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export class EduDB extends Dexie {
   settings!: Table<SettingRow, string>;
@@ -72,6 +74,7 @@ export class EduDB extends Dexie {
   attempts!: Table<Attempt, string>;
   progress!: Table<LessonProgress, string>;
   designs!: Table<Design, string>;
+  library!: Table<LibraryItem, string>;
 
   constructor(name: string = DB_NAME) {
     super(name);
@@ -100,6 +103,10 @@ export class EduDB extends Dexie {
     // Adds one table only: everything from v1–v5 is untouched.
     this.version(6).stores({
       designs: 'id, projectId, lessonId, kind, updatedAt',
+    });
+    // Adds one table only: everything from v1–v6 is untouched.
+    this.version(7).stores({
+      library: 'id, kind, updatedAt, *tags',
     });
   }
 }

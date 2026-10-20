@@ -1,13 +1,15 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowDown, ArrowRight, ArrowUp, BookPlus, ChevronLeft, CircleAlert, Copy, Download, Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUp, BookmarkPlus, BookPlus, ChevronLeft, CircleAlert, Copy, Download, Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import { errorMessage } from '../app/data';
 import { useToast } from '../app/Toasts';
 import { ConfirmDialog, Dialog } from '../components/Dialog';
 import { Segmented } from '../components/ui';
 import { db } from '../db/db';
 import { addPictureToLesson, deleteDesign, duplicateDesign, restoreDesign } from '../db/designs';
+import { saveDesignToLibrary } from '../db/library';
+import { SaveToLibraryDialog } from '../library/SaveToLibraryDialog';
 import { AutoTextarea, SaveStatusPill } from '../lesson/editor/parts';
 import { designFontsReady, downloadBlob, fileName, svgToPng } from '../studio/exportPng';
 import { MapEditor } from '../studio/MapEditor';
@@ -37,6 +39,7 @@ export function DesignEditorPage() {
   const [busy, setBusy] = useState<'' | 'png' | 'lesson'>('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [lessonDialog, setLessonDialog] = useState(false);
+  const [toLibrary, setToLibrary] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const design = ed.design;
   const lesson = useLiveQuery(async () => (design?.lessonId ? ((await db.lessons.get(design.lessonId)) ?? null) : null), [design?.lessonId]);
@@ -230,11 +233,32 @@ export function DesignEditorPage() {
           >
             <Copy size={16} aria-hidden="true" /> نسخة من التصميم
           </button>
+          <button type="button" className="btn btn-sm" onClick={() => setToLibrary(true)} data-testid="design-to-library">
+            <BookmarkPlus size={16} aria-hidden="true" /> حفظ كقالب في المكتبة
+          </button>
           <button type="button" className="btn btn-sm btn-danger-ghost" onClick={() => setConfirmDelete(true)} data-testid="delete-design">
             <Trash2 size={16} aria-hidden="true" /> حذف التصميم
           </button>
         </div>
       </section>
+
+      <SaveToLibraryDialog
+        open={toLibrary}
+        heading="حفظ التصميم قالبًا في المكتبة"
+        note="تُحفظ نسخة من التصميم بحالته الآن، لتبدأ منها تصاميم جديدة في أي مشروع."
+        initial={{ title: design.title, tags: [KIND_LABEL[design.kind]] }}
+        onClose={() => setToLibrary(false)}
+        onSave={async (v) => {
+          try {
+            await ed.saveNow();
+            await saveDesignToLibrary(db, design.id, v);
+            setToLibrary(false);
+            toast({ message: `حُفظ «${v.title.trim()}» في المكتبة.` });
+          } catch (e) {
+            toast({ message: errorMessage(e), tone: 'danger' });
+          }
+        }}
+      />
 
       <AddToLessonDialog
         open={lessonDialog}

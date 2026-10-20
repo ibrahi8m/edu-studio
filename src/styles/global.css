@@ -711,7 +711,7 @@ textarea {
 
 .btn:hover { background: var(--surface-hover); text-decoration: none; }
 .btn-primary { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-ink); }
-.btn-primary:hover { background: var(--accent-strong); }
+.btn-primary:hover { background: var(--accent-fill-hover); border-color: var(--accent-fill-hover); }
 .btn-ghost { background: transparent; }
 .btn-danger-ghost { background: transparent; color: var(--danger); border-color: var(--danger-soft); }
 .btn-sm { min-height: 36px; padding: 0 12px; font-size: 0.875rem; }

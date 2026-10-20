@@ -10,6 +10,7 @@ import { useSettings } from '../app/SettingsContext';
 import { Portrait, Wordmark } from '../components/Brand';
 import { Card, PhaseBadge, Pill } from '../components/ui';
 import { formatBytes, getStorageInfo, type StorageInfo } from '../db/storage';
+import { backupDue, useLastBackup } from '../transfer/service';
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -25,6 +26,7 @@ export function Dashboard() {
   const [storage, setStorage] = useState<StorageInfo | null>(null);
   const projects = useAllProjects();
   const lessons = useAllLessons();
+  const lastBackup = useLastBackup();
   const navigate = useNavigate();
   const projectMap = useMemo(() => new Map((projects ?? []).map((p) => [p.id, p] as [string, Project])), [projects]);
   const counts = useMemo(() => {
@@ -67,6 +69,21 @@ export function Dashboard() {
           <Portrait variant="card" alt={`صورة ${settings.ownerName}`} />
         </div>
       </section>
+
+      {backupDue(lastBackup, (projects?.length ?? 0) > 0) && (
+        <div className="align-alert is-warn" role="status" data-testid="dashboard-backup-due">
+          <ShieldCheck size={20} aria-hidden="true" />
+          <div>
+            <strong>{lastBackup ? 'مرّ أكثر من 7 أيام على آخر نسخة احتياطية.' : 'لا توجد نسخة احتياطية لبياناتك بعد.'}</strong>
+            <p>
+              كل بياناتك محفوظة على هذا الجهاز فقط.{' '}
+              <Link to="/backup" data-testid="dashboard-backup-link">
+                احفظ نسخة احتياطية الآن
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="stat-row" data-testid="stats">
         <Link to="/projects" className="stat">

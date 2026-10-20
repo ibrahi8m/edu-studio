@@ -1,6 +1,13 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, CircleAlert, Eye, LayoutList, Palette, Target, Waypoints } from 'lucide-react';
+import { ArrowRight, BookmarkPlus, ChevronLeft, CircleAlert, Eye, LayoutList, Palette, Target, Waypoints } from 'lucide-react';
+import { errorMessage } from '../app/data';
+import { useToast } from '../app/Toasts';
+import { db } from '../db/db';
+import { saveBlocksToLibrary, saveLessonToLibrary } from '../db/library';
+import { BLOCK_META } from '../lesson/catalog';
+import type { Block } from '../lesson/types';
+import { SaveToLibraryDialog } from '../library/SaveToLibraryDialog';
 import { LIMITS } from '../db/catalog';
 import { alignment } from '../lesson/model';
 import { AlignmentTab } from '../lesson/editor/AlignmentTab';
@@ -18,6 +25,8 @@ export function LessonEditorPage() {
   const navigate = useNavigate();
   const ed = useLessonEditor(lessonId);
   const titleId = useId();
+  const toast = useToast();
+  const [toLibrary, setToLibrary] = useState<{ kind: 'lesson' } | { kind: 'block'; block: Block } | null>(null);
   const tab: Tab = TABS.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'plan';
   const setTab = (t: Tab) => {
     setParams(t === 'plan' ? {} : { tab: t }, { replace: true });
@@ -88,6 +97,9 @@ export function LessonEditorPage() {
           </div>
         </div>
         <div className="editor-actions">
+          <button type="button" className="btn" onClick={() => setToLibrary({ kind: 'lesson' })} data-testid="lesson-to-library">
+            <BookmarkPlus size={18} aria-hidden="true" /> <span>حفظ كقالب</span>
+          </button>
           <button
             type="button"
             className="btn"
@@ -141,9 +153,41 @@ export function LessonEditorPage() {
 
       <div role="tabpanel">
         {tab === 'plan' && <PlanTab state={state} edit={edit} />}
-        {tab === 'content' && <BlocksTab state={state} edit={edit} lessonId={lesson.id} onGoToPlan={() => setTab('plan')} />}
+        {tab === 'content' && <BlocksTab state={state} edit={edit} lessonId={lesson.id} onGoToPlan={() => setTab('plan')} onSaveToLibrary={(block) => setToLibrary({ kind: 'block', block })} />}
         {tab === 'alignment' && <AlignmentTab state={state} edit={edit} onGoToPlan={() => setTab('plan')} onGoToContent={() => setTab('content')} />}
       </div>
+
+      <SaveToLibraryDialog
+        open={!!toLibrary}
+        heading={toLibrary?.kind === 'block' ? 'حفظ العنصر في المكتبة' : 'حفظ الدرس قالبًا في المكتبة'}
+        note={
+          toLibrary?.kind === 'block'
+            ? 'تُحفظ نسخة من هذه الكتلة (ووسائطها) لتضيفها إلى أي درس لاحقًا.'
+            : 'يُحفظ تصميم الدرس كاملًا: الأهداف والاستراتيجية والتقويم والمحتوى ووسائطه، لتبدأ منه دروسًا جديدة.'
+        }
+        initial={
+          toLibrary?.kind === 'block'
+            ? { title: blockTitle(toLibrary.block), tags: [BLOCK_META[toLibrary.block.type].label] }
+            : { title: state.meta.title, description: state.meta.summary, tags: project?.subject ? [project.subject] : [] }
+        }
+        onClose={() => setToLibrary(null)}
+        onSave={async (v) => {
+          try {
+            await ed.saveNow();
+            if (toLibrary?.kind === 'block') await saveBlocksToLibrary(db, lesson.id, [toLibrary.block.id], v);
+            else await saveLessonToLibrary(db, lesson.id, v);
+            setToLibrary(null);
+            toast({ message: `حُفظ «${v.title.trim()}» في المكتبة.`, action: { label: 'فتح المكتبة', run: () => navigate('/library') } });
+          } catch (e) {
+            toast({ message: errorMessage(e), tone: 'danger' });
+          }
+        }}
+      />
     </div>
   );
+}
+
+function blockTitle(b: Block): string {
+  const t = 'title' in b && typeof b.title === 'string' && b.title.trim() ? b.title.trim() : b.type === 'heading' || b.type === 'text' ? b.text.trim().slice(0, 60) : '';
+  return t || BLOCK_META[b.type].label;
 }

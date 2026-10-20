@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Copy, Link2, Plus, Target, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, BookmarkPlus, Copy, Link2, Plus, Target, Trash2 } from 'lucide-react';
 import { useToast } from '../../app/Toasts';
 import { Dialog } from '../../components/Dialog';
 import { objectiveStatement } from '../bloom';
@@ -11,7 +11,7 @@ import { BLOCK_ICON, BlockBody } from './BlockEditors';
 
 type Edit = (fn: (s: EditorState) => EditorState) => void;
 
-export function BlocksTab({ state, edit, lessonId, onGoToPlan }: { state: EditorState; edit: Edit; lessonId: string; onGoToPlan: () => void }) {
+export function BlocksTab({ state, edit, lessonId, onGoToPlan, onSaveToLibrary }: { state: EditorState; edit: Edit; lessonId: string; onGoToPlan: () => void; onSaveToLibrary?: (b: Block) => void }) {
   const { doc } = state;
   const toast = useToast();
   const [adding, setAdding] = useState<{ open: boolean; after: string | null }>({ open: false, after: null });
@@ -81,6 +81,7 @@ export function BlocksTab({ state, edit, lessonId, onGoToPlan }: { state: Editor
                   });
                 }}
                 onLink={() => setLinking(b.id)}
+                onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(b) : undefined}
                 onInsertAfter={() => setAdding({ open: true, after: b.id })}
               />
             ))}
@@ -168,6 +169,7 @@ function BlockCard({
   onRemove,
   onLink,
   onInsertAfter,
+  onSaveToLibrary,
 }: {
   block: Block;
   index: number;
@@ -180,6 +182,7 @@ function BlockCard({
   onRemove: () => void;
   onLink: () => void;
   onInsertAfter: () => void;
+  onSaveToLibrary?: () => void;
 }) {
   const meta = BLOCK_META[b.type];
   const Icon = BLOCK_ICON[b.type];
@@ -212,6 +215,11 @@ function BlockCard({
           <button type="button" className="icon-btn" aria-label={`نسخ ${name}`} onClick={onDuplicate}>
             <Copy size={17} />
           </button>
+          {onSaveToLibrary && (
+            <button type="button" className="icon-btn" aria-label={`حفظ ${name} في المكتبة`} title="حفظ في المكتبة" onClick={onSaveToLibrary} data-testid="block-to-library">
+              <BookmarkPlus size={17} />
+            </button>
+          )}
           <button type="button" className="icon-btn danger" aria-label={`حذف ${name}`} onClick={onRemove} data-testid="block-delete">
             <Trash2 size={18} />
           </button>

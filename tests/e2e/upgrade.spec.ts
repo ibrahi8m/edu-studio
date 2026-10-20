@@ -2,6 +2,7 @@ import { openQuizAs } from './quiz-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import { openSync, readFileSync } from 'node:fs';
+import { strFromU8, unzipSync } from 'fflate';
 import { get } from 'node:http';
 import { resolve } from 'node:path';
 import { launchProfile, newProfileDir } from './helpers';
@@ -19,6 +20,7 @@ const LEGACY = resolve('.legacy/0.2.0');
 const LEGACY3 = resolve('.legacy/0.3.0');
 const LEGACY4 = resolve('.legacy/0.4.0');
 const LEGACY5 = resolve('.legacy/0.5.0');
+const LEGACY6 = resolve('.legacy/0.6.0');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -84,6 +86,7 @@ test.describe('Upgrades keep every record', () => {
     execSync('node scripts/build-legacy.mjs e7c0389 0.3.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs ee13516 0.4.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs 8465f02 0.5.0', { cwd: ROOT, stdio: 'inherit' });
+    execSync('node scripts/build-legacy.mjs 41a5797 0.6.0', { cwd: ROOT, stdio: 'inherit' });
   });
 
   test('projects, lessons and settings created in 0.2.0 survive the update and open in the current lesson editor', async ({}, info) => {
@@ -141,7 +144,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v6');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
 
       // Settings from 0.2.0
       await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
@@ -347,7 +350,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v6');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
       // the finished attempt is there
       await page.goto(`${ORIGIN}#/results`);
       await page.getByTestId('results-row').first().click();
@@ -436,7 +439,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v6');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
       // the student's progress from 0.5.0
       await page.goto(`${ORIGIN}#/learn`);
       await expect(page.getByTestId('student-chip')).toHaveText('سلمى');
@@ -459,6 +462,96 @@ test.describe('Upgrades keep every record', () => {
       await expect(page.getByTestId('block').last()).toHaveAttribute('data-type', 'image'); // opens on the content tab
       await page.getByTestId('tab-plan').click();
       await expect(page.getByTestId('objective-statement')).toHaveText('أن يعدّد الطالب مصادر الطاقة المتجددة.');
+      await ctx2.close();
+    } finally {
+      stop(server);
+      await waitForPort(true);
+    }
+  });
+  test('a lesson and a design made in 0.6.0 survive the update; the lesson goes to the new library and a full backup holds everything', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    const profile = newProfileDir();
+    let server: ChildProcess | undefined;
+    try {
+      // ── 0.6.0: a lesson with an objective and a concept map made from it ──
+      server = await serve(LEGACY6);
+      const ctx1 = await launchProfile(profile, info);
+      const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+      await p1.goto(ORIGIN);
+      await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+      await p1.reload();
+      await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+      await skipSplash(p1);
+      await p1.goto(`${ORIGIN}#/settings`);
+      await expect(p1.locator('.kv dd[dir=ltr]').nth(1)).toHaveText('0.6.0');
+      await p1.goto(`${ORIGIN}#/projects`);
+      await p1.getByTestId('new-project').click();
+      await p1.getByTestId('project-title').fill('وحدة الطاقة');
+      await p1.getByTestId('project-save').click();
+      await p1.getByTestId('new-lesson').first().click();
+      await p1.getByTestId('lesson-title').fill('مصادر الطاقة');
+      await p1.getByTestId('lesson-save').click();
+      await expect(p1.getByTestId('lesson-dialog')).toBeHidden();
+      await p1.getByRole('button', { name: 'فتح محرر الدرس: مصادر الطاقة' }).click();
+      await p1.getByTestId('add-objective').click();
+      await p1.getByRole('radio', { name: '1 التذكر' }).click();
+      await p1.getByTestId('verb-bank').getByRole('button', { name: 'يعدّد', exact: true }).click();
+      await p1.getByTestId('objective-content').fill('مصادر الطاقة المتجددة');
+      await p1.waitForTimeout(150);
+      await expect(p1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+      await p1.goto(`${ORIGIN}#/studio`);
+      await p1.getByTestId('new-design').click();
+      await p1.getByTestId('kind-conceptmap').check();
+      await p1.getByTestId('design-title-input').fill('خريطة 0.6');
+      await p1.getByTestId('design-project-select').selectOption({ label: 'وحدة الطاقة' });
+      await p1.getByTestId('design-lesson-select').selectOption({ label: 'مصادر الطاقة' });
+      await expect(p1.getByTestId('design-from-lesson')).toBeChecked();
+      await p1.getByTestId('create-design-save').click();
+      await expect(p1.getByTestId('map-node')).toHaveCount(2);
+      await p1.waitForTimeout(150);
+      await expect(p1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+      await ctx1.close();
+      stop(server);
+      await waitForPort(true);
+
+      // ── current version ──
+      server = await serve(ROOT);
+      const ctx2 = await launchProfile(profile, info);
+      const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+      await page.goto(ORIGIN);
+      await skipSplash(page);
+      await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+      await page.getByRole('button', { name: 'تحديث الآن' }).click();
+      await page.waitForLoadState('load');
+      await skipSplash(page);
+      await page.goto(`${ORIGIN}#/settings`);
+      await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
+      // the 0.6.0 design opens as it was
+      await page.goto(`${ORIGIN}#/studio`);
+      await page.getByRole('link', { name: /خريطة 0\.6/ }).first().click();
+      await expect(page.getByTestId('map-node')).toHaveCount(2);
+      // the old lesson goes into the new library as a template
+      await page.goto(`${ORIGIN}#/projects`);
+      await page.getByRole('link', { name: /وحدة الطاقة/ }).first().click();
+      await page.getByRole('button', { name: 'فتح محرر الدرس: مصادر الطاقة' }).click();
+      await page.getByTestId('lesson-to-library').click();
+      await page.getByTestId('library-title').fill('قالب من 0.6');
+      await page.getByTestId('library-save').click();
+      await expect(page.getByTestId('library-save-dialog')).toBeHidden();
+      await page.goto(`${ORIGIN}#/library?source=mine`);
+      await expect(page.locator('[data-testid="library-item"][data-title="قالب من 0.6"]')).toBeVisible();
+      // a full backup of the upgraded device holds the old lesson, the old design and the new template
+      await page.goto(`${ORIGIN}#/backup`);
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('create-backup').click()]);
+      const zip = unzipSync(new Uint8Array(readFileSync(await dl.path())));
+      const manifest = JSON.parse(strFromU8(zip['manifest.json']));
+      const data = JSON.parse(strFromU8(zip['data.json']));
+      expect(manifest.kind).toBe('backup');
+      expect(manifest.schemaVersion).toBe(7);
+      expect(data.lessons.map((l: { title: string }) => l.title)).toEqual(['مصادر الطاقة']);
+      expect(data.designs.map((d: { title: string }) => d.title)).toEqual(['خريطة 0.6']);
+      expect(data.library.map((d: { title: string }) => d.title)).toEqual(['قالب من 0.6']);
       await ctx2.close();
     } finally {
       stop(server);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BarChart3, BookOpen, ListChecks, Palette, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowRight, BarChart3, BookOpen, FolderOutput, ListChecks, Palette, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { errorMessage, useAllProjects, useProject, useProjectLessons } from '../app/data';
 import { lessonsLabel, minutesLabel, relativeTime } from '../app/format';
@@ -101,6 +101,9 @@ export function ProjectDetail() {
           <button type="button" className="btn" onClick={() => setEditing(true)} data-testid="edit-project">
             <Pencil size={16} aria-hidden="true" /> تعديل
           </button>
+          <Link to={`/backup?export=${project.id}`} className="btn" data-testid="export-this-project">
+            <FolderOutput size={16} aria-hidden="true" /> تصدير
+          </Link>
           <button type="button" className="btn btn-danger-ghost" onClick={() => setConfirmDelete(true)} data-testid="delete-project">
             <Trash2 size={16} aria-hidden="true" /> حذف
           </button>

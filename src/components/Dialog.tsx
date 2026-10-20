@@ -22,7 +22,7 @@ export function Dialog({
   footer?: ReactNode;
   onSubmit?: (e: FormEvent<HTMLFormElement>) => void;
   testId?: string;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 

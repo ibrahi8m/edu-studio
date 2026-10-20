@@ -48,6 +48,7 @@
   --accent-strong: #5b9bff;
   --accent-ink: #ffffff;
   --accent-fill: #1d5fd8; /* filled controls: white text at ≥ 5:1 */
+  --accent-fill-hover: #2563eb; /* hover keeps white text ≥ 4.5:1 (5.2) */
   --accent-soft: rgba(47, 123, 255, 0.14);
   --accent-glow: rgba(47, 123, 255, 0.35);
   --success: #22c55e;
@@ -82,6 +83,7 @@
   --accent-strong: #1a52ba;
   --accent-ink: #ffffff;
   --accent-fill: #1f5fd6;
+  --accent-fill-hover: #1a52ba;
   --accent-soft: rgba(31, 95, 214, 0.1);
   --accent-glow: rgba(31, 95, 214, 0.22);
   --success: #15803d;

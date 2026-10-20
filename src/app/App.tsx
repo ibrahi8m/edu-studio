@@ -3,7 +3,8 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Splash } from '../components/Splash';
 import { About } from '../pages/About';
-import { ComingSoon } from '../pages/ComingSoon';
+import { LibraryPage } from '../pages/Library';
+import { TransferPage } from '../pages/Transfer';
 import { Dashboard } from '../pages/Dashboard';
 import { More } from '../pages/More';
 import { BuilderPage } from '../pages/Builder';
@@ -25,7 +26,6 @@ import { TakeQuiz } from '../pages/TakeQuiz';
 import { ToastProvider } from './Toasts';
 import { SettingsProvider, useSettings } from './SettingsContext';
 
-const PLANNED_ROUTES = ['/library', '/backup'];
 
 function Root() {
   const { settings, ready } = useSettings();
@@ -62,9 +62,8 @@ function Root() {
             <Route path="results" element={<ResultsHome />} />
             <Route path="results/:quizId" element={<QuizResults />} />
             <Route path="results/:quizId/:attemptId" element={<AttemptDetail />} />
-            {PLANNED_ROUTES.map((p) => (
-              <Route key={p} path={p.slice(1)} element={<ComingSoon path={p} />} />
-            ))}
+            <Route path="library" element={<LibraryPage />} />
+            <Route path="backup" element={<TransferPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="about" element={<About />} />
             <Route path="more" element={<More />} />
