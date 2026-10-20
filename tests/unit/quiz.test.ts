@@ -461,7 +461,7 @@ describe('migration from phase 2', () => {
 
     const v4 = new EduDB(name);
     await v4.open();
-    expect(v4.verno).toBe(4);
+    expect(v4.verno).toBe(5);
     expect((await v4.projects.get('p1'))?.title).toBe('قديم');
     expect((await v4.lessons.get('l1'))?.title).toBe('درس');
     expect((await v4.lessonDocs.get('l1'))?.rev).toBe(3);

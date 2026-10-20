@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { CheckCircle2, Circle, ClipboardList, Clock, GraduationCap, ImageOff, Lightbulb, Package, Repeat2, Target, Users } from 'lucide-react';
 import type { Lesson, Project } from '../../db/db';
 import { minutesLabel } from '../../app/format';
@@ -11,39 +11,52 @@ import { COVERAGE_LABEL } from '../editor/AlignmentTab';
 import { RichText } from './RichText';
 
 /** The lesson as a learner sees it. Layout adapts to its own width (container queries), so the phone frame previews correctly on a computer. */
-export function LessonView({ lesson, project, doc, teacherNotes }: { lesson: Pick<Lesson, 'title' | 'summary' | 'duration'>; project: Project | null; doc: LessonDoc; teacherNotes: boolean }) {
-  const objectives = doc.objectives.filter((o) => o.verb.trim() || o.content.trim());
+type LessonHead = Pick<Lesson, 'title' | 'summary' | 'duration'>;
+
+export function LessonHero({ lesson, project }: { lesson: LessonHead; project: Project | null }) {
   const meta = [project?.subject, project?.grade].filter(Boolean).join(' · ');
   return (
-    <article className="lv" data-testid="lesson-view">
-      <header className="lv-hero">
-        {meta && <span className="lv-kicker">{meta}</span>}
-        <h1 className="lv-title" data-testid="lv-title">
-          {lesson.title}
-        </h1>
-        {lesson.duration > 0 && (
-          <span className="lv-chip">
-            <Clock size={14} aria-hidden="true" /> {minutesLabel(lesson.duration)}
-          </span>
-        )}
-        {lesson.summary && <p className="lv-summary">{lesson.summary}</p>}
-      </header>
-
-      {objectives.length > 0 && (
-        <section className="lv-objectives" aria-labelledby="lv-obj-h">
-          <h2 id="lv-obj-h">
-            <Target size={18} aria-hidden="true" /> بنهاية هذا الدرس يُتوقع منك
-          </h2>
-          <ol>
-            {objectives.map((o) => (
-              <li key={o.id}>
-                {objectiveStatement(o, doc.audience)}
-                {teacherNotes && o.level ? <span className={`bloom-tag b${o.level}`}>{bloomInfo(o.level)!.name}</span> : null}
-              </li>
-            ))}
-          </ol>
-        </section>
+    <header className="lv-hero">
+      {meta && <span className="lv-kicker">{meta}</span>}
+      <h1 className="lv-title" data-testid="lv-title">
+        {lesson.title}
+      </h1>
+      {lesson.duration > 0 && (
+        <span className="lv-chip">
+          <Clock size={14} aria-hidden="true" /> {minutesLabel(lesson.duration)}
+        </span>
       )}
+      {lesson.summary && <p className="lv-summary">{lesson.summary}</p>}
+    </header>
+  );
+}
+
+export function LessonObjectives({ doc, showLevels = false }: { doc: LessonDoc; showLevels?: boolean }) {
+  const objectives = doc.objectives.filter((o) => o.verb.trim() || o.content.trim());
+  if (!objectives.length) return null;
+  return (
+    <section className="lv-objectives" aria-labelledby="lv-obj-h">
+      <h2 id="lv-obj-h">
+        <Target size={18} aria-hidden="true" /> بنهاية هذا الدرس يُتوقع منك
+      </h2>
+      <ol>
+        {objectives.map((o) => (
+          <li key={o.id}>
+            {objectiveStatement(o, doc.audience)}
+            {showLevels && o.level ? <span className={`bloom-tag b${o.level}`}>{bloomInfo(o.level)!.name}</span> : null}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** The lesson as a learner sees it. Layout adapts to its own width (container queries), so the phone frame previews correctly on a computer. */
+export function LessonView({ lesson, project, doc, teacherNotes }: { lesson: LessonHead; project: Project | null; doc: LessonDoc; teacherNotes: boolean }) {
+  return (
+    <article className="lv" data-testid="lesson-view">
+      <LessonHero lesson={lesson} project={project} />
+      <LessonObjectives doc={doc} showLevels={teacherNotes} />
 
       {teacherNotes && <TeacherPanel doc={doc} />}
 
@@ -106,7 +119,19 @@ function TeacherPanel({ doc }: { doc: LessonDoc }) {
   );
 }
 
-function ViewBlock({ block: b }: { block: Block }) {
+/**
+ * Lets a host page (the student's lesson player) remember which cards were turned over and which
+ * activity steps were ticked. Without a provider these stay local to the page, as in the teacher preview.
+ */
+export interface LessonInteraction {
+  flipped: (blockId: string) => string[];
+  onFlip: (blockId: string, cardId: string) => void;
+  stepsDone: (blockId: string) => number[];
+  onStep: (blockId: string, step: number) => void;
+}
+export const LessonInteractionContext = createContext<LessonInteraction | null>(null);
+
+export function ViewBlock({ block: b }: { block: Block }) {
   switch (b.type) {
     case 'heading':
       return b.text.trim() ? b.level === 2 ? <h2 className="lv-h2">{b.text}</h2> : <h3 className="lv-h3">{b.text}</h3> : null;
@@ -171,13 +196,16 @@ function ViewAv({ b }: { b: AudioBlock | VideoBlock }) {
 function ViewCards({ b }: { b: CardsBlock }) {
   const cards = filledCards(b);
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
+  const host = useContext(LessonInteractionContext);
+  // Cards already seen (saved) are counted; a card shows its back only while turned over on this visit.
+  const seen = host ? new Set(host.flipped(b.id)) : flipped;
   if (!cards.length) return null;
   return (
     <section className="lv-cards" aria-label={b.title || 'بطاقات تعليمية'}>
       <h3 className="lv-sec-title">
         <Repeat2 size={18} aria-hidden="true" /> {b.title || 'بطاقات المراجعة'}
         <span className="lv-count">
-          {flipped.size}/{cards.length}
+          {cards.filter((c) => seen.has(c.id) || flipped.has(c.id)).length}/{cards.length}
         </span>
       </h3>
       <p className="lv-hint">اضغط البطاقة لقلبها.</p>
@@ -191,14 +219,15 @@ function ViewCards({ b }: { b: CardsBlock }) {
               className={`flip ${on ? 'is-flipped' : ''}`}
               aria-pressed={on}
               aria-label={on ? `البطاقة ${i + 1}: ${c.back}` : `البطاقة ${i + 1}: ${c.front}`}
-              onClick={() =>
+              onClick={() => {
                 setFlipped((s) => {
                   const n = new Set(s);
                   if (n.has(c.id)) n.delete(c.id);
                   else n.add(c.id);
                   return n;
-                })
-              }
+                });
+                if (!on) host?.onFlip(b.id, c.id);
+              }}
               data-testid="flip-card"
             >
               <span className="flip-inner" aria-hidden="true">
@@ -257,7 +286,9 @@ function ViewSummary({ b }: { b: SummaryBlock }) {
 
 function ViewActivity({ b }: { b: ActivityBlock }) {
   const steps = activitySteps(b);
-  const [done, setDone] = useState<Set<number>>(new Set());
+  const [local, setLocal] = useState<Set<number>>(new Set());
+  const host = useContext(LessonInteractionContext);
+  const done = host ? new Set(host.stepsDone(b.id)) : local;
   return (
     <section className="lv-activity" aria-label={b.title || 'نشاط'} data-testid="lv-activity">
       <div className="lv-activity-head">
@@ -278,6 +309,11 @@ function ViewActivity({ b }: { b: ActivityBlock }) {
             <Clock size={14} aria-hidden="true" /> {minutesLabel(b.duration)}
           </span>
         )}
+        {host && steps.length > 0 && (
+          <span className="lv-chip" data-testid="activity-progress">
+            <CheckCircle2 size={14} aria-hidden="true" /> {steps.filter((_, i) => done.has(i)).length}/{steps.length} خطوات
+          </span>
+        )}
       </div>
       {steps.length > 0 && (
         <ol className="lv-steps">
@@ -290,13 +326,16 @@ function ViewActivity({ b }: { b: ActivityBlock }) {
                   className={`step-btn ${on ? 'is-done' : ''}`}
                   aria-pressed={on}
                   onClick={() =>
-                    setDone((d) => {
-                      const n = new Set(d);
-                      if (n.has(i)) n.delete(i);
-                      else n.add(i);
-                      return n;
-                    })
+                    host
+                      ? host.onStep(b.id, i)
+                      : setLocal((d) => {
+                          const n = new Set(d);
+                          if (n.has(i)) n.delete(i);
+                          else n.add(i);
+                          return n;
+                        })
                   }
+                  data-testid="activity-step"
                 >
                   {on ? <CheckCircle2 size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}
                   <span>{s}</span>

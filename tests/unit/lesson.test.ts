@@ -308,7 +308,7 @@ describe('migration from phase 1', () => {
 
     const v3 = new EduDB(name);
     await v3.open();
-    expect(v3.verno).toBe(4); // opens at the current schema version
+    expect(v3.verno).toBe(5); // opens at the current schema version
     expect(await v3.projects.get('p1')).toMatchObject({ title: 'مشروع قديم' });
     expect(await v3.lessons.get('l1')).toMatchObject({ title: 'درس قديم', summary: 'ملخص', duration: 45 });
     const doc: LessonDoc = await loadLessonDoc(v3, 'l1'); // an old lesson opens with an empty plan

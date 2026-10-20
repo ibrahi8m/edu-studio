@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { launchProfile, newProfileDir, primeOffline, watchNetwork } from './helpers';
 import {
+  chooseStudent,
   addQuestion,
   arrange,
   common,
@@ -12,7 +13,9 @@ import {
   mcq,
   newQuiz,
   next,
+  openQuizAs,
   orderItems,
+  quizRow,
   pairs,
   startAs,
   waitSaved,
@@ -257,12 +260,11 @@ test.describe('Phase 3 — quiz builder, student mode and grading', () => {
     expect(orders.some((o) => o.join() !== author.join())).toBe(true);
 
     // two attempts allowed → the third is refused for the same name, allowed for another student
-    await page.goto('./#/student');
-    await page.getByRole('link', { name: 'ابدأ: اختبار الإعدادات' }).click();
-    await page.getByTestId('student-name').fill('منى');
-    await expect(page.getByTestId('take-limit')).toBeVisible();
-    await expect(page.getByTestId('take-start')).toHaveCount(0);
-    await page.getByTestId('student-name').fill('هدى');
+    await chooseStudent(page, 'منى');
+    await expect(quizRow(page, 'اختبار الإعدادات').getByTestId('student-quiz-limit')).toBeVisible();
+    await expect(quizRow(page, 'اختبار الإعدادات').getByTestId('student-quiz-go')).toHaveCount(0);
+    await expect(quizRow(page, 'اختبار الإعدادات').getByTestId('student-quiz-status')).toContainText('محاولتان');
+    await openQuizAs(page, 'اختبار الإعدادات', 'هدى');
     await expect(page.getByTestId('take-start')).toBeEnabled();
 
     // Teacher test runs never count and never use up attempts
@@ -354,9 +356,9 @@ test.describe('Phase 3 — quiz builder, student mode and grading', () => {
     await expect(page.getByTestId('attempt-row').first()).toContainText('ريم');
     await expect(page.getByTestId('attempt-row').first()).toContainText('2/2');
     // resume the open attempt with its saved answer
-    await page.goto('./#/student');
-    await page.getByRole('link', { name: 'ابدأ: اختبار دون إنترنت' }).click();
-    await page.getByTestId('student-name').fill('عمر');
+    await chooseStudent(page, 'عمر');
+    await expect(quizRow(page, 'اختبار دون إنترنت').getByTestId('student-quiz-status')).toHaveText('محاولة لم تُسلَّم بعد');
+    await quizRow(page, 'اختبار دون إنترنت').getByTestId('student-quiz-go').click();
     await page.getByTestId('take-resume').click();
     await expect(page.getByTestId('take-progress')).toHaveText('أجبت عن 1 من 2');
     await page.getByTestId('take-prev').click();
@@ -411,11 +413,15 @@ test.describe('Phase 3 — quiz builder, student mode and grading', () => {
 
     const phone = isPhone(info.project.name);
     const press = (l: ReturnType<Page['getByTestId']>) => (phone ? l.tap() : l.click());
-    await page.goto('./#/student');
-    await fits('student hub');
-    await axe('student hub');
-    await press(page.getByRole('link', { name: 'ابدأ: اختبار العرض' }));
-    await page.getByTestId('student-name').fill('نور');
+    await page.goto('./#/learn');
+    await fits('student: who are you');
+    await axe('student: who are you');
+    await page.getByTestId('learn-name').fill('نور');
+    await press(page.getByTestId('learn-continue'));
+    await expect(page.getByTestId('page-learn')).toBeVisible();
+    await fits('student home');
+    await axe('student home');
+    await press(quizRow(page, 'اختبار العرض').getByTestId('student-quiz-go'));
     await press(page.getByTestId('take-start'));
     await fits('question');
     await axe('question');

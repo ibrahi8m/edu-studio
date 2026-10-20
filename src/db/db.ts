@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Asset, LessonDoc } from '../lesson/types';
 import type { Attempt, Quiz } from '../quiz/types';
+import type { LessonProgress } from '../student/types';
 
 /**
  * Local database (IndexedDB) — one per device. No cloud, no sync.
@@ -11,6 +12,7 @@ import type { Attempt, Quiz } from '../quiz/types';
  *   v2 (phase 1): projects, lessons
  *   v3 (phase 2): lessonDocs (objectives, plan, content blocks), assets (local media)
  *   v4 (phase 3): quizzes (questions and settings), attempts (student answers and results)
+ *   v5 (phase 4): progress (each student's progress through each lesson)
  */
 export interface SettingRow {
   key: string;
@@ -55,7 +57,7 @@ export interface Lesson {
 }
 
 export const DB_NAME = 'ibrahi8m-edu';
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export class EduDB extends Dexie {
   settings!: Table<SettingRow, string>;
@@ -66,6 +68,7 @@ export class EduDB extends Dexie {
   assets!: Table<Asset, string>;
   quizzes!: Table<Quiz, string>;
   attempts!: Table<Attempt, string>;
+  progress!: Table<LessonProgress, string>;
 
   constructor(name: string = DB_NAME) {
     super(name);
@@ -86,6 +89,10 @@ export class EduDB extends Dexie {
     this.version(4).stores({
       quizzes: 'id, projectId, lessonId, updatedAt',
       attempts: 'id, quizId, [quizId+studentKey], status, submittedAt',
+    });
+    // Adds one table only: everything from v1–v4 is untouched.
+    this.version(5).stores({
+      progress: 'id, studentKey, lessonId, projectId, updatedAt',
     });
   }
 }

@@ -1,3 +1,4 @@
+import { openQuizAs } from './quiz-helpers';
 import { expect, test, type Page } from '@playwright/test';
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
 import { openSync, readFileSync } from 'node:fs';
@@ -16,6 +17,7 @@ const ORIGIN = `http://127.0.0.1:${PORT}/`;
 const ROOT = resolve('.');
 const LEGACY = resolve('.legacy/0.2.0');
 const LEGACY3 = resolve('.legacy/0.3.0');
+const LEGACY4 = resolve('.legacy/0.4.0');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -79,6 +81,7 @@ test.describe('Upgrades keep every record', () => {
   test.beforeAll(() => {
     execSync('node scripts/build-legacy.mjs a4bfde7 0.2.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs e7c0389 0.3.0', { cwd: ROOT, stdio: 'inherit' });
+    execSync('node scripts/build-legacy.mjs ee13516 0.4.0', { cwd: ROOT, stdio: 'inherit' });
   });
 
   test('projects, lessons and settings created in 0.2.0 survive the update and open in the current lesson editor', async ({}, info) => {
@@ -136,7 +139,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v4');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v5');
 
       // Settings from 0.2.0
       await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
@@ -255,9 +258,7 @@ test.describe('Upgrades keep every record', () => {
       await page.getByTestId('q-link-done').click();
       await page.waitForTimeout(150);
       await expect(page.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
-      await page.goto(`${ORIGIN}#/student`);
-      await page.getByRole('link', { name: 'ابدأ: اختبار بعد الترقية' }).click();
-      await page.getByTestId('student-name').fill('طالب');
+      await openQuizAs(page, 'اختبار بعد الترقية', 'طالب', `${ORIGIN}#/learn`);
       await page.getByTestId('take-start').click();
       await page.getByTestId('take-true').check();
       await page.getByTestId('take-to-review').click();
@@ -266,6 +267,112 @@ test.describe('Upgrades keep every record', () => {
       await page.goto(`${ORIGIN}#/results`);
       await page.getByTestId('results-row').first().click();
       await expect(page.getByTestId('objective-stats')).toContainText('أن يشرح الطالب مصدر طاقة الرياح.');
+      await ctx2.close();
+    } finally {
+      stop(server);
+      await waitForPort(true);
+    }
+  });
+
+  test('quizzes and attempts made in 0.4.0 survive the update: a finished attempt stays, an unfinished one resumes in the new student mode', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    const profile = newProfileDir();
+    let server: ChildProcess | undefined;
+    try {
+      // ── 0.4.0: a quiz, one submitted attempt and one left unfinished ──
+      server = await serve(LEGACY4);
+      const ctx1 = await launchProfile(profile, info);
+      const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+      await p1.goto(ORIGIN);
+      await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+      await p1.reload();
+      await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+      await skipSplash(p1);
+      await p1.goto(`${ORIGIN}#/settings`);
+      await expect(p1.locator('.kv dd[dir=ltr]').nth(1)).toHaveText('0.4.0');
+      await p1.goto(`${ORIGIN}#/projects`);
+      await p1.getByTestId('new-project').click();
+      await p1.getByTestId('project-title').fill('مشروع من 0.4.0');
+      await p1.getByTestId('project-save').click();
+      await expect(p1.getByTestId('project-heading')).toHaveText('مشروع من 0.4.0');
+      await p1.goto(`${ORIGIN}#/quizzes`);
+      await p1.getByTestId('new-quiz').click();
+      await p1.getByTestId('quiz-title-input').fill('اختبار من 0.4.0');
+      await p1.getByTestId('quiz-project-select').selectOption({ label: 'مشروع من 0.4.0' });
+      await p1.getByTestId('create-quiz-save').click();
+      for (const [prompt, answer] of [
+        ['الشمس نجم.', 'tf-true'],
+        ['القمر مصدر للضوء.', 'tf-false'],
+      ]) {
+        await p1.getByTestId('add-question').last().click();
+        await p1.getByTestId('add-q-truefalse').click();
+        const c = p1.getByTestId('question').last();
+        await c.getByTestId('q-prompt').fill(prompt);
+        await c.getByTestId('q-feedback-incorrect').fill('راجع الدرس.');
+        await c.getByTestId(answer).click();
+      }
+      await p1.waitForTimeout(150);
+      await expect(p1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+      for (const finish of [true, false]) {
+        await p1.goto(`${ORIGIN}#/student`);
+        await p1.getByRole('link', { name: 'ابدأ: اختبار من 0.4.0' }).click();
+        await p1.getByTestId('student-name').fill('سارة');
+        await p1.getByTestId('take-start').click();
+        await p1.getByTestId('take-true').check();
+        if (finish) {
+          await p1.getByTestId('take-next').click();
+          await p1.getByTestId('take-false').check();
+          await p1.getByTestId('take-to-review').click();
+          await p1.getByTestId('take-submit').click();
+          await expect(p1.getByTestId('result-score')).toHaveText('2 / 2');
+        } else {
+          await p1.waitForTimeout(700); // the answer is saved; the attempt stays open
+        }
+      }
+      await ctx1.close();
+      stop(server);
+      await waitForPort(true);
+
+      // ── current version ──
+      server = await serve(ROOT);
+      const ctx2 = await launchProfile(profile, info);
+      const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+      await page.goto(ORIGIN);
+      await skipSplash(page);
+      await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+      await page.getByRole('button', { name: 'تحديث الآن' }).click();
+      await page.waitForLoadState('load');
+      await skipSplash(page);
+      await page.goto(`${ORIGIN}#/settings`);
+      await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v5');
+      // the finished attempt is there
+      await page.goto(`${ORIGIN}#/results`);
+      await page.getByTestId('results-row').first().click();
+      await expect(page.getByTestId('sum-attempts')).toHaveText('1');
+      await expect(page.getByTestId('attempt-row').first()).toContainText('2/2');
+      // the old quiz gets the new settings with safe defaults
+      await page.goto(`${ORIGIN}#/quizzes`);
+      await page.getByRole('link', { name: 'فتح الاختبار: اختبار من 0.4.0' }).click();
+      await page.getByTestId('tab-settings').click();
+      await expect(page.getByTestId('set-feedback-timing')).toHaveValue('end');
+      await expect(page.getByTestId('set-score-policy')).toHaveValue('best');
+      // the unfinished attempt resumes in the new student mode (old name storage is kept)
+      await page.goto(`${ORIGIN}#/learn`);
+      await expect(page.getByTestId('student-chip')).toHaveText('سارة');
+      const row = page.locator('[data-testid="student-quiz"][data-quiz="اختبار من 0.4.0"]');
+      await expect(row.getByTestId('student-quiz-status')).toHaveText('محاولة لم تُسلَّم بعد');
+      await row.getByTestId('student-quiz-go').click();
+      await page.getByTestId('take-resume').click();
+      await expect(page.getByTestId('take-progress')).toHaveText('أجبت عن 1 من 2');
+      await page.getByTestId('take-false').check();
+      await page.getByTestId('take-to-review').click();
+      await page.getByTestId('take-submit').click();
+      await expect(page.getByTestId('result-score')).toHaveText('2 / 2');
+      await expect(page.getByTestId('result-attempt-no')).toHaveText('المحاولة 2 من 2 محاولات محفوظة');
+      await page.goto(`${ORIGIN}#/results`);
+      await page.getByTestId('student-row').first().locator('a').click();
+      await expect(page.getByTestId('student-attempt')).toHaveCount(2);
       await ctx2.close();
     } finally {
       stop(server);

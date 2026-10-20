@@ -1,9 +1,9 @@
 import { objectiveStatement } from '../lesson/bloom';
 import { normalizeDoc } from '../lesson/model';
 import type { BloomLevel, Objective } from '../lesson/types';
-import { gradeAttempt, overrideQuestion } from '../quiz/grading';
+import { gradeAttempt, gradeQuestion, isAnswered, overrideQuestion } from '../quiz/grading';
 import { newAttempt, newQuiz, normalizeQuiz, studentKey } from '../quiz/model';
-import type { Answer, Attempt, Quiz } from '../quiz/types';
+import type { Answer, Attempt, QuestionResult, Quiz } from '../quiz/types';
 import type { EduDB } from './db';
 import { ValidationError } from './projects';
 
@@ -137,13 +137,21 @@ export async function findOpenAttempt(database: EduDB, quizId: string, name: str
   return open.at(-1) ?? null;
 }
 
-/** Starts a new attempt (checking the attempt limit) and stores it immediately. */
+/**
+ * Starts a new attempt (checking the attempt limit) and stores it immediately.
+ * A student who already has an unfinished attempt gets that attempt back instead of a second one,
+ * so reopening the page, a double click or a second tab can never open (or count) two attempts.
+ */
 export async function startAttempt(database: EduDB, quizId: string, name: string, opts: { preview?: boolean; now?: number } = {}): Promise<Attempt> {
   const preview = !!opts.preview;
   if (!name.trim()) throw new ValidationError({ title: 'اكتب اسم الطالب.' });
   return database.transaction('rw', [database.quizzes, database.attempts], async () => {
     const quiz = normalizeQuiz(await database.quizzes.get(quizId));
     if (!quiz) throw new Error('الاختبار غير موجود.');
+    if (!preview) {
+      const open = await findOpenAttempt(database, quizId, name, false);
+      if (open) return open;
+    }
     if (preview) {
       // A teacher test run replaces the previous one; it is never counted.
       await database.attempts.where('quizId').equals(quizId).filter((a) => a.preview).delete();
@@ -157,11 +165,40 @@ export async function startAttempt(database: EduDB, quizId: string, name: string
   });
 }
 
+/** Answers of checked questions (immediate feedback) are locked: the stored answer always wins. */
+function keepLocked(stored: Attempt, answers: Record<string, Answer>): Record<string, Answer> {
+  const out = { ...answers };
+  for (const id of stored.checked ?? []) if (stored.answers[id]) out[id] = stored.answers[id];
+  return out;
+}
+
 export async function saveProgress(database: EduDB, attemptId: string, answers: Record<string, Answer>, flagged: string[]): Promise<void> {
   await database.transaction('rw', database.attempts, async () => {
     const a = await database.attempts.get(attemptId);
     if (!a || a.status !== 'in_progress') return;
-    await database.attempts.update(attemptId, { answers, flagged });
+    await database.attempts.update(attemptId, { answers: keepLocked(a, answers), flagged });
+  });
+}
+
+export class CheckNotAllowedError extends Error {}
+
+/**
+ * Immediate-feedback mode: grades one answer, stores it and locks it.
+ * Checking the same question again returns the stored result without changing anything.
+ */
+export async function checkAnswer(database: EduDB, attemptId: string, questionId: string, answer: Answer | undefined): Promise<{ attempt: Attempt; result: QuestionResult }> {
+  return database.transaction('rw', database.attempts, async () => {
+    const a = await database.attempts.get(attemptId);
+    if (!a || a.status !== 'in_progress') throw new CheckNotAllowedError('المحاولة مغلقة.');
+    if (a.quiz.settings.feedbackTiming !== 'immediate') throw new CheckNotAllowedError('هذا الاختبار يعرض التغذية الراجعة بعد التسليم فقط.');
+    const q = a.quiz.questions.find((x) => x.id === questionId);
+    if (!q) throw new CheckNotAllowedError('السؤال غير موجود.');
+    const checked = a.checked ?? [];
+    if (checked.includes(questionId)) return { attempt: a, result: gradeQuestion(q, a.answers[questionId]) };
+    if (!isAnswered(q, answer)) throw new CheckNotAllowedError('أجب عن السؤال أولًا.');
+    const next: Attempt = { ...a, answers: { ...a.answers, [questionId]: answer! }, checked: [...checked, questionId] };
+    await database.attempts.put(next);
+    return { attempt: next, result: gradeQuestion(q, answer) };
   });
 }
 
@@ -175,7 +212,7 @@ export async function submitAttempt(
     const a = await database.attempts.get(attemptId);
     if (!a) throw new Error('المحاولة غير موجودة.');
     if (a.status === 'submitted') return a;
-    const answers = opts.answers ?? a.answers;
+    const answers = keepLocked(a, opts.answers ?? a.answers);
     const result = gradeAttempt(a.quiz.questions, answers, a.quiz.settings.passPercent);
     const done: Attempt = { ...a, answers, status: 'submitted', submittedAt: opts.now ?? Date.now(), timedOut: !!opts.timedOut, result };
     await database.attempts.put(done);

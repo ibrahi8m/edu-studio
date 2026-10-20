@@ -66,7 +66,7 @@ test.describe('Phase 0 — offline foundation', () => {
     // Every screen opens offline
     for (const r of ROUTES) {
       await page.goto(`./#/${r}`);
-      await expect(page.locator('.page').first()).toBeVisible();
+      await expect(page.locator('.page, .take-wrap').first()).toBeVisible();
     }
 
     // Local Arabic fonts are actually loaded (not system fallbacks)

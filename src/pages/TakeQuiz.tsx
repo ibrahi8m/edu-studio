@@ -1,35 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowRight, Award, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Flag, Hourglass, ListChecks, Play, RotateCcw, Send, Timer } from 'lucide-react';
+import { ArrowRight, Award, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, ClipboardCheck, Eye, Flag, Hourglass, ListChecks, Lock, MinusCircle, Play, RotateCcw, Send, Timer, XCircle } from 'lucide-react';
 import { errorMessage } from '../app/data';
 import { useToast } from '../app/Toasts';
 import { ConfirmDialog } from '../components/Dialog';
 import { db } from '../db/db';
-import { AttemptLimitError, findOpenAttempt, loadQuiz, saveProgress, startAttempt, submitAttempt, usedAttempts } from '../db/quizzes';
-import { questionTitle } from '../quiz/describe';
-import { isAnswered, totalPoints } from '../quiz/grading';
-import { quizReadiness, TYPE_LABEL } from '../quiz/model';
+import { AttemptLimitError, checkAnswer, findOpenAttempt, loadQuiz, saveProgress, startAttempt, submitAttempt, usedAttempts } from '../db/quizzes';
+import { countable, countedAttempt } from '../quiz/analytics';
+import { useStudent } from '../student/identity';
+import { describeCorrect, questionTitle, STATUS_LABEL } from '../quiz/describe';
+import { gradeQuestion, isAnswered, totalPoints } from '../quiz/grading';
+import { FEEDBACK_TIMING_LABEL, quizReadiness, SCORE_POLICY_LABEL, studentKey, TYPE_LABEL } from '../quiz/model';
 import { AnswerReview } from '../quiz/take/AnswerReview';
 import { QuestionView } from '../quiz/take/QuestionView';
-import type { Answer, Attempt } from '../quiz/types';
+import type { Answer, Attempt, Question, QuestionResult } from '../quiz/types';
 import { questionsLabel } from './Quizzes';
-
-const NAME_KEY = 'ibrahi8m.student';
-const readName = () => {
-  try {
-    return localStorage.getItem(NAME_KEY) ?? '';
-  } catch {
-    return '';
-  }
-};
-const storeName = (n: string) => {
-  try {
-    localStorage.setItem(NAME_KEY, n);
-  } catch {
-    /* storage blocked: the name is simply not remembered */
-  }
-};
 
 function clock(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -49,8 +35,13 @@ export function TakeQuiz() {
   const quiz = useLiveQuery(async () => (quizId ? loadQuiz(db, quizId) : null), [quizId]);
   const project = useLiveQuery(async () => (quiz ? ((await db.projects.get(quiz.projectId)) ?? null) : null), [quiz?.projectId]);
 
-  const [name, setName] = useState(() => (preview ? 'تجربة المعلم' : readName()));
+  const from = params.get('from');
+  const [student, setStudent] = useStudent();
+  const [name, setName] = useState(() => (preview ? 'تجربة المعلم' : student));
+  const [editingName, setEditingName] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [confirmAgain, setConfirmAgain] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [view, setView] = useState<View>('intro');
   const [index, setIndex] = useState(0);
@@ -64,6 +55,14 @@ export function TakeQuiz() {
 
   const used = useLiveQuery(async () => (quizId && name.trim() && !preview ? usedAttempts(db, quizId, name) : 0), [quizId, name, preview, attempt?.status]);
   const open = useLiveQuery(async () => (quizId && name.trim() ? findOpenAttempt(db, quizId, name, preview) : null), [quizId, name, preview, attempt?.id]);
+  /** This student's submitted attempts of this quiz, oldest first (for numbering and the counted score). */
+  const mine = useLiveQuery(
+    async () =>
+      quizId && name.trim() && !preview
+        ? countable(await db.attempts.where('[quizId+studentKey]').equals([quizId, studentKey(name)]).toArray()).sort((a, b) => (a.submittedAt ?? 0) - (b.submittedAt ?? 0))
+        : [],
+    [quizId, name, preview, attempt?.status],
+  );
 
   const questions = useMemo(() => {
     if (!attempt) return [];
@@ -93,12 +92,27 @@ export function TakeQuiz() {
   }, [flushSave]);
 
   const setAnswer = (qid: string, a: Answer) => {
-    setAttempt((cur) => (cur ? { ...cur, answers: { ...cur.answers, [qid]: a } } : cur));
+    setAttempt((cur) => (cur && !(cur.checked ?? []).includes(qid) ? { ...cur, answers: { ...cur.answers, [qid]: a } } : cur));
     scheduleSave();
   };
   const toggleFlag = (qid: string) => {
     setAttempt((cur) => (cur ? { ...cur, flagged: cur.flagged.includes(qid) ? cur.flagged.filter((x) => x !== qid) : [...cur.flagged, qid] } : cur));
     scheduleSave();
+  };
+
+  const check = async (qid: string) => {
+    const a = latest.current;
+    if (!a) return;
+    setChecking(true);
+    try {
+      const { attempt: next } = await checkAnswer(db, a.id, qid, a.answers[qid]);
+      // Keep the other answers typed since the last save; the checked one is now locked.
+      setAttempt((cur) => (cur ? { ...cur, answers: { ...cur.answers, [qid]: next.answers[qid] }, checked: next.checked } : cur));
+    } catch (e) {
+      toast({ message: errorMessage(e), tone: 'danger' });
+    } finally {
+      setChecking(false);
+    }
   };
 
   const submit = useCallback(
@@ -147,7 +161,7 @@ export function TakeQuiz() {
       setNameError('اكتب اسمك قبل البدء.');
       return;
     }
-    if (!preview) storeName(name.trim());
+    if (!preview) setStudent(name.trim());
     setBusy(true);
     try {
       const a = resume ?? (await startAttempt(db, quiz.id, name, { preview }));
@@ -169,6 +183,13 @@ export function TakeQuiz() {
     }
   };
 
+  const again = () => {
+    setConfirmAgain(false);
+    setAttempt(null);
+    setView('intro');
+    window.scrollTo({ top: 0 });
+  };
+
   /* ───────── render ───────── */
   if (quiz === undefined) return <div className="take-shell" />;
   if (quiz === null)
@@ -177,7 +198,7 @@ export function TakeQuiz() {
         <div className="take-wrap">
           <div className="empty">
             <p>هذا الاختبار غير موجود على هذا الجهاز.</p>
-            <Link to="/student" className="btn btn-ghost btn-sm">
+            <Link to="/learn" className="btn btn-ghost btn-sm">
               العودة
             </Link>
           </div>
@@ -186,10 +207,12 @@ export function TakeQuiz() {
     );
 
   const readiness = quizReadiness(quiz);
-  const backHref = preview ? `/quizzes/${quiz.id}` : '/student';
+  const backHref = preview ? `/quizzes/${quiz.id}` : from ? `/learn/lesson/${from}?s=end` : '/learn';
   const limitReached = !preview && quiz.settings.maxAttempts > 0 && (used ?? 0) >= quiz.settings.maxAttempts && !open;
   const answeredCount = attempt ? questions.filter((q) => isAnswered(q, attempt.answers[q.id])).length : 0;
   const q = questions[index];
+  const attemptImmediate = attempt?.quiz.settings.feedbackTiming === 'immediate';
+  const locked = !!(attempt && q && (attempt.checked ?? []).includes(q.id));
   const lowTime = remaining !== null && remaining <= 60_000;
 
   return (
@@ -249,30 +272,64 @@ export function TakeQuiz() {
               </div>
             ) : (
               <>
-                {!preview && (
-                  <div className={`field ${nameError ? 'has-error' : ''}`}>
-                    <label className="field-label" htmlFor="student-name">
-                      اسمك
-                    </label>
-                    <input
-                      id="student-name"
-                      className="input input-lg"
-                      value={name}
-                      maxLength={80}
-                      autoComplete="name"
-                      onChange={(e) => {
-                        setName(e.target.value);
-                        setNameError('');
-                      }}
-                      data-testid="student-name"
-                    />
-                    {nameError && (
-                      <span className="field-error" role="alert">
-                        {nameError}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {!preview &&
+                  (student && name === student && !editingName ? (
+                    <p className="take-who" data-testid="take-who">
+                      تدخل الاختبار باسم <strong>{student}</strong>.{' '}
+                      <button type="button" className="link-btn" onClick={() => setEditingName(true)} data-testid="take-change-name">
+                        لست {student}؟
+                      </button>
+                    </p>
+                  ) : (
+                    <div className={`field ${nameError ? 'has-error' : ''}`}>
+                      <label className="field-label" htmlFor="student-name">
+                        اسمك
+                      </label>
+                      <input
+                        id="student-name"
+                        className="input input-lg"
+                        value={name}
+                        maxLength={80}
+                        autoComplete="name"
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          setNameError('');
+                        }}
+                        data-testid="student-name"
+                      />
+                      {nameError && (
+                        <span className="field-error" role="alert">
+                          {nameError}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                <div className="take-rules" data-testid="take-rules">
+                  <p>
+                    <Eye size={16} aria-hidden="true" /> التصحيح وإظهار الإجابات: {FEEDBACK_TIMING_LABEL[quiz.settings.feedbackTiming]}
+                    {quiz.settings.feedbackTiming === 'end' && !quiz.settings.showScore && ' (لن تظهر الدرجة لك، بل لمعلمك)'}.
+                  </p>
+                  {!preview && quiz.settings.maxAttempts !== 1 && (
+                    <p data-testid="take-policy">
+                      <RotateCcw size={16} aria-hidden="true" /> تُحفظ كل محاولة على حدة ولا تُمحى السابقة، وتُعتمد في نتيجتك: <strong>{SCORE_POLICY_LABEL[quiz.settings.scorePolicy]}</strong>.
+                    </p>
+                  )}
+                  {!preview && (mine?.length ?? 0) > 0 && (
+                    <div data-testid="take-history">
+                      <p>
+                        <ClipboardCheck size={16} aria-hidden="true" /> محاولاتك السابقة:
+                      </p>
+                      <ol className="take-history">
+                        {mine!.map((a, i) => (
+                          <li key={a.id}>
+                            المحاولة {i + 1} · {new Date(a.submittedAt ?? 0).toLocaleString('ar', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                            {a.quiz.settings.showScore && a.result && ` · ${a.result.earned}/${a.result.max} (${a.result.percent}٪)`}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
                 {limitReached ? (
                   <div className="align-alert is-error" role="alert" data-testid="take-limit">
                     <CircleAlert size={20} aria-hidden="true" />
@@ -287,7 +344,7 @@ export function TakeQuiz() {
                   </button>
                 ) : (
                   <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={() => void begin(null)} data-testid="take-start">
-                    <Play size={18} aria-hidden="true" /> ابدأ الاختبار
+                    <Play size={18} aria-hidden="true" /> {!preview && (mine?.length ?? 0) > 0 ? `ابدأ المحاولة ${(mine?.length ?? 0) + 1}` : 'ابدأ الاختبار'}
                   </button>
                 )}
               </>
@@ -341,7 +398,24 @@ export function TakeQuiz() {
               <h1 id="take-q-h" className="take-q-h" tabIndex={-1} ref={headingRef} data-testid="take-q-title">
                 {q.type === 'fill' ? q.prompt || 'أكمل الفراغات:' : questionTitle(q)}
               </h1>
-              <QuestionView q={q} answer={attempt.answers[q.id]} optionOrder={attempt.optionOrder[q.id]} onChange={(a) => setAnswer(q.id, a)} />
+              <fieldset className="q-lock" disabled={locked} data-testid="take-answer-area" data-locked={locked}>
+                <legend className="sr-only">إجابتك</legend>
+                <QuestionView q={q} answer={attempt.answers[q.id]} optionOrder={attempt.optionOrder[q.id]} onChange={(a) => setAnswer(q.id, a)} />
+              </fieldset>
+              {attemptImmediate &&
+                (locked ? (
+                  <InstantFeedback q={q} r={gradeQuestion(q, attempt.answers[q.id])} answer={attempt.answers[q.id]} showCorrect={attempt.quiz.settings.showCorrectAnswers} showFeedback={attempt.quiz.settings.showFeedback} />
+                ) : (
+                  <button
+                    type="button"
+                    className="btn take-check"
+                    disabled={checking || !isAnswered(q, attempt.answers[q.id])}
+                    onClick={() => void check(q.id)}
+                    data-testid="take-check"
+                  >
+                    <CheckCircle2 size={18} aria-hidden="true" /> تحقق من إجابتي
+                  </button>
+                ))}
               <div className="take-q-foot">
                 <button
                   type="button"
@@ -425,9 +499,37 @@ export function TakeQuiz() {
         )}
 
         {/* ───── result ───── */}
-        {view === 'result' && attempt?.result && <ResultView attempt={attempt} onAgain={() => { setAttempt(null); setView('intro'); }} canRetry={preview || !quiz.settings.maxAttempts || (used ?? 0) < quiz.settings.maxAttempts} onExit={() => navigate(backHref)} />}
+        {view === 'result' && attempt?.result && (
+          <ResultView
+            attempt={attempt}
+            number={preview ? 0 : Math.max(1, (mine ?? []).findIndex((a) => a.id === attempt.id) + 1)}
+            counted={preview ? null : countedAttempt(mine ?? [], quiz.settings.scorePolicy)}
+            total={preview ? 0 : (mine ?? []).length}
+            onAgain={() => (preview ? again() : setConfirmAgain(true))}
+            canRetry={preview || !quiz.settings.maxAttempts || (used ?? 0) < quiz.settings.maxAttempts}
+            onExit={() => navigate(backHref)}
+          />
+        )}
       </main>
 
+      <ConfirmDialog
+        open={confirmAgain}
+        title="محاولة جديدة"
+        testId="confirm-again"
+        danger={false}
+        confirmLabel="ابدأ محاولة جديدة"
+        onClose={() => setConfirmAgain(false)}
+        onConfirm={() => again()}
+        message={
+          <>
+            <p>
+              ستبدأ المحاولة {(mine?.length ?? 0) + 1}
+              {quiz.settings.maxAttempts > 0 && ` من ${quiz.settings.maxAttempts}`}.
+            </p>
+            <p>محاولاتك السابقة ونتائجها تبقى محفوظة ولا تُستبدل. يُعتمد في نتيجتك: {SCORE_POLICY_LABEL[quiz.settings.scorePolicy]}.</p>
+          </>
+        }
+      />
       <ConfirmDialog
         open={confirmSubmit}
         title="تسليم مع أسئلة بلا إجابة"
@@ -442,7 +544,23 @@ export function TakeQuiz() {
   );
 }
 
-function ResultView({ attempt, onAgain, canRetry, onExit }: { attempt: Attempt; onAgain: () => void; canRetry: boolean; onExit: () => void }) {
+function ResultView({
+  attempt,
+  number,
+  counted,
+  total,
+  onAgain,
+  canRetry,
+  onExit,
+}: {
+  attempt: Attempt;
+  number: number;
+  counted: Attempt | null;
+  total: number;
+  onAgain: () => void;
+  canRetry: boolean;
+  onExit: () => void;
+}) {
   const r = attempt.result!;
   const s = attempt.quiz.settings;
   const byId = new Map(attempt.quiz.questions.map((q) => [q.id, q]));
@@ -450,6 +568,12 @@ function ResultView({ attempt, onAgain, canRetry, onExit }: { attempt: Attempt; 
   return (
     <section className="take-result" data-testid="take-result">
       <div className={`card result-hero ${s.showScore ? (r.passed ? 'is-pass' : 'is-fail') : ''}`}>
+        {number > 0 && (
+          <p className="muted" data-testid="result-attempt-no">
+            المحاولة {number}
+            {total > 1 && ` من ${total} محاولات محفوظة`}
+          </p>
+        )}
         {attempt.timedOut && (
           <p className="pill pill-warning">
             <Hourglass size={14} aria-hidden="true" /> سُلّم تلقائيًا عند انتهاء الوقت
@@ -467,6 +591,11 @@ function ResultView({ attempt, onAgain, canRetry, onExit }: { attempt: Attempt; 
             <p className={`result-verdict ${r.passed ? 'ok' : 'bad'}`} data-testid="result-verdict">
               {r.passed ? 'ناجح' : 'لم تبلغ درجة النجاح'} <span className="muted">(النجاح من {s.passPercent}٪)</span>
             </p>
+            {total > 1 && counted?.result && (
+              <p className="muted" data-testid="result-counted">
+                المعتمدة في نتيجتك ({SCORE_POLICY_LABEL[s.scorePolicy]}): المحاولة {counted.id === attempt.id ? 'هذه' : 'السابقة'} — {counted.result.percent}٪
+              </p>
+            )}
             {r.pendingReview > 0 && (
               <p className="muted" data-testid="result-pending">
                 {r.pendingReview === 1 ? 'إجابة واحدة' : `${r.pendingReview} إجابات`} بانتظار مراجعة المعلم، وقد تتغير الدرجة بعدها.
@@ -500,5 +629,35 @@ function ResultView({ attempt, onAgain, canRetry, onExit }: { attempt: Attempt; 
         </ol>
       )}
     </section>
+  );
+}
+
+/** Immediate-feedback mode: the verdict for one checked question, following the teacher's display settings. */
+function InstantFeedback({ q, r, answer, showCorrect, showFeedback }: { q: Question; r: QuestionResult; answer: Answer | undefined; showCorrect: boolean; showFeedback: boolean }) {
+  const Icon = r.status === 'correct' ? CheckCircle2 : r.status === 'partial' ? MinusCircle : r.status === 'review' ? Hourglass : XCircle;
+  const text = r.status === 'correct' ? q.feedbackCorrect : q.feedbackIncorrect;
+  const chosen = q.type === 'mcq' && answer?.type === 'mcq' ? q.options.filter((o) => answer.selected.includes(o.id) && o.feedback.trim()) : [];
+  return (
+    <div className={`instant-fb st-${r.status}`} role="status" data-testid="instant-feedback" data-status={r.status}>
+      <p className="instant-fb-head">
+        <Icon size={18} aria-hidden="true" /> <strong>{STATUS_LABEL[r.status]}</strong> · {r.earned}/{r.max}
+        <span className="muted instant-lock">
+          <Lock size={13} aria-hidden="true" /> أُقفلت الإجابة
+        </span>
+      </p>
+      {r.status === 'review' && <p>سيراجع المعلم هذه الإجابة، وقد تتغير درجتها.</p>}
+      {showCorrect && r.status !== 'correct' && (
+        <p data-testid="instant-correct">
+          الإجابة الصحيحة: <strong>{describeCorrect(q)}</strong>
+        </p>
+      )}
+      {showFeedback && r.status !== 'review' && text && <p data-testid="instant-text">{text}</p>}
+      {showFeedback &&
+        chosen.map((o) => (
+          <p key={o.id} data-testid="instant-option-feedback">
+            <strong>{o.text}:</strong> {o.feedback}
+          </p>
+        ))}
+    </div>
   );
 }

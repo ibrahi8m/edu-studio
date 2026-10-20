@@ -130,3 +130,110 @@ export function objectiveStats(attempts: Attempt[]): ObjectiveStat[] {
     samples: v.samples,
   }));
 }
+
+/* ───────── phase 4: several attempts, students, Bloom levels ───────── */
+
+/** A share of points at or above this marks an objective (or level) as mastered. */
+export const MASTERY = 0.8;
+
+export type ScorePolicyName = 'best' | 'last' | 'first';
+
+/** The attempt that counts for one student in one quiz, by the quiz's policy. Ties on "best" go to the earlier attempt. */
+export function countedAttempt(list: Attempt[], policy: ScorePolicyName): Attempt | null {
+  const done = countable(list).sort((a, b) => (a.submittedAt ?? 0) - (b.submittedAt ?? 0));
+  if (!done.length) return null;
+  if (policy === 'first') return done[0];
+  if (policy === 'last') return done[done.length - 1];
+  return done.reduce((best, a) => (a.result!.percent > best.result!.percent ? a : best), done[0]);
+}
+
+export interface StudentQuizRow {
+  quizId: string;
+  studentKey: string;
+  studentName: string;
+  /** Submitted, real attempts, oldest first. */
+  attempts: Attempt[];
+  counted: Attempt | null;
+  lastAt: number;
+}
+
+/** One row per student per quiz. `policyOf` gives each quiz's score policy (from the quiz as it is now). */
+export function studentQuizRows(attempts: Attempt[], policyOf: (quizId: string) => ScorePolicyName): StudentQuizRow[] {
+  const groups = new Map<string, Attempt[]>();
+  for (const a of countable(attempts)) {
+    const k = `${a.quizId}|${a.studentKey}`;
+    groups.set(k, [...(groups.get(k) ?? []), a]);
+  }
+  return [...groups.values()].map((list) => {
+    const sorted = [...list].sort((a, b) => (a.submittedAt ?? 0) - (b.submittedAt ?? 0));
+    const last = sorted[sorted.length - 1];
+    return {
+      quizId: last.quizId,
+      studentKey: last.studentKey,
+      studentName: last.studentName,
+      attempts: sorted,
+      counted: countedAttempt(sorted, policyOf(last.quizId)),
+      lastAt: last.submittedAt ?? 0,
+    };
+  });
+}
+
+export interface StudentSummary {
+  studentKey: string;
+  studentName: string;
+  quizzes: number;
+  attempts: number;
+  /** Average of the counted percentages, one per quiz. */
+  averagePercent: number;
+  passed: number;
+  lastAt: number;
+}
+
+export function studentSummaries(rows: StudentQuizRow[]): StudentSummary[] {
+  const by = new Map<string, StudentQuizRow[]>();
+  for (const r of rows) by.set(r.studentKey, [...(by.get(r.studentKey) ?? []), r]);
+  return [...by.entries()]
+    .map(([key, list]) => {
+      const counted = list.map((r) => r.counted!).filter(Boolean);
+      const latest = list.reduce((x, y) => (y.lastAt > x.lastAt ? y : x));
+      return {
+        studentKey: key,
+        studentName: latest.studentName,
+        quizzes: list.length,
+        attempts: list.reduce((s, r) => s + r.attempts.length, 0),
+        averagePercent: counted.length ? Math.round((counted.reduce((s, a) => s + a.result!.percent, 0) / counted.length) * 10) / 10 : 0,
+        passed: counted.filter((a) => a.result!.passed).length,
+        lastAt: latest.lastAt,
+      };
+    })
+    .sort((a, b) => b.lastAt - a.lastAt);
+}
+
+export interface LevelStat {
+  /** 1–6, or 0 when the question's level is not known. */
+  level: number;
+  questions: number;
+  earned: number;
+  max: number;
+  mastery: number;
+}
+
+/** Points earned per Bloom level over the given attempts. `levelOf` returns a question's level (see questionBloom). */
+export function bloomStats(attempts: Attempt[], levelOf: (q: Question) => number): LevelStat[] {
+  const m = new Map<number, { earned: number; max: number; questions: Set<string> }>();
+  for (const a of countable(attempts)) {
+    for (const q of a.quiz.questions) {
+      const r = a.result!.questions.find((x) => x.questionId === q.id);
+      if (!r) continue;
+      const level = levelOf(q);
+      const cur = m.get(level) ?? { earned: 0, max: 0, questions: new Set<string>() };
+      cur.earned += r.earned;
+      cur.max += r.max;
+      cur.questions.add(q.id);
+      m.set(level, cur);
+    }
+  }
+  return [...m.entries()]
+    .map(([level, v]) => ({ level, questions: v.questions.size, earned: Math.round(v.earned * 100) / 100, max: Math.round(v.max * 100) / 100, mastery: v.max > 0 ? Math.round((v.earned / v.max) * 1000) / 1000 : 0 }))
+    .sort((a, b) => (a.level || 99) - (b.level || 99));
+}

@@ -1,4 +1,5 @@
 /** Phase 3: quizzes, questions, attempts. Stored in the `quizzes` and `attempts` tables. */
+import type { BloomLevel } from '../lesson/types';
 
 export type QuestionType = 'mcq' | 'truefalse' | 'short' | 'matching' | 'ordering' | 'fill';
 
@@ -20,6 +21,8 @@ interface QuestionBase {
   prompt: string;
   points: number;
   objectiveIds: string[];
+  /** Bloom level the question measures. 0 = taken from the linked objectives. */
+  bloom: BloomLevel | 0;
   /** Shown to the student when the answer is fully correct. */
   feedbackCorrect: string;
   /** Shown when the answer is wrong or partly right — the explanation. */
@@ -90,6 +93,9 @@ export interface FillQuestion extends QuestionBase {
 
 export type Question = McqQuestion | TrueFalseQuestion | ShortQuestion | MatchingQuestion | OrderingQuestion | FillQuestion;
 
+export type FeedbackTiming = 'end' | 'immediate';
+export type ScorePolicy = 'best' | 'last' | 'first';
+
 export interface QuizSettings {
   /** Minimum percentage to pass (0–100). */
   passPercent: number;
@@ -102,6 +108,10 @@ export interface QuizSettings {
   showCorrectAnswers: boolean;
   /** After submitting: show the feedback written for each question. */
   showFeedback: boolean;
+  /** When the student sees whether an answer is right: after each question (answer is then locked) or after submitting. */
+  feedbackTiming: FeedbackTiming;
+  /** Which attempt counts for a student when there are several. Every attempt stays saved. */
+  scorePolicy: ScorePolicy;
   /** 0 = unlimited. Counted per student name on this device. */
   maxAttempts: number;
   /** Minutes; 0 = no time limit. */
@@ -179,6 +189,8 @@ export interface Attempt {
   optionOrder: Record<string, string[]>;
   answers: Record<string, Answer>;
   flagged: string[];
+  /** Immediate-feedback mode: questions the student has checked; their answers are locked. Absent on attempts from 0.4.0. */
+  checked?: string[];
   startedAt: number;
   /** Absolute deadline when the quiz has a time limit. */
   deadline: number | null;

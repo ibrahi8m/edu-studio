@@ -33,7 +33,7 @@ test.describe('Phase 0 — responsive shell', () => {
   test('no screen scrolls sideways; screenshots for the report', async ({ page }, info) => {
     for (const r of ROUTES) {
       await page.goto(`./#/${r}`);
-      await expect(page.locator('.page').first()).toBeVisible();
+      await expect(page.locator('.page, .take-wrap').first()).toBeVisible();
       await page.waitForTimeout(350);
       // innerWidth grows past the device width when a phone browser zooms out to fit
       // overflowing content, so compare against the device viewport, not innerWidth.
@@ -101,7 +101,7 @@ test.describe('Phase 0 — responsive shell', () => {
       await page.getByRole('radio', { name: theme }).click();
       for (const r of ['', 'settings', 'about', 'projects', 'more']) {
         await page.goto(`./#/${r}`);
-        await expect(page.locator('.page').first()).toBeVisible();
+        await expect(page.locator('.page, .take-wrap').first()).toBeVisible();
         await page.waitForTimeout(350);
         const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
         const serious = res.violations

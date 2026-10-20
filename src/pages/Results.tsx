@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowRight, BarChart3, Hourglass, Target, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BarChart3, ChevronLeft, GraduationCap, Hourglass, Layers, Target, Trash2, Users } from 'lucide-react';
 import { errorMessage, useAllProjects } from '../app/data';
 import { useToast } from '../app/Toasts';
 import { ConfirmDialog } from '../components/Dialog';
@@ -9,17 +9,17 @@ import { PageHeader, Pill } from '../components/ui';
 import { db } from '../db/db';
 import { deleteAttempt, loadQuiz, objectivesFor, restoreAttempt, reviewAnswer, type ObjectiveRef } from '../db/quizzes';
 import { bloomInfo } from '../lesson/bloom';
-import { attemptObjectives, countable, objectiveStats, questionStats, quizSummary, type ObjectiveStat } from '../quiz/analytics';
+import { attemptObjectives, bloomStats, countable, objectiveStats, questionStats, quizSummary, studentQuizRows, studentSummaries, type LevelStat, type ObjectiveStat } from '../quiz/analytics';
 import { useAllAttempts, useAllQuizzes, useQuizAttempts } from '../quiz/data';
 import { questionTitle } from '../quiz/describe';
-import { TYPE_LABEL } from '../quiz/model';
+import { questionBloom, SCORE_POLICY_LABEL, TYPE_LABEL } from '../quiz/model';
 import { AnswerReview } from '../quiz/take/AnswerReview';
-import type { Attempt } from '../quiz/types';
+import type { Attempt, Question } from '../quiz/types';
 
-const pct = (f: number) => `${Math.round(f * 1000) / 10}٪`;
-const when = (t: number | null) => (t ? new Date(t).toLocaleString('ar', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—');
+export const pct = (f: number) => `${Math.round(f * 1000) / 10}٪`;
+export const when = (t: number | null) => (t ? new Date(t).toLocaleString('ar', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—');
 
-function Bar({ value, tone }: { value: number; tone?: 'bad' | 'mid' | 'good' }) {
+export function Bar({ value, tone }: { value: number; tone?: 'bad' | 'mid' | 'good' }) {
   const t = tone ?? (value < 0.5 ? 'bad' : value < 0.75 ? 'mid' : 'good');
   return (
     <span className={`bar bar-${t}`} aria-hidden="true">
@@ -39,6 +39,8 @@ export function ResultsHome() {
     .map((z) => ({ z, s: quizSummary((attempts ?? []).filter((a) => a.quizId === z.id)) }))
     .sort((a, b) => b.s.attempts - a.s.attempts || b.z.updatedAt - a.z.updatedAt);
   const total = rows.reduce((s, r) => s + r.s.attempts, 0);
+  const policy = new Map((quizzes ?? []).map((z) => [z.id, z.settings.scorePolicy]));
+  const students = studentSummaries(studentQuizRows(attempts ?? [], (id) => policy.get(id) ?? 'best'));
   return (
     <div className="page" data-testid="page-results">
       <PageHeader title="النتائج والتحليلات" subtitle="من محاولات حقيقية حُفظت على هذا الجهاز فقط. محاولات «التجربة» لا تُحتسب." />
@@ -86,15 +88,66 @@ export function ResultsHome() {
               </li>
             ))}
           </ul>
+          {students.length > 0 && (
+            <section className="card" data-testid="students-list">
+              <h2 className="card-title">
+                <GraduationCap size={18} aria-hidden="true" /> الطلاب ({students.length})
+              </h2>
+              <p className="muted">لكل طالب: النتيجة المعتمدة في كل اختبار حسب إعداده (أعلى أو آخر أو أول محاولة).</p>
+              <ul className="attempt-list">
+                {students.map((st) => (
+                  <li key={st.studentKey} className="attempt-row" data-testid="student-row">
+                    <Link to={`/results/students/${encodeURIComponent(st.studentKey)}`} className="attempt-main">
+                      <strong>{st.studentName}</strong>
+                      <span className="muted">
+                        {st.quizzes} {st.quizzes === 1 ? 'اختبار' : 'اختبارات'} · {st.attempts} محاولة · آخر نشاط {when(st.lastAt)}
+                      </span>
+                    </Link>
+                    <span className="attempt-score" data-testid="student-average">
+                      المتوسط {st.averagePercent}٪
+                    </span>
+                    <ChevronLeft size={18} aria-hidden="true" />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
     </div>
   );
 }
 
+/** Points earned per Bloom level. */
+export function BloomBars({ stats, testId }: { stats: LevelStat[]; testId: string }) {
+  if (!stats.length) return <p className="muted">لا توجد بيانات.</p>;
+  return (
+    <ul className="obj-bars" data-testid={testId}>
+      {stats.map((b) => (
+        <li key={b.level} className={b.mastery < 0.5 ? 'is-weak' : ''} data-testid="bloom-stat" data-level={b.level}>
+          <span className="obj-bars-text">
+            <span className={`bloom-tag b${b.level}`}>{b.level ? bloomInfo(b.level as 1)!.name : 'بلا مستوى'}</span>
+            <span className="link-meta">
+              {' '}
+              {b.questions === 1 ? 'سؤال واحد' : `${b.questions} أسئلة`} · {b.earned} من {b.max} درجة
+            </span>
+          </span>
+          <Bar value={b.mastery} />
+          <span className="obj-bars-n">{pct(b.mastery)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Bloom level of a question: its own tag, else its linked objectives' highest level. */
+export function levelFn(map: Map<string, ObjectiveRef> | undefined) {
+  return (q: Question) => questionBloom(q, (id) => map?.get(id)?.level);
+}
+
 /* ───────── one quiz ───────── */
 
-function useObjectiveMap(projectId?: string, lessonId?: string | null) {
+export function useObjectiveMap(projectId?: string, lessonId?: string | null) {
   return useLiveQuery(async () => {
     if (!projectId) return new Map<string, ObjectiveRef>();
     // All objectives in the project, so links survive a change of the quiz's lesson.
@@ -104,7 +157,7 @@ function useObjectiveMap(projectId?: string, lessonId?: string | null) {
   }, [projectId, lessonId]);
 }
 
-function ObjectiveBars({ stats, map, testId }: { stats: ObjectiveStat[]; map: Map<string, ObjectiveRef> | undefined; testId: string }) {
+export function ObjectiveBars({ stats, map, testId }: { stats: ObjectiveStat[]; map: Map<string, ObjectiveRef> | undefined; testId: string }) {
   if (!stats.length) return <p className="muted">لم تُربط الأسئلة بأهداف تعليمية بعد.</p>;
   return (
     <ul className="obj-bars" data-testid={testId}>
@@ -140,6 +193,11 @@ export function QuizResults() {
   const s = useMemo(() => quizSummary(attempts ?? []), [attempts]);
   const qs = useMemo(() => (quiz ? questionStats(attempts ?? [], quiz.questions) : []), [attempts, quiz]);
   const os = useMemo(() => objectiveStats(attempts ?? []), [attempts]);
+  const bs = useMemo(() => bloomStats(attempts ?? [], levelFn(objMap)), [attempts, objMap]);
+  const perStudent = useMemo(
+    () => (quiz ? studentQuizRows(attempts ?? [], () => quiz.settings.scorePolicy).sort((a, b) => a.studentName.localeCompare(b.studentName, 'ar')) : []),
+    [attempts, quiz],
+  );
 
   if (quiz === undefined) return <div className="page" />;
   if (quiz === null)
@@ -255,6 +313,35 @@ export function QuizResults() {
               <Target size={18} aria-hidden="true" /> الأداء حسب الهدف التعليمي
             </h2>
             <ObjectiveBars stats={os} map={objMap} testId="objective-stats" />
+          </section>
+
+          <section className="card">
+            <h2 className="card-title">
+              <Layers size={18} aria-hidden="true" /> الأداء حسب مستوى بلوم
+            </h2>
+            <BloomBars stats={bs} testId="bloom-stats" />
+          </section>
+
+          <section className="card">
+            <h2 className="card-title">
+              <GraduationCap size={18} aria-hidden="true" /> الطلاب
+            </h2>
+            <p className="muted">المعتمدة: {SCORE_POLICY_LABEL[quiz.settings.scorePolicy]}. كل المحاولات محفوظة في القائمة التالية.</p>
+            <ul className="attempt-list" data-testid="quiz-students">
+              {perStudent.map((r) => (
+                <li key={r.studentKey} className="attempt-row" data-testid="quiz-student-row">
+                  <Link to={`/results/students/${encodeURIComponent(r.studentKey)}`} className="attempt-main">
+                    <strong>{r.studentName}</strong>
+                    <span className="muted">
+                      {r.attempts.length} {r.attempts.length === 1 ? 'محاولة' : 'محاولات'}: {r.attempts.map((a) => `${a.result!.percent}٪`).join('، ')}
+                    </span>
+                  </Link>
+                  <span className="attempt-score" data-testid="quiz-student-counted">
+                    {r.counted ? `${r.counted.result!.earned}/${r.counted.result!.max} · ${r.counted.result!.percent}٪` : '—'}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section className="card">

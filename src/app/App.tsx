@@ -15,7 +15,10 @@ import { AttemptDetail, QuizResults, ResultsHome } from '../pages/Results';
 import { QuizEditorPage } from '../pages/QuizEditor';
 import { QuizzesPage } from '../pages/Quizzes';
 import { SettingsPage } from '../pages/Settings';
-import { StudentHome } from '../pages/StudentHome';
+import { LearnHome } from '../pages/learn/LearnHome';
+import { LessonPlayer } from '../pages/learn/LessonPlayer';
+import { StudentLayout } from '../student/StudentLayout';
+import { StudentReport } from '../pages/StudentReport';
 import { TakeQuiz } from '../pages/TakeQuiz';
 import { ToastProvider } from './Toasts';
 import { SettingsProvider, useSettings } from './SettingsContext';
@@ -37,6 +40,11 @@ function Root() {
           <Route path="preview/:lessonId" element={<LessonPreview />} />
           {/* Student taking a quiz: full screen, outside the app shell */}
           <Route path="take/:quizId" element={<TakeQuiz />} />
+          {/* Student mode: its own frame, no teacher navigation or tools */}
+          <Route path="learn" element={<StudentLayout />}>
+            <Route index element={<LearnHome />} />
+            <Route path="lesson/:lessonId" element={<LessonPlayer />} />
+          </Route>
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
             <Route path="projects" element={<ProjectsPage />} />
@@ -45,7 +53,8 @@ function Root() {
             <Route path="builder" element={<BuilderPage />} />
             <Route path="quizzes" element={<QuizzesPage />} />
             <Route path="quizzes/:quizId" element={<QuizEditorPage />} />
-            <Route path="student" element={<StudentHome />} />
+            <Route path="student" element={<Navigate to="/learn" replace />} />
+            <Route path="results/students/:studentKey" element={<StudentReport />} />
             <Route path="results" element={<ResultsHome />} />
             <Route path="results/:quizId" element={<QuizResults />} />
             <Route path="results/:quizId/:attemptId" element={<AttemptDetail />} />

@@ -42,9 +42,11 @@ test('desktop app: build a quiz, take it, close the app; the attempt and results
   await w1.waitForTimeout(150);
   await expect(w1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
 
-  await go(w1, '/student');
-  await w1.getByRole('link', { name: 'ابدأ: اختبار سطح المكتب' }).click();
-  await w1.getByTestId('student-name').fill('أمل');
+  await go(w1, '/learn');
+  await w1.getByTestId('learn-name').fill('أمل');
+  await w1.getByTestId('learn-continue').click();
+  await w1.locator('[data-testid="student-quiz"][data-quiz="اختبار سطح المكتب"]').getByTestId('student-quiz-go').click();
+  await expect(w1.getByTestId('take-who')).toContainText('أمل');
   await w1.getByTestId('take-start').click();
   await w1.getByTestId('take-true').check();
   await w1.getByTestId('take-next').click();
@@ -64,6 +66,11 @@ test('desktop app: build a quiz, take it, close the app; the attempt and results
   await expect(w2.getByTestId('attempt-row').first()).toContainText('أمل');
   await expect(w2.getByTestId('attempt-row').first()).toContainText('1/2');
   await w2.screenshot({ path: 'docs/screenshots/desktop-app/quiz-results.png' });
+  // student mode after the restart: same student, the finished attempt and its result
+  await go(w2, '/learn');
+  await expect(w2.getByTestId('student-chip')).toHaveText('أمل');
+  await expect(w2.locator('[data-testid="student-quiz"][data-quiz="اختبار سطح المكتب"]').getByTestId('student-quiz-status')).toHaveText('محاولة واحدة · نتيجتك: 50٪');
+  await w2.screenshot({ path: 'docs/screenshots/desktop-app/student-home.png' });
   // the network stays blocked in the desktop app
   expect(
     await w2.evaluate(async () => {

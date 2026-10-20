@@ -7,7 +7,7 @@ import { useToast } from '../app/Toasts';
 import { ConfirmDialog, Dialog } from '../components/Dialog';
 import { db } from '../db/db';
 import { deleteQuiz, objectivesFor, restoreQuiz, type ObjectiveRef } from '../db/quizzes';
-import { bloomInfo } from '../lesson/bloom';
+import { BLOOM, bloomInfo } from '../lesson/bloom';
 import { AutoTextarea, SaveStatusPill } from '../lesson/editor/parts';
 import { QTYPE_ICON } from '../quiz/editor/icons';
 import { QuestionCard } from '../quiz/editor/QuestionCard';
@@ -15,7 +15,9 @@ import { Toggle } from '../quiz/editor/TypeEditors';
 import { totalPoints } from '../quiz/grading';
 import {
   addQuestion,
+  bloomDistribution,
   duplicateQuestion,
+  FEEDBACK_TIMING_LABEL,
   insertQuestionAt,
   LIMITS,
   moveItem,
@@ -23,6 +25,7 @@ import {
   QUESTION_TYPES,
   quizReadiness,
   removeQuestion,
+  SCORE_POLICY_LABEL,
   updateQuestion,
 } from '../quiz/model';
 import type { Question, QuestionType, Quiz, QuizSettings } from '../quiz/types';
@@ -205,6 +208,7 @@ export function QuizEditorPage() {
             </section>
           ) : (
             <>
+              <BloomPanel questions={quiz.questions} objectives={objectives ?? []} />
               <ol className="qlist" data-testid="question-list">
                 {quiz.questions.map((q, i) => (
                   <QuestionCard
@@ -445,7 +449,21 @@ function SettingsPanel({
       </section>
 
       <section className="card">
-        <h2 className="card-title">بعد التسليم</h2>
+        <h2 className="card-title">التصحيح والتغذية الراجعة</h2>
+        <div className="field">
+          <label className="field-label" htmlFor={`${uid}-ft`}>
+            متى يرى الطالب صحة إجابته؟
+          </label>
+          <select id={`${uid}-ft`} className="input" value={s.feedbackTiming} onChange={(e) => setSettings({ feedbackTiming: e.target.value === 'immediate' ? 'immediate' : 'end' })} data-testid="set-feedback-timing">
+            <option value="end">{FEEDBACK_TIMING_LABEL.end}</option>
+            <option value="immediate">{FEEDBACK_TIMING_LABEL.immediate}</option>
+          </select>
+          <span className="field-hint">
+            {s.feedbackTiming === 'immediate'
+              ? 'يضغط الطالب «تحقق من إجابتي» بعد كل سؤال، فتُقفل إجابته ويرى النتيجة وفق الخيارات أدناه. الدرجة النهائية تُحسب عند التسليم.'
+              : 'لا يرى الطالب أي تصحيح قبل التسليم.'}
+          </span>
+        </div>
         <Toggle checked={s.showScore} onChange={(v) => setSettings({ showScore: v })} label="إظهار الدرجة والنتيجة (ناجح / غير ناجح)" testId="set-show-score" />
         <Toggle checked={s.showCorrectAnswers} onChange={(v) => setSettings({ showCorrectAnswers: v })} label="إظهار الإجابات الصحيحة" testId="set-show-correct" />
         <Toggle checked={s.showFeedback} onChange={(v) => setSettings({ showFeedback: v })} label="إظهار التغذية الراجعة لكل سؤال" testId="set-show-feedback" />
@@ -482,6 +500,25 @@ function SettingsPanel({
           </div>
         </div>
         <span className="field-hint">تُحسب المحاولات لكل اسم طالب على هذا الجهاز. عند انتهاء الوقت يُسلَّم الاختبار تلقائيًا.</span>
+        <div className="field">
+          <label className="field-label" htmlFor={`${uid}-sp`}>
+            المحاولة المعتمدة عند تعدد المحاولات
+          </label>
+          <select
+            id={`${uid}-sp`}
+            className="input"
+            value={s.scorePolicy}
+            onChange={(e) => setSettings({ scorePolicy: e.target.value === 'last' || e.target.value === 'first' ? e.target.value : 'best' })}
+            data-testid="set-score-policy"
+          >
+            {(['best', 'last', 'first'] as const).map((k) => (
+              <option key={k} value={k}>
+                {SCORE_POLICY_LABEL[k]}
+              </option>
+            ))}
+          </select>
+          <span className="field-hint">كل محاولة تبقى محفوظة في النتائج؛ هذا الخيار يحدد أي محاولة تُعرض نتيجةً للطالب في صفحته وفي جدول الطلاب.</span>
+        </div>
       </section>
 
       <section className="card span-2 danger-zone">
@@ -493,5 +530,31 @@ function SettingsPanel({
       </section>
 
     </div>
+  );
+}
+
+/** How the questions spread over Bloom's levels (plan: warn when the quiz sits mostly at "remembering"). */
+function BloomPanel({ questions, objectives }: { questions: Question[]; objectives: ObjectiveRef[] }) {
+  const levels = new Map(objectives.map((o) => [o.objective.id, o.level]));
+  const d = bloomDistribution(questions, (id) => levels.get(id));
+  return (
+    <section className="bloom-panel" aria-label="توزيع الأسئلة على مستويات بلوم" data-testid="bloom-panel">
+      <span className="bloom-panel-h">مستويات بلوم:</span>
+      {BLOOM.map((b) => (
+        <span key={b.level} className={`bloom-tag b${b.level} ${d.counts[b.level] ? '' : 'is-zero'}`} data-testid="bloom-count" data-level={b.level}>
+          {b.name} {d.counts[b.level]}
+        </span>
+      ))}
+      {d.counts[0] > 0 && (
+        <span className="bloom-tag b0" data-testid="bloom-unclassified">
+          بلا مستوى {d.counts[0]}
+        </span>
+      )}
+      {d.rememberHeavy && (
+        <p className="warn-text bloom-warn" role="status" data-testid="bloom-warning">
+          أكثر من نصف الأسئلة المصنّفة في مستوى التذكر؛ فكّر في أسئلة تقيس الفهم والتطبيق والتحليل.
+        </p>
+      )}
+    </section>
   );
 }

@@ -2,6 +2,7 @@ import { newId } from '../db/ids';
 import { normalizeArabic } from '../db/search';
 import { blankCount, parseFill } from './grading';
 import { DEFAULT_MATCH } from './textmatch';
+import type { BloomLevel } from '../lesson/types';
 import type { Attempt, Question, QuestionType, Quiz, QuizSettings, TextMatch } from './types';
 
 export const QUESTION_TYPES: { type: QuestionType; label: string; hint: string }[] = [
@@ -22,8 +23,21 @@ export const DEFAULT_SETTINGS: QuizSettings = {
   showScore: true,
   showCorrectAnswers: true,
   showFeedback: true,
+  feedbackTiming: 'end',
+  scorePolicy: 'best',
   maxAttempts: 0,
   timeLimit: 0,
+};
+
+export const FEEDBACK_TIMING_LABEL: Record<QuizSettings['feedbackTiming'], string> = {
+  end: 'بعد تسليم الاختبار',
+  immediate: 'بعد كل سؤال (تُقفل الإجابة بعد التحقق)',
+};
+
+export const SCORE_POLICY_LABEL: Record<QuizSettings['scorePolicy'], string> = {
+  best: 'أعلى محاولة',
+  last: 'آخر محاولة',
+  first: 'أول محاولة',
 };
 
 export const LIMITS = { title: 160, description: 3000, prompt: 2000, option: 500, feedback: 1500, points: 100, timeLimit: 300, maxAttempts: 20, questions: 100 };
@@ -31,7 +45,7 @@ export const LIMITS = { title: 160, description: 3000, prompt: 2000, option: 500
 /* ───────── factories ───────── */
 
 export function newQuestion(type: QuestionType): Question {
-  const base = { id: newId(), prompt: '', points: 1, objectiveIds: [] as string[], feedbackCorrect: '', feedbackIncorrect: '' };
+  const base = { id: newId(), prompt: '', points: 1, objectiveIds: [] as string[], bloom: 0 as BloomLevel | 0, feedbackCorrect: '', feedbackIncorrect: '' };
   switch (type) {
     case 'mcq': {
       const options = [0, 1, 2, 3].map(() => ({ id: newId(), text: '', feedback: '' }));
@@ -95,6 +109,7 @@ export function normalizeQuestion(raw: unknown): Question | null {
   q.prompt = str(r.prompt, LIMITS.prompt);
   q.points = Math.round(num(r.points, 0, LIMITS.points, 1) * 100) / 100;
   q.objectiveIds = strArr(r.objectiveIds, 100);
+  q.bloom = r.bloom === 1 || r.bloom === 2 || r.bloom === 3 || r.bloom === 4 || r.bloom === 5 || r.bloom === 6 ? r.bloom : 0;
   q.feedbackCorrect = str(r.feedbackCorrect, LIMITS.feedback);
   q.feedbackIncorrect = str(r.feedbackIncorrect, LIMITS.feedback);
   const list = (v: unknown) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []) as Record<string, unknown>[];
@@ -141,6 +156,8 @@ export function normalizeSettings(v: unknown): QuizSettings {
     showScore: bool(r.showScore, d.showScore),
     showCorrectAnswers: bool(r.showCorrectAnswers, d.showCorrectAnswers),
     showFeedback: bool(r.showFeedback, d.showFeedback),
+    feedbackTiming: r.feedbackTiming === 'immediate' ? 'immediate' : 'end',
+    scorePolicy: r.scorePolicy === 'last' || r.scorePolicy === 'first' ? r.scorePolicy : 'best',
     maxAttempts: Math.round(num(r.maxAttempts, 0, LIMITS.maxAttempts, d.maxAttempts)),
     timeLimit: Math.round(num(r.timeLimit, 0, LIMITS.timeLimit, d.timeLimit)),
   };
@@ -218,6 +235,7 @@ export function validateQuestion(q: Question): Issue[] {
   }
   if (!filled(q.feedbackCorrect) && !filled(q.feedbackIncorrect)) err('أضف تغذية راجعة للطالب (عند الإجابة الصحيحة أو الخاطئة).');
   if (!q.objectiveIds.length) warn('لم يُربط السؤال بهدف تعليمي.');
+  if (!q.bloom && !q.objectiveIds.length) warn('لم يُحدَّد مستوى بلوم للسؤال (حدّده أو اربطه بهدف مصنَّف).');
   return out;
 }
 
@@ -347,10 +365,42 @@ export function newAttempt(quiz: Quiz, studentName: string, preview: boolean, no
     optionOrder,
     answers,
     flagged: [],
+    checked: [],
     startedAt: now,
     deadline: quiz.settings.timeLimit > 0 ? now + quiz.settings.timeLimit * 60_000 : null,
     submittedAt: null,
     timedOut: false,
     result: null,
   };
+}
+
+/* ───────── Bloom level of a question ───────── */
+
+/**
+ * The Bloom level a question measures: the level set on the question, otherwise the highest
+ * level among its linked objectives (`levelOf` looks an objective up). 0 = not known.
+ */
+export function questionBloom(q: Question, levelOf: (objectiveId: string) => BloomLevel | 0 | undefined): BloomLevel | 0 {
+  if (q.bloom) return q.bloom;
+  let best: BloomLevel | 0 = 0;
+  for (const id of q.objectiveIds) {
+    const l = levelOf(id) ?? 0;
+    if (l > best) best = l;
+  }
+  return best;
+}
+
+export interface BloomDistribution {
+  /** Questions per level 1–6 (index 0 = not classified). */
+  counts: number[];
+  classified: number;
+  /** More than half of the classified questions are at "remembering", with at least three classified questions. */
+  rememberHeavy: boolean;
+}
+
+export function bloomDistribution(questions: Question[], levelOf: (objectiveId: string) => BloomLevel | 0 | undefined): BloomDistribution {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const q of questions) counts[questionBloom(q, levelOf)] += 1;
+  const classified = questions.length - counts[0];
+  return { counts, classified, rememberHeavy: classified >= 3 && counts[1] * 2 > classified };
 }

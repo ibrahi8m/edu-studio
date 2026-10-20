@@ -2,10 +2,14 @@ import { useId } from 'react';
 import { ArrowDown, ArrowUp, CheckCircle2, CircleAlert, Copy, Link2, Trash2, TriangleAlert } from 'lucide-react';
 import { AutoTextarea } from '../../lesson/editor/parts';
 import type { ObjectiveRef } from '../../db/quizzes';
+import { BLOOM, bloomInfo } from '../../lesson/bloom';
+import type { BloomLevel } from '../../lesson/types';
 import { LIMITS, TYPE_LABEL, validateQuestion } from '../model';
 import type { Question } from '../types';
 import { FillEditor, MatchingEditor, McqEditor, OrderingEditor, ShortEditor, TrueFalseEditor } from './TypeEditors';
 import { QTYPE_ICON } from './icons';
+
+const levelOfLinked = (linked: { level: BloomLevel | 0 }[]): BloomLevel | 0 => linked.reduce<BloomLevel | 0>((m, o) => (o.level > m ? o.level : m), 0);
 
 export function QuestionCard({
   q,
@@ -34,6 +38,7 @@ export function QuestionCard({
   const Icon = QTYPE_ICON[q.type];
   const name = `السؤال ${index + 1}`;
   const linked = q.objectiveIds.map((id) => objectives.find((o) => o.objective.id === id)).filter((o): o is ObjectiveRef => !!o);
+  const derived = levelOfLinked(linked);
   const dangling = q.objectiveIds.length - linked.length;
 
   return (
@@ -115,6 +120,26 @@ export function QuestionCard({
               <Link2 size={14} aria-hidden="true" /> {q.objectiveIds.length ? 'تعديل الربط' : 'ربط بهدف'}
             </button>
           </div>
+        </div>
+
+        <div className="field field-bloom">
+          <label className="field-label" htmlFor={`${uid}-bl`}>
+            مستوى بلوم الذي يقيسه السؤال
+          </label>
+          <select
+            id={`${uid}-bl`}
+            className="input"
+            value={String(q.bloom)}
+            onChange={(e) => onPatch({ bloom: Number(e.target.value) as BloomLevel | 0 })}
+            data-testid="q-bloom"
+          >
+            <option value="0">{derived ? `تلقائي من الأهداف المرتبطة (${bloomInfo(derived)!.name})` : 'تلقائي من الأهداف المرتبطة (لا يوجد مستوى بعد)'}</option>
+            {BLOOM.map((b) => (
+              <option key={b.level} value={b.level}>
+                {b.level} — {b.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-row">

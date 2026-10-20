@@ -101,11 +101,34 @@ export async function orderItems(card: Locator, items: string[]) {
 
 /* ───────── student side ───────── */
 
-export async function startAs(page: Page, quizTitle: string, name: string) {
-  await page.goto('./#/student');
-  await page.getByRole('link', { name: `ابدأ: ${quizTitle}` }).click();
+/** Student mode (#/learn): picks the student by name (switching if someone else is chosen). */
+export async function chooseStudent(page: Page, name: string, url = './#/learn') {
+  await page.goto(url);
+  const who = page.getByTestId('page-learn-who');
+  const home = page.getByTestId('page-learn');
+  await expect(who.or(home)).toBeVisible();
+  if (await home.isVisible()) {
+    if ((await page.getByTestId('student-chip').textContent())?.trim() === name) return;
+    await page.getByTestId('switch-student').click();
+  }
+  await page.getByTestId('learn-name').fill(name);
+  await page.getByTestId('learn-continue').click();
+  await expect(page.getByTestId('page-learn')).toBeVisible();
+  await expect(page.getByTestId('student-chip')).toHaveText(name);
+}
+
+export const quizRow = (page: Page, title: string) => page.locator(`[data-testid="student-quiz"][data-quiz="${title}"]`).first();
+
+/** Opens a quiz's start screen from student mode as `name`. */
+export async function openQuizAs(page: Page, quizTitle: string, name: string, url?: string) {
+  await chooseStudent(page, name, url);
+  await quizRow(page, quizTitle).getByTestId('student-quiz-go').click();
   await expect(page.getByTestId('take-intro')).toBeVisible();
-  await page.getByTestId('student-name').fill(name);
+  await expect(page.getByTestId('take-who')).toContainText(name);
+}
+
+export async function startAs(page: Page, quizTitle: string, name: string) {
+  await openQuizAs(page, quizTitle, name);
   await page.getByTestId('take-start').click();
   await expect(page.getByTestId('take-question')).toBeVisible();
 }
