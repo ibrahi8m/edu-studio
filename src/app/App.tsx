@@ -11,11 +11,16 @@ import { LessonEditorPage } from '../pages/LessonEditor';
 import { LessonPreview } from '../pages/LessonPreview';
 import { ProjectDetail } from '../pages/ProjectDetail';
 import { ProjectsPage } from '../pages/Projects';
+import { AttemptDetail, QuizResults, ResultsHome } from '../pages/Results';
+import { QuizEditorPage } from '../pages/QuizEditor';
+import { QuizzesPage } from '../pages/Quizzes';
 import { SettingsPage } from '../pages/Settings';
+import { StudentHome } from '../pages/StudentHome';
+import { TakeQuiz } from '../pages/TakeQuiz';
 import { ToastProvider } from './Toasts';
 import { SettingsProvider, useSettings } from './SettingsContext';
 
-const PLANNED_ROUTES = ['/studio', '/quizzes', '/student', '/results', '/library', '/backup'];
+const PLANNED_ROUTES = ['/studio', '/library', '/backup'];
 
 function Root() {
   const { settings, ready } = useSettings();
@@ -30,12 +35,20 @@ function Root() {
         <Routes>
           {/* Student preview: full screen, outside the app shell */}
           <Route path="preview/:lessonId" element={<LessonPreview />} />
+          {/* Student taking a quiz: full screen, outside the app shell */}
+          <Route path="take/:quizId" element={<TakeQuiz />} />
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="projects/:id/lessons/:lessonId" element={<LessonEditorPage />} />
             <Route path="builder" element={<BuilderPage />} />
+            <Route path="quizzes" element={<QuizzesPage />} />
+            <Route path="quizzes/:quizId" element={<QuizEditorPage />} />
+            <Route path="student" element={<StudentHome />} />
+            <Route path="results" element={<ResultsHome />} />
+            <Route path="results/:quizId" element={<QuizResults />} />
+            <Route path="results/:quizId/:attemptId" element={<AttemptDetail />} />
             {PLANNED_ROUTES.map((p) => (
               <Route key={p} path={p.slice(1)} element={<ComingSoon path={p} />} />
             ))}

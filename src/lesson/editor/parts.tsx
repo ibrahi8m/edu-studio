@@ -1,11 +1,15 @@
-import { useEffect, useId, useLayoutEffect, useRef, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { Check, CircleAlert, CloudOff, LoaderCircle, Pencil } from 'lucide-react';
 import type { Option } from '../catalog';
 import type { SaveState } from '../useLessonEditor';
 
 /** Textarea that grows with its content (comfortable on phones, no inner scrollbars). */
-export function AutoTextarea({ minRows = 2, className = '', ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { minRows?: number }) {
+export const AutoTextarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement> & { minRows?: number }>(function AutoTextarea(
+  { minRows = 2, className = '', ...props },
+  outer,
+) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  useImperativeHandle(outer, () => ref.current as HTMLTextAreaElement);
   const fit = () => {
     const el = ref.current;
     if (!el) return;
@@ -18,7 +22,7 @@ export function AutoTextarea({ minRows = 2, className = '', ...props }: Textarea
     return () => window.removeEventListener('resize', fit);
   }, []);
   return <textarea ref={ref} rows={minRows} className={`input textarea auto-ta ${className}`} {...props} />;
-}
+});
 
 export function TextField({
   label,

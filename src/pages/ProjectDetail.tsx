@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowRight, BarChart3, BookOpen, ListChecks, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { errorMessage, useAllProjects, useProject, useProjectLessons } from '../app/data';
 import { lessonsLabel, minutesLabel, relativeTime } from '../app/format';
 import { useToast } from '../app/Toasts';
@@ -21,6 +21,10 @@ import { ConfirmDialog } from '../components/Dialog';
 import { LessonFormDialog, ProjectFormDialog } from '../components/forms';
 import { LessonRow, StatusPill, Tags } from '../components/ProjectBits';
 import { Pill } from '../components/ui';
+import { useProjectQuizzes } from '../quiz/data';
+import { totalPoints } from '../quiz/grading';
+import { quizReadiness } from '../quiz/model';
+import { questionsLabel } from './Quizzes';
 
 export function ProjectDetail() {
   const { id } = useParams();
@@ -166,6 +170,8 @@ export function ProjectDetail() {
         <p className="muted builder-note">افتح أي درس لكتابة أهدافه وبناء محتواه ومعاينته كما يراه الطالب. زر القلم يعدّل بيانات الدرس فقط.</p>
       </section>
 
+      <ProjectQuizzes projectId={project.id} lessons={lessons} />
+
       <ProjectFormDialog
         open={editing}
         initial={project}
@@ -268,5 +274,53 @@ export function ProjectDetail() {
         }}
       />
     </div>
+  );
+}
+
+function ProjectQuizzes({ projectId, lessons }: { projectId: string; lessons: Lesson[] }) {
+  const quizzes = useProjectQuizzes(projectId);
+  const lessonTitle = new Map(lessons.map((l) => [l.id, l.title]));
+  return (
+    <section className="card" data-testid="project-quizzes">
+      <div className="lessons-head">
+        <h2 className="card-title">
+          <ListChecks size={18} aria-hidden="true" /> اختبارات المشروع
+        </h2>
+        <Link to={`/quizzes?new=1&project=${projectId}`} className="btn btn-sm" data-testid="project-new-quiz">
+          <Plus size={16} aria-hidden="true" /> اختبار جديد
+        </Link>
+      </div>
+      {!quizzes?.length ? (
+        <p className="muted">لا توجد اختبارات لهذا المشروع بعد.</p>
+      ) : (
+        <ul className="quiz-list">
+          {quizzes
+            .slice()
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .map((z) => {
+              const ready = quizReadiness(z).ready;
+              return (
+                <li key={z.id} className="quiz-row">
+                  <Link to={`/quizzes/${z.id}`} className="quiz-row-main" aria-label={`فتح الاختبار: ${z.title}`}>
+                    <span className="quiz-row-title">{z.title}</span>
+                    <span className="quiz-row-meta">
+                      {z.lessonId && <span>{lessonTitle.get(z.lessonId) ?? 'درس محذوف'} · </span>}
+                      <span>
+                        {questionsLabel(z.questions.length)} · {totalPoints(z.questions)} درجة
+                      </span>
+                    </span>
+                  </Link>
+                  <span className="quiz-row-side">
+                    <Pill tone={ready ? 'success' : 'warning'}>{ready ? 'جاهز' : 'غير مكتمل'}</Pill>
+                    <Link to={`/results/${z.id}`} className="icon-btn" aria-label={`نتائج ${z.title}`}>
+                      <BarChart3 size={17} />
+                    </Link>
+                  </span>
+                </li>
+              );
+            })}
+        </ul>
+      )}
+    </section>
   );
 }

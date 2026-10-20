@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Check, CircleAlert, CircleCheck, Info, Target, TriangleAlert } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/db';
+import { normalizeQuiz } from '../../quiz/model';
+import { Check, CircleAlert, CircleCheck, Info, ListChecks, Target, TriangleAlert } from 'lucide-react';
 import { bloomInfo, objectiveStatement } from '../bloom';
 import { BLOCK_META } from '../catalog';
 import { alignment, blockLabel, toggleLink, type CoverageStatus } from '../model';
@@ -45,6 +49,19 @@ export function AlignmentTab({ state, edit, onGoToPlan, onGoToContent }: { state
   const setDoc = (fn: (d: LessonDoc) => LessonDoc) => edit((s) => ({ ...s, doc: fn(s.doc) }));
   const toggle = (blockId: string, objectiveId: string) => setDoc((d) => toggleLink(d, blockId, objectiveId));
   const blockIndex = (id: string) => doc.blocks.findIndex((b) => b.id === id) + 1;
+  // Phase 3: quiz questions (in this lesson's quizzes or project-wide quizzes) that measure each objective.
+  const questionCount = useLiveQuery(async () => {
+    const lesson = await db.lessons.get(doc.lessonId);
+    const m = new Map<string, number>();
+    if (!lesson) return m;
+    const quizzes = (await db.quizzes.where('projectId').equals(lesson.projectId).toArray()).map(normalizeQuiz);
+    for (const z of quizzes) {
+      if (!z || (z.lessonId && z.lessonId !== doc.lessonId)) continue;
+      for (const q of z.questions) for (const o of q.objectiveIds) m.set(o, (m.get(o) ?? 0) + 1);
+    }
+    return m;
+  }, [doc.lessonId]);
+  const qCount = (objectiveId: string) => questionCount?.get(objectiveId) ?? 0;
 
   if (doc.objectives.length === 0)
     return (
@@ -59,6 +76,7 @@ export function AlignmentTab({ state, edit, onGoToPlan, onGoToContent }: { state
     );
 
   const uncoveredNums = report.rows.filter((r) => r.status === 'uncovered').map((r) => r.index + 1);
+  const unassessedNums = questionCount ? report.rows.filter((r) => qCount(r.objective.id) === 0).map((r) => r.index + 1) : [];
   const partialNums = report.rows.filter((r) => r.status === 'partial').map((r) => r.index + 1);
 
   return (
@@ -90,6 +108,17 @@ export function AlignmentTab({ state, edit, onGoToPlan, onGoToContent }: { state
             </div>
           </div>
         )}
+        {unassessedNums.length > 0 && (
+          <div className="align-alert is-info" data-testid="alignment-unassessed">
+            <ListChecks size={20} aria-hidden="true" />
+            <div>
+              <strong>أهداف لا يقيسها أي سؤال: الهدف {unassessedNums.join('، ')}.</strong>
+              <p>
+                اربطها بأسئلة في <Link to="/quizzes">منشئ الاختبارات</Link> ليظهر أداء الطلاب فيها.
+              </p>
+            </div>
+          </div>
+        )}
         {report.unlinkedBlockIds.length > 0 && (
           <div className="align-alert is-info" data-testid="alignment-unlinked">
             <Info size={20} aria-hidden="true" />
@@ -117,6 +146,9 @@ export function AlignmentTab({ state, edit, onGoToPlan, onGoToContent }: { state
                 <StatusBadge status={r.status} />
               </div>
               <p className="cov-card-text">{objectiveStatement(r.objective, doc.audience) || 'هدف غير مكتمل'}</p>
+              <span className={`q-measure ${qCount(r.objective.id) ? '' : 'is-none'}`} data-testid="objective-questions">
+                <ListChecks size={14} aria-hidden="true" /> {qCount(r.objective.id) ? `يقيسه ${qCount(r.objective.id)} من أسئلة الاختبارات` : 'لا يقيسه أي سؤال بعد'}
+              </span>
               <span className="field-label">الكتل التي تحقق هذا الهدف</span>
               <div className="cov-chips" role="group" aria-label={`كتل الهدف ${r.index + 1}`}>
                 {columns.map((b) => {
@@ -160,6 +192,7 @@ export function AlignmentTab({ state, edit, onGoToPlan, onGoToContent }: { state
                     </th>
                   );
                 })}
+                <th scope="col" className="matrix-q-h">الأسئلة</th>
                 <th scope="col">الحالة</th>
               </tr>
             </thead>
@@ -190,6 +223,9 @@ export function AlignmentTab({ state, edit, onGoToPlan, onGoToContent }: { state
                       </td>
                     );
                   })}
+                  <td className={`matrix-q ${qCount(r.objective.id) ? '' : 'is-none'}`} data-testid="objective-questions">
+                    {qCount(r.objective.id)}
+                  </td>
                   <td>
                     <StatusBadge status={r.status} />
                   </td>
