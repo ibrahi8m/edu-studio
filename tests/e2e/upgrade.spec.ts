@@ -18,6 +18,7 @@ const ROOT = resolve('.');
 const LEGACY = resolve('.legacy/0.2.0');
 const LEGACY3 = resolve('.legacy/0.3.0');
 const LEGACY4 = resolve('.legacy/0.4.0');
+const LEGACY5 = resolve('.legacy/0.5.0');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -82,6 +83,7 @@ test.describe('Upgrades keep every record', () => {
     execSync('node scripts/build-legacy.mjs a4bfde7 0.2.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs e7c0389 0.3.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs ee13516 0.4.0', { cwd: ROOT, stdio: 'inherit' });
+    execSync('node scripts/build-legacy.mjs 8465f02 0.5.0', { cwd: ROOT, stdio: 'inherit' });
   });
 
   test('projects, lessons and settings created in 0.2.0 survive the update and open in the current lesson editor', async ({}, info) => {
@@ -139,7 +141,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v5');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v6');
 
       // Settings from 0.2.0
       await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
@@ -345,7 +347,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v5');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v6');
       // the finished attempt is there
       await page.goto(`${ORIGIN}#/results`);
       await page.getByTestId('results-row').first().click();
@@ -373,6 +375,90 @@ test.describe('Upgrades keep every record', () => {
       await page.goto(`${ORIGIN}#/results`);
       await page.getByTestId('student-row').first().locator('a').click();
       await expect(page.getByTestId('student-attempt')).toHaveCount(2);
+      await ctx2.close();
+    } finally {
+      stop(server);
+      await waitForPort(true);
+    }
+  });
+
+  test('lessons and student progress made in 0.5.0 survive the update; the new studio designs a map from that lesson and adds it to the lesson', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    const profile = newProfileDir();
+    let server: ChildProcess | undefined;
+    try {
+      // ── 0.5.0: a lesson with an objective and two parts, opened by a student ──
+      server = await serve(LEGACY5);
+      const ctx1 = await launchProfile(profile, info);
+      const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+      await p1.goto(ORIGIN);
+      await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+      await p1.reload();
+      await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+      await skipSplash(p1);
+      await p1.goto(`${ORIGIN}#/settings`);
+      await expect(p1.locator('.kv dd[dir=ltr]').nth(1)).toHaveText('0.5.0');
+      await p1.goto(`${ORIGIN}#/projects`);
+      await p1.getByTestId('new-project').click();
+      await p1.getByTestId('project-title').fill('وحدة الطاقة');
+      await p1.getByTestId('project-save').click();
+      await p1.getByTestId('new-lesson').first().click();
+      await p1.getByTestId('lesson-title').fill('مصادر الطاقة');
+      await p1.getByTestId('lesson-save').click();
+      await expect(p1.getByTestId('lesson-dialog')).toBeHidden();
+      await p1.getByRole('button', { name: 'فتح محرر الدرس: مصادر الطاقة' }).click();
+      await p1.getByTestId('add-objective').click();
+      await p1.getByRole('radio', { name: '1 التذكر' }).click();
+      await p1.getByTestId('verb-bank').getByRole('button', { name: 'يعدّد', exact: true }).click();
+      await p1.getByTestId('objective-content').fill('مصادر الطاقة المتجددة');
+      await p1.waitForTimeout(150);
+      await expect(p1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+      await p1.goto(`${ORIGIN}#/learn`);
+      await p1.getByTestId('learn-name').fill('سلمى');
+      await p1.getByTestId('learn-continue').click();
+      await p1.locator('[data-testid="learn-lesson"][data-lesson="مصادر الطاقة"]').getByTestId('open-lesson').click();
+      await p1.getByTestId('lp-next').click();
+      await expect(p1.getByTestId('lp-progress-text')).toHaveText('فتحت 2 من 2 أقسام');
+      await p1.waitForTimeout(300);
+      await ctx1.close();
+      stop(server);
+      await waitForPort(true);
+
+      // ── current version ──
+      server = await serve(ROOT);
+      const ctx2 = await launchProfile(profile, info);
+      const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+      await page.goto(ORIGIN);
+      await skipSplash(page);
+      await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+      await page.getByRole('button', { name: 'تحديث الآن' }).click();
+      await page.waitForLoadState('load');
+      await skipSplash(page);
+      await page.goto(`${ORIGIN}#/settings`);
+      await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v6');
+      // the student's progress from 0.5.0
+      await page.goto(`${ORIGIN}#/learn`);
+      await expect(page.getByTestId('student-chip')).toHaveText('سلمى');
+      await expect(page.locator('[data-testid="learn-lesson"][data-lesson="مصادر الطاقة"]').getByTestId('lesson-progress-text')).toHaveText('فتحت 2 من 2 أقسام');
+      // the new studio starts a map from the old lesson and adds its picture to it
+      await page.goto(`${ORIGIN}#/studio`);
+      await page.getByTestId('new-design').click();
+      await page.getByTestId('kind-conceptmap').check();
+      await page.getByTestId('design-title-input').fill('خريطة بعد الترقية');
+      await page.getByTestId('design-project-select').selectOption({ label: 'وحدة الطاقة' });
+      await page.getByTestId('design-lesson-select').selectOption({ label: 'مصادر الطاقة' });
+      await expect(page.getByTestId('design-from-lesson')).toBeChecked();
+      await page.getByTestId('create-design-save').click();
+      await expect(page.getByTestId('map-node')).toHaveCount(2);
+      await expect(page.locator('[data-testid="map-node"][aria-label="مفهوم: مصادر الطاقة المتجددة"]')).toHaveCount(1);
+      await page.getByTestId('add-to-lesson').click();
+      await page.getByTestId('add-to-lesson-save').click();
+      await expect(page.getByText('أُضيفت صورة التصميم إلى نهاية درس «مصادر الطاقة».')).toBeVisible();
+      await page.getByRole('button', { name: 'فتح الدرس' }).click();
+      await expect(page.getByTestId('block').last()).toHaveAttribute('data-type', 'image'); // opens on the content tab
+      await page.getByTestId('tab-plan').click();
+      await expect(page.getByTestId('objective-statement')).toHaveText('أن يعدّد الطالب مصادر الطاقة المتجددة.');
       await ctx2.close();
     } finally {
       stop(server);

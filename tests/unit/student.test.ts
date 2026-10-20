@@ -349,7 +349,7 @@ describe('migration from phase 3', () => {
 
     const v5 = new EduDB(name);
     await v5.open();
-    expect(v5.verno).toBe(5);
+    expect(v5.verno).toBe(6);
     expect((await loadQuiz(v5, 'z1'))?.settings).toMatchObject({ feedbackTiming: 'end', scorePolicy: 'best' });
     expect((await v5.attempts.get('a1'))?.result?.percent).toBe(100);
     // The old open attempt is resumed (not duplicated) and can be submitted.

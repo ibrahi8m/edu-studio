@@ -4,10 +4,6 @@ import { CURRENT_PHASE, NAV, PHASES } from '../app/nav';
 import { PageHeader, Pill } from '../components/ui';
 
 const PLANNED: Record<string, { intro: string; features: string[] }> = {
-  '/studio': {
-    intro: 'تصميم البطاقات التعليمية والملخصات البصرية وخرائط المفاهيم بقوالب محلية.',
-    features: ['بطاقات تعليمية بقوالب جاهزة', 'ملخصات بصرية', 'خرائط مفاهيم قابلة للتحرير', 'تصدير صورة PNG'],
-  },
   '/library': {
     intro: 'قوالب ووسائط تعليمية مخزنة على الجهاز وتعمل دون اتصال.',
     features: ['قوالب دروس وبطاقات مضمنة', 'رفع الصور والصوت وتصغيرها تلقائيًا', 'عرض المساحة المستخدمة', 'إعادة استخدام الوسائط في الدروس'],

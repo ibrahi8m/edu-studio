@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, CircleAlert, Eye, LayoutList, Target, Waypoints } from 'lucide-react';
+import { ArrowRight, ChevronLeft, CircleAlert, Eye, LayoutList, Palette, Target, Waypoints } from 'lucide-react';
 import { LIMITS } from '../db/catalog';
 import { alignment } from '../lesson/model';
 import { AlignmentTab } from '../lesson/editor/AlignmentTab';
@@ -87,9 +87,22 @@ export function LessonEditorPage() {
             <SaveStatusPill status={ed.status} onRetry={() => void ed.saveNow()} />
           </div>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => void openPreview()} data-testid="open-preview">
-          <Eye size={18} aria-hidden="true" /> <span>معاينة الطالب</span>
-        </button>
+        <div className="editor-actions">
+          <button
+            type="button"
+            className="btn"
+            onClick={async () => {
+              await ed.saveNow();
+              navigate(`/studio?new=1&project=${lesson.projectId}&lesson=${lesson.id}`);
+            }}
+            data-testid="lesson-new-design"
+          >
+            <Palette size={18} aria-hidden="true" /> <span>تصميم للدرس</span>
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => void openPreview()} data-testid="open-preview">
+            <Eye size={18} aria-hidden="true" /> <span>معاينة الطالب</span>
+          </button>
+        </div>
       </header>
 
       {ed.status.kind === 'conflict' && (

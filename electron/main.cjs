@@ -60,6 +60,11 @@ app.whenReady().then(() => {
     const ok = /^(app:|data:|blob:|devtools:|chrome-extension:)/.test(details.url);
     cb({ cancel: !ok });
   });
+  // Exported pictures: a normal "Save as" dialog. Tests set a folder to save into without the dialog.
+  session.defaultSession.on('will-download', (_e, item) => {
+    const dir = process.env.IBRAHI8M_DOWNLOAD_DIR;
+    if (dir) item.setSavePath(path.join(dir, item.getFilename()));
+  });
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

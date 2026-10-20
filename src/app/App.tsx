@@ -19,11 +19,13 @@ import { LearnHome } from '../pages/learn/LearnHome';
 import { LessonPlayer } from '../pages/learn/LessonPlayer';
 import { StudentLayout } from '../student/StudentLayout';
 import { StudentReport } from '../pages/StudentReport';
+import { StudioPage } from '../pages/Studio';
+import { DesignEditorPage } from '../pages/DesignEditor';
 import { TakeQuiz } from '../pages/TakeQuiz';
 import { ToastProvider } from './Toasts';
 import { SettingsProvider, useSettings } from './SettingsContext';
 
-const PLANNED_ROUTES = ['/studio', '/library', '/backup'];
+const PLANNED_ROUTES = ['/library', '/backup'];
 
 function Root() {
   const { settings, ready } = useSettings();
@@ -51,6 +53,8 @@ function Root() {
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="projects/:id/lessons/:lessonId" element={<LessonEditorPage />} />
             <Route path="builder" element={<BuilderPage />} />
+            <Route path="studio" element={<StudioPage />} />
+            <Route path="studio/:designId" element={<DesignEditorPage />} />
             <Route path="quizzes" element={<QuizzesPage />} />
             <Route path="quizzes/:quizId" element={<QuizEditorPage />} />
             <Route path="student" element={<Navigate to="/learn" replace />} />
