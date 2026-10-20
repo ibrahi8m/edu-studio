@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="a-silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F7"/><stop offset="0.5" stop-color="#A9B1BC"/><stop offset="1" stop-color="#5D6673"/></linearGradient>
+    <linearGradient id="a-shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262C35"/><stop offset="1" stop-color="#12161C"/></linearGradient>
+    <radialGradient id="a-eye" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#E3EEFF"/><stop offset="0.5" stop-color="#5B9BFF"/><stop offset="1" stop-color="#2F7BFF"/></radialGradient>
+    <filter id="a-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0E1014"/>
+  <rect x="5" y="5" width="502" height="502" rx="107" fill="none" stroke="url(#a-silver)" stroke-opacity="0.3" stroke-width="3"/>
+  <path d="M256 132 V96" stroke="url(#a-silver)" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="256" cy="80" r="24" fill="#2F7BFF" filter="url(#a-glow)" opacity="0.8"/>
+  <circle cx="256" cy="80" r="15" fill="url(#a-eye)"/>
+  <rect x="88" y="214" width="28" height="80" rx="12" fill="url(#a-silver)"/>
+  <rect x="396" y="214" width="28" height="80" rx="12" fill="url(#a-silver)"/>
+  <rect x="116" y="132" width="280" height="240" rx="96" fill="url(#a-shell)" stroke="url(#a-silver)" stroke-width="12"/>
+  <rect x="154" y="198" width="204" height="104" rx="52" fill="#06080B" stroke="#2F7BFF" stroke-opacity="0.6" stroke-width="4"/>
+  <circle cx="210" cy="250" r="30" fill="#2F7BFF" filter="url(#a-glow)" opacity="0.85"/>
+  <circle cx="302" cy="250" r="30" fill="#2F7BFF" filter="url(#a-glow)" opacity="0.85"/>
+  <circle cx="210" cy="250" r="20" fill="url(#a-eye)"/>
+  <circle cx="302" cy="250" r="20" fill="url(#a-eye)"/>
+  <!-- the 8: two linked circuit rings under the visor -->
+  <g fill="none" stroke="#5B9BFF" stroke-width="7">
+    <circle cx="256" cy="330" r="15"/><circle cx="256" cy="360" r="15"/>
+  </g>
+  <g stroke="url(#a-silver)" stroke-width="6" stroke-linecap="round"><path d="M241 345 H196 V330"/><path d="M271 345 H316 V360"/></g>
+  <circle cx="196" cy="326" r="7" fill="#A9B1BC"/><circle cx="316" cy="364" r="7" fill="#A9B1BC"/>
+  <rect x="196" y="400" width="120" height="16" rx="8" fill="url(#a-silver)" opacity="0.8"/>
+</svg>

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Portrait, Wordmark } from './Brand';
+import { BrandGlyph, Portrait, Wordmark } from './Brand';
 
 const DURATION = 1800;
 
@@ -25,6 +25,7 @@ export function Splash({ onDone, ownerName }: { onDone: () => void; ownerName: s
       <div className="splash-inner">
         <Portrait variant="hero" alt={`صورة ${ownerName}، صاحب المشروع`} />
         <div className="splash-brand">
+          <BrandGlyph height={84} className="splash-glyph" />
           <Wordmark size="xl" />
           <span className="splash-product" dir="ltr">EDU STUDIO</span>
           <span className="splash-slogan" dir="ltr">Create. Teach. Inspire.</span>

@@ -1,3 +1,4 @@
+import { DemoInstallButton } from '../demo/DemoUI';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FolderPlus, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
@@ -79,9 +80,13 @@ export function ProjectsPage() {
           </span>
           <h2>ابدأ بأول مشروع تعليمي</h2>
           <p className="muted">مثال: «وحدة الطاقة — العلوم — الصف السابع». بعد إنشائه أضف إليه الدروس.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-            <Plus size={18} aria-hidden="true" /> إنشاء مشروع
-          </button>
+          <div className="empty-actions">
+            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+              <Plus size={18} aria-hidden="true" /> إنشاء مشروع
+            </button>
+            <DemoInstallButton />
+          </div>
+          <p className="muted">أو جرّب التطبيق أولًا بمشروع جاهز فيه دروس واختبارات ونتائج طلاب.</p>
         </section>
       ) : (
         <>

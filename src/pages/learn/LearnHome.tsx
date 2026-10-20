@@ -1,3 +1,4 @@
+import { DemoBadge } from '../../demo/DemoUI';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, CheckCircle2, ChevronLeft, ListChecks, MonitorPlay, UserRound } from 'lucide-react';
@@ -102,6 +103,7 @@ function MyLessons({ name, onSwitch }: { name: string; onSwitch: () => void }) {
           <h2 className="card-title" id={`p-${g.project.id}`}>
             {g.project.title}
             {g.project.subject && <span className="muted learn-subject"> · {g.project.subject}</span>}
+            <DemoBadge id={g.project.id} />
           </h2>
           {g.lessons.length > 0 && (
             <ul className="learn-lessons">

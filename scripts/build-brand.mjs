@@ -24,9 +24,10 @@ await sharp(photo)
   .webp({ quality: 86 })
   .toFile(`${out}/ibrahim-avatar.webp`);
 
-// App icons from the robot mark.
-const mark = 'brand-src/robot-mark.svg';
-copyFileSync(mark, `${out}/robot-mark.svg`);
+// Final logo (phase 7, direction B "the figure-8 robot"): app icon with its tile, and the glyph without it.
+const mark = 'brand-src/ibrahi8m-mark.svg';
+copyFileSync(mark, `${out}/ibrahi8m-mark.svg`);
+copyFileSync('brand-src/ibrahi8m-glyph.svg', `${out}/ibrahi8m-glyph.svg`);
 copyFileSync(mark, 'public/favicon.svg');
 for (const size of [192, 512]) {
   await sharp(mark, { density: 300 }).resize(size, size).png().toFile(`public/icon-${size}.png`);
@@ -40,3 +41,9 @@ await sharp({ create: { width: 512, height: 512, channels: 4, background: '#0E10
 await sharp(mark, { density: 300 }).resize(180, 180).png().toFile('public/apple-touch-icon.png');
 
 console.log('brand assets written');
+
+// Illustrations used by the demo project (phase 7). Pictures only, no text: the alt text describes them.
+mkdirSync('public/demo', { recursive: true });
+for (const name of ['password-strength', 'phishing', 'footprint']) {
+  await sharp(`brand-src/demo/${name}.svg`, { density: 144 }).resize(960, 540).png({ compressionLevel: 9, palette: true }).toFile(`public/demo/${name}.png`);
+}

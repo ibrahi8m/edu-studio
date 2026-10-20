@@ -11,6 +11,8 @@ import { Portrait, Wordmark } from '../components/Brand';
 import { Card, PhaseBadge, Pill } from '../components/ui';
 import { formatBytes, getStorageInfo, type StorageInfo } from '../db/storage';
 import { backupDue, useLastBackup } from '../transfer/service';
+import { DemoInstallButton } from '../demo/DemoUI';
+import { isDemoId } from '../demo/content';
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -70,7 +72,7 @@ export function Dashboard() {
         </div>
       </section>
 
-      {backupDue(lastBackup, (projects?.length ?? 0) > 0) && (
+      {backupDue(lastBackup, (projects ?? []).some((p) => !isDemoId(p.id))) && (
         <div className="align-alert is-warn" role="status" data-testid="dashboard-backup-due">
           <ShieldCheck size={20} aria-hidden="true" />
           <div>
@@ -104,9 +106,12 @@ export function Dashboard() {
         {projects && projects.length === 0 ? (
           <div className="empty">
             <p>لا توجد مشاريع بعد.</p>
-            <Link to="/projects" className="btn btn-primary btn-sm">
-              <Plus size={16} aria-hidden="true" /> إنشاء أول مشروع
-            </Link>
+            <div className="empty-actions">
+              <Link to="/projects" className="btn btn-primary btn-sm">
+                <Plus size={16} aria-hidden="true" /> إنشاء أول مشروع
+              </Link>
+              <DemoInstallButton className="btn btn-sm" />
+            </div>
           </div>
         ) : (
           <>

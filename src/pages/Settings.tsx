@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { HardDrive, Monitor, Moon, ShieldCheck, Sun, Type, UserRound } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { FlaskConical, HardDrive, Monitor, Moon, ShieldCheck, Sun, Type, UserRound } from 'lucide-react';
+import { ConfirmDialog } from '../components/Dialog';
+import { DemoPanel } from '../demo/DemoUI';
+import { useMediaQuery } from '../lesson/editor/AlignmentTab';
 import { useSettings } from '../app/SettingsContext';
 import { OFFLINE_LABEL, useRuntime } from '../app/runtime';
 import { Card, PageHeader, Pill, Segmented } from '../components/ui';
@@ -51,9 +55,20 @@ export function SettingsPage() {
   const { settings, update, reset } = useSettings();
   const { offline } = useRuntime();
   const [storage, setStorage] = useState<StorageInfo | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  // follows the system setting live, while the page is open
+  const systemReduce = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   const refresh = () => void getStorageInfo().then(setStorage);
   useEffect(refresh, []);
+  const { hash } = useLocation();
+  useEffect(() => {
+    // «الإعدادات» links from inside the demo project land on the demo card
+    // after the shell has reset the scroll position for the new page
+    if (hash !== '#demo') return;
+    const t = window.setTimeout(() => document.getElementById('demo')?.scrollIntoView({ block: 'start' }), 60);
+    return () => window.clearTimeout(t);
+  }, [hash]);
 
   const off = OFFLINE_LABEL[offline];
 
@@ -100,6 +115,9 @@ export function SettingsPage() {
             />
             <span>تقليل الحركة والمؤثرات</span>
           </label>
+          {systemReduce && settings.motion !== 'reduce' && (
+            <p className="field-hint" data-testid="motion-system-note">نظام جهازك يطلب تقليل الحركة، فهي مخفّضة تلقائيًا.</p>
+          )}
           <label className="switch-row">
             <input
               type="checkbox"
@@ -133,6 +151,11 @@ export function SettingsPage() {
           </div>
         </Card>
 
+        <Card title="المحتوى التجريبي" icon={FlaskConical} className="span-2" testId="settings-demo">
+          <span id="demo" className="anchor" />
+          <DemoPanel />
+        </Card>
+
         <Card title="التشغيل دون إنترنت" icon={ShieldCheck}>
           <Pill tone={off.tone} testId="offline-state">{off.text}</Pill>
           <dl className="kv">
@@ -164,13 +187,24 @@ export function SettingsPage() {
           <button
             type="button"
             className="btn btn-danger-ghost"
-            onClick={() => {
-              if (window.confirm('إعادة كل الإعدادات إلى القيم الافتراضية؟')) void reset();
-            }}
+            onClick={() => setConfirmReset(true)}
+            data-testid="settings-reset"
           >
             إعادة الإعدادات الافتراضية
           </button>
         </Card>
+        <ConfirmDialog
+          open={confirmReset}
+          title="إعادة الإعدادات الافتراضية؟"
+          message="تعود السمة وحجم الخط والحركة وشاشة البداية وبيانات صاحب المشروع إلى قيمها الأولى. المشاريع والدروس والنتائج لا تتغير."
+          confirmLabel="نعم، أعِدها"
+          testId="confirm-settings-reset"
+          onClose={() => setConfirmReset(false)}
+          onConfirm={() => {
+            setConfirmReset(false);
+            void reset();
+          }}
+        />
       </div>
     </div>
   );

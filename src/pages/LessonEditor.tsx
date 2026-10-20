@@ -1,3 +1,4 @@
+import { DemoBadge } from '../demo/DemoUI';
 import { useEffect, useId, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BookmarkPlus, ChevronLeft, CircleAlert, Eye, LayoutList, Palette, Target, Waypoints } from 'lucide-react';
@@ -94,6 +95,7 @@ export function LessonEditorPage() {
           />
           <div className="editor-sub">
             <SaveStatusPill status={ed.status} onRetry={() => void ed.saveNow()} />
+            <DemoBadge id={lesson.projectId} />
           </div>
         </div>
         <div className="editor-actions">

@@ -15,6 +15,8 @@ interface SettingsState {
 const Ctx = createContext<SettingsState | null>(null);
 
 const THEME_MIRROR = 'ibrahi8m.theme';
+/** Same for «تقليل الحركة», so the very first screen after opening already respects it. */
+const MOTION_MIRROR = 'ibrahi8m.motion';
 
 function applyToDocument(s: Settings) {
   const root = document.documentElement;
@@ -26,6 +28,7 @@ function applyToDocument(s: Settings) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F4F6F9' : '#0E1014');
   try {
     localStorage.setItem(THEME_MIRROR, theme);
+    localStorage.setItem(MOTION_MIRROR, s.motion);
   } catch {
     /* storage may be blocked; the DB stays the source of truth */
   }
@@ -96,11 +99,13 @@ export function useSettings(): SettingsState {
   return v;
 }
 
-/** Paints the last known theme before React mounts, to avoid a flash. */
+/** Paints the last known theme and motion setting before React mounts, to avoid a flash of the wrong ones. */
 export function paintMirroredTheme() {
   try {
     const t = localStorage.getItem(THEME_MIRROR);
     if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    const m = localStorage.getItem(MOTION_MIRROR);
+    if (m === 'reduce' || m === 'system') document.documentElement.dataset.motion = m;
   } catch {
     /* ignore */
   }

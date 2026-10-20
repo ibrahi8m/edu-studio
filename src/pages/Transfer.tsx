@@ -1,3 +1,4 @@
+import { isDemoId } from '../demo/content';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -77,7 +78,8 @@ export function TransferPage() {
     if (!exportId && projects?.length === 1) setExportId(projects[0].id);
   }, [projects, exportId]);
 
-  const hasData = !!counts && (counts.projects > 0 || counts.library > 0);
+  // The demo project alone is not the teacher's data: no reminder for it.
+  const hasData = !!counts && ((projects ?? []).some((p) => !isDemoId(p.id)) || counts.library > 0);
   const due = backupDue(last, hasData);
 
   const backup = async () => {

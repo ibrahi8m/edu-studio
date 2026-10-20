@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 14 320 470">
+  <!-- IBRAHI8M mark without the tile (final, phase 7): the mark is the figure 8 —
+       upper loop: the robot head with two lit eyes; lower loop: an electric circuit ring. -->
+  <defs>
+    <linearGradient id="g-silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F7"/><stop offset="0.5" stop-color="#A9B1BC"/><stop offset="1" stop-color="#5D6673"/></linearGradient>
+    <radialGradient id="g-eye" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#E3EEFF"/><stop offset="0.5" stop-color="#5B9BFF"/><stop offset="1" stop-color="#2F7BFF"/></radialGradient>
+    <filter id="g-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+    <g transform="translate(0 6)">
+    <circle cx="256" cy="350" r="90" fill="none" stroke="#2F7BFF" stroke-width="26"/>
+    <g stroke="#5B9BFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M166 350 H124 V310"/><path d="M346 350 H388 V390"/>
+    </g>
+    <circle cx="124" cy="302" r="12" fill="#5B9BFF"/><circle cx="388" cy="398" r="12" fill="#5B9BFF"/>
+    <path d="M256 70 V48" stroke="url(#g-silver)" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="256" cy="38" r="15" fill="url(#g-eye)"/>
+    <circle cx="256" cy="168" r="100" fill="#171B22" stroke="url(#g-silver)" stroke-width="24"/>
+    <rect x="178" y="132" width="156" height="74" rx="37" fill="#06080B" stroke="#2F7BFF" stroke-opacity="0.65" stroke-width="5"/>
+    <circle cx="221" cy="169" r="26" fill="#2F7BFF" filter="url(#g-glow)" opacity="0.85"/>
+    <circle cx="291" cy="169" r="26" fill="#2F7BFF" filter="url(#g-glow)" opacity="0.85"/>
+    <circle cx="221" cy="169" r="17" fill="url(#g-eye)"/>
+    <circle cx="291" cy="169" r="17" fill="url(#g-eye)"/>
+    <circle cx="256" cy="262" r="16" fill="url(#g-eye)"/>
+  </g>
+</svg>

@@ -136,11 +136,19 @@ textarea {
   unicode-bidi: isolate;
 }
 
+.wordmark { display: inline-flex; align-items: center; }
 .wordmark-eight {
-  color: var(--accent-strong);
-  -webkit-text-fill-color: var(--accent-strong);
-  text-shadow: 0 0 18px var(--accent-glow);
+  display: inline-block;
+  width: 0.56em;
+  height: 0.84em;
+  margin: 0 0.03em;
+  overflow: visible;
+  filter: drop-shadow(0 0 6px var(--accent-glow));
 }
+.w8-head { fill: none; stroke: var(--silver-2); stroke-width: 7; }
+.w8-loop { fill: none; stroke: var(--accent-strong); stroke-width: 8; }
+.w8-eye { fill: var(--accent-strong); }
+.brand-glyph { display: block; height: auto; }
 
 .wordmark-sm { font-size: 1.0625rem; }
 .wordmark-md { font-size: 1.5rem; }
@@ -295,10 +303,10 @@ textarea {
   background-clip: text;
 }
 
-.splash .wordmark-eight {
-  color: #5b9bff;
-  -webkit-text-fill-color: #5b9bff;
-}
+.splash .w8-head { stroke: #c9d0d9; }
+.splash .w8-loop,
+.splash .w8-eye { stroke: #5b9bff; }
+.splash .w8-eye { fill: #5b9bff; stroke: none; }
 
 .splash-product {
   font-family: var(--font-display);
@@ -686,9 +694,10 @@ textarea {
   line-height: 1.6;
 }
 
-.pill-success { background: var(--success-soft); color: var(--success); }
-.pill-warning { background: var(--warning-soft); color: var(--warning); }
-.pill-danger { background: var(--danger-soft); color: var(--danger); }
+/* Pill text uses the *-text tokens: ≥ 5.5:1 in the light theme (the base colours gave 3.9–4.4; phase 7 review). */
+.pill-success { background: var(--success-soft); color: var(--success-text); }
+.pill-warning { background: var(--warning-soft); color: var(--warning-text); }
+.pill-danger { background: var(--danger-soft); color: var(--danger-text); }
 .pill-accent { background: var(--accent-soft); color: var(--accent-strong); }
 .pill-neutral { background: var(--surface-2); color: var(--text-2); border-color: var(--border); }
 
@@ -1137,11 +1146,34 @@ textarea {
 .more-name { flex: 1; font-weight: 500; }
 .more-chev { color: var(--text-3); }
 
+/* ───────── Motion (phase 7) ─────────
+ * The plan: transitions of 150–250 ms, a soft glow on keyboard focus only, and all of it
+ * switched off by «تقليل الحركة» or the system setting (rules below). */
+:focus-visible { box-shadow: 0 0 0 4px var(--accent-glow); transition: box-shadow var(--dur-fast) var(--ease); }
+.btn { transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast), transform var(--dur-fast); }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.98); }
+.icon-btn { transition: background var(--dur-fast), color var(--dur-fast), transform var(--dur-fast); }
+.icon-btn:active:not(:disabled) { transform: scale(0.94); }
+/* Cards in a grid arrive one after another (only the first few, so long lists never wait). */
+/* «lift» moves without fading: text is always at full contrast, even mid-animation. */
+@keyframes lift { from { transform: translateY(6px); } }
+:is(.project-grid, .module-grid, .library-grid, .design-grid, .stat-row) > * { animation: lift 240ms var(--ease) both; }
+:is(.project-grid, .module-grid, .library-grid, .design-grid, .stat-row) > :nth-child(2) { animation-delay: 30ms; }
+:is(.project-grid, .module-grid, .library-grid, .design-grid, .stat-row) > :nth-child(3) { animation-delay: 60ms; }
+:is(.project-grid, .module-grid, .library-grid, .design-grid, .stat-row) > :nth-child(4) { animation-delay: 90ms; }
+:is(.project-grid, .module-grid, .library-grid, .design-grid, .stat-row) > :nth-child(n + 5) { animation-delay: 120ms; }
+/* Moving between the parts of a lesson in student mode */
+.lp-part { animation: lift 220ms var(--ease) both; }
+.module-card { transition: border-color var(--dur-fast), transform var(--dur-fast), background var(--dur-fast); }
+.module-card:hover { transform: translateY(-2px); }
+.pill { transition: background var(--dur-fast), color var(--dur-fast); }
+
 /* ───────── Motion preferences ───────── */
 :root[data-motion='reduce'] *,
 :root[data-motion='reduce'] *::before,
 :root[data-motion='reduce'] *::after {
   animation-duration: 1ms !important;
+  animation-delay: 0ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 1ms !important;
 }
@@ -1151,6 +1183,7 @@ textarea {
   :root[data-motion='system'] *::before,
   :root[data-motion='system'] *::after {
     animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
@@ -1507,3 +1540,37 @@ select.input {
   .stat { padding: 12px; }
   .stat-n { font-size: 1.375rem; }
 }
+
+/* ───────── Demo content (phase 7) ───────── */
+.demo-banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--text);
+  margin-block-end: 16px;
+}
+.demo-banner svg { flex: none; margin-top: 3px; color: var(--accent-strong); }
+.demo-banner p { margin: 0; }
+.demo-panel { display: grid; gap: 12px; justify-items: start; }
+.demo-panel p { margin: 0; }
+.demo-actions, .empty-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.demo-actions { justify-content: flex-start; }
+.project-card-pills { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.anchor { display: block; position: relative; top: -80px; visibility: hidden; }
+.learn-subject + .pill, .card-title .pill { margin-inline-start: 8px; vertical-align: middle; }
+
+/* About page (phase 7) */
+.principles { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.principle { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-elev); }
+.principle span { color: var(--text-2); }
+.principle-link { margin-top: auto; display: inline-flex; align-items: center; gap: 4px; font-weight: 500; width: fit-content; }
+.identity { display: flex; gap: 18px; align-items: center; }
+.identity p { margin: 0 0 10px; }
+.swatches { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; }
+.swatches li { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 18px; height: 18px; border-radius: 6px; border: 1px solid var(--border-strong); }
+@media (max-width: 480px) { .identity { flex-direction: column; align-items: flex-start; } }

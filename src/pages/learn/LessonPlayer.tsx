@@ -169,7 +169,7 @@ export function LessonPlayer() {
           {toc}
         </details>
 
-        <section className="card lp-part" aria-labelledby="lp-part-h" data-testid="lp-part" data-section={section.kind}>
+        <section key={section.id} className="card lp-part" aria-labelledby="lp-part-h" data-testid="lp-part" data-section={section.kind}>
           <div className="lv-container">
             <div className="lv lp-lv">
               {section.kind === 'intro' && (

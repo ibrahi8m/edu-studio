@@ -1,3 +1,5 @@
+import { DemoBadge, DemoBanner } from '../demo/DemoUI';
+import { isDemoId } from '../demo/content';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BarChart3, BookOpen, FolderOutput, ListChecks, Palette, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
@@ -80,10 +82,13 @@ export function ProjectDetail() {
         </Link>
       </nav>
 
+      {isDemoId(project.id) && <DemoBanner where="project" />}
+
       <section className={`project-hero c-${project.color}`}>
         <span className="project-card-bar" aria-hidden="true" />
         <div className="project-hero-main">
           <div className="project-hero-tags">
+            <DemoBadge id={project.id} />
             <StatusPill status={project.status} />
             {meta.map((m) => (
               <Pill key={m}>{m}</Pill>

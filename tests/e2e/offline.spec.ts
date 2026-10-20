@@ -49,7 +49,10 @@ test.describe('Phase 0 — offline foundation', () => {
     await page.goto('./');
     // Splash with the real photo, served from the local cache
     await expect(page.getByTestId('splash')).toBeVisible();
-    const photo = page.getByTestId('splash').locator('img');
+    // (phase 7 added the logo next to the photo: both must load from the local cache)
+    const photo = page.getByTestId('splash').locator('.portrait-frame img');
+    const logo = page.getByTestId('splash').locator('img.brand-glyph');
+    await expect.poll(() => logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
     await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
     await waitPastSplash(page);
 

@@ -21,6 +21,7 @@ const LEGACY3 = resolve('.legacy/0.3.0');
 const LEGACY4 = resolve('.legacy/0.4.0');
 const LEGACY5 = resolve('.legacy/0.5.0');
 const LEGACY6 = resolve('.legacy/0.6.0');
+const LEGACY7 = resolve('.legacy/0.7.0');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -87,6 +88,8 @@ test.describe('Upgrades keep every record', () => {
     execSync('node scripts/build-legacy.mjs ee13516 0.4.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs 8465f02 0.5.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs 41a5797 0.6.0', { cwd: ROOT, stdio: 'inherit' });
+    // 02f8d6f = 0.7.0 with its package.json restored (e9092d1 shipped a stripped one)
+    execSync('node scripts/build-legacy.mjs 02f8d6f 0.7.0', { cwd: ROOT, stdio: 'inherit' });
   });
 
   test('projects, lessons and settings created in 0.2.0 survive the update and open in the current lesson editor', async ({}, info) => {
@@ -552,6 +555,83 @@ test.describe('Upgrades keep every record', () => {
       expect(data.lessons.map((l: { title: string }) => l.title)).toEqual(['مصادر الطاقة']);
       expect(data.designs.map((d: { title: string }) => d.title)).toEqual(['خريطة 0.6']);
       expect(data.library.map((d: { title: string }) => d.title)).toEqual(['قالب من 0.6']);
+      await ctx2.close();
+    } finally {
+      stop(server);
+      await waitForPort(true);
+    }
+  });
+  test('a project and a library template made in 0.7.0 survive the update; the demo installs next to them and is removed without touching them', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    const profile = newProfileDir();
+    let server: ChildProcess | undefined;
+    try {
+      // ── 0.7.0: a project with a lesson and an objective, the lesson saved as a template ──
+      server = await serve(LEGACY7);
+      const ctx1 = await launchProfile(profile, info);
+      const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+      await p1.goto(ORIGIN);
+      await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+      await p1.reload();
+      await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+      await skipSplash(p1);
+      await p1.goto(`${ORIGIN}#/settings`);
+      await expect(p1.locator('.kv dd[dir=ltr]').nth(1)).toHaveText('0.7.0');
+      await p1.goto(`${ORIGIN}#/projects`);
+      await p1.getByTestId('new-project').click();
+      await p1.getByTestId('project-title').fill('وحدة الطاقة');
+      await p1.getByTestId('project-save').click();
+      await p1.getByTestId('new-lesson').first().click();
+      await p1.getByTestId('lesson-title').fill('مصادر الطاقة');
+      await p1.getByTestId('lesson-save').click();
+      await expect(p1.getByTestId('lesson-dialog')).toBeHidden();
+      await p1.getByRole('button', { name: 'فتح محرر الدرس: مصادر الطاقة' }).click();
+      await p1.getByTestId('add-objective').click();
+      await p1.getByRole('radio', { name: '1 التذكر' }).click();
+      await p1.getByTestId('verb-bank').getByRole('button', { name: 'يعدّد', exact: true }).click();
+      await p1.getByTestId('objective-content').fill('مصادر الطاقة المتجددة');
+      await p1.waitForTimeout(150);
+      await expect(p1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+      await p1.getByTestId('lesson-to-library').click();
+      await p1.getByTestId('library-title').fill('قالب من 0.7');
+      await p1.getByTestId('library-save').click();
+      await expect(p1.getByTestId('library-save-dialog')).toBeHidden();
+      await ctx1.close();
+      stop(server);
+      await waitForPort(true);
+
+      // ── current version ──
+      server = await serve(ROOT);
+      const ctx2 = await launchProfile(profile, info);
+      const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+      await page.goto(ORIGIN);
+      await skipSplash(page);
+      await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+      await page.getByRole('button', { name: 'تحديث الآن' }).click();
+      await page.waitForLoadState('load');
+      await skipSplash(page);
+      await page.goto(`${ORIGIN}#/settings`);
+      await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7'); // phase 7 needed no database change
+      // the new logo is served
+      expect(await page.evaluate(async () => (await fetch('favicon.svg')).text())).toContain('final, phase 7');
+      // add the demo next to the old project
+      await page.getByTestId('demo-panel').getByTestId('demo-install').click();
+      await expect(page.getByTestId('demo-panel')).toHaveAttribute('data-installed', 'true', { timeout: 15_000 });
+      await page.goto(`${ORIGIN}#/projects`);
+      await expect(page.getByTestId('project-card')).toHaveCount(2);
+      // remove it: the 0.7.0 project, its objective and the template are all still there
+      await page.goto(`${ORIGIN}#/settings`);
+      await page.getByTestId('demo-remove').click();
+      await page.getByTestId('confirm-demo-remove').getByRole('button', { name: 'نعم، احذفه' }).click();
+      await expect(page.getByTestId('demo-panel')).toHaveAttribute('data-installed', 'false');
+      await page.goto(`${ORIGIN}#/projects`);
+      await expect(page.getByTestId('project-card')).toHaveCount(1);
+      await page.getByTestId('project-card').click();
+      await page.getByRole('button', { name: 'فتح محرر الدرس: مصادر الطاقة' }).click();
+      await expect(page.getByTestId('objective-statement')).toHaveText('أن يعدّد الطالب مصادر الطاقة المتجددة.');
+      await page.goto(`${ORIGIN}#/library?source=mine`);
+      await expect(page.locator('[data-testid="library-item"][data-title="قالب من 0.7"]')).toBeVisible();
       await ctx2.close();
     } finally {
       stop(server);

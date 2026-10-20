@@ -65,6 +65,10 @@ export function detectLevel(verb: string): BloomLevel | 0 {
 }
 
 export function isNonMeasurable(verb: string): boolean {
+  // «يعرّف» (defines) is a bank verb; without its shadda it reads «يعرف» (knows), which is not measurable.
+  // A verb written with its shadda that matches the bank is the measurable one.
+  const first = verb.trim().split(/\s+/)[0] ?? '';
+  if (first.includes('\u0651') && detectLevel(verb)) return false;
   const v = normalizeArabic(verb).split(' ')[0];
   return NON_MEASURABLE.some((n) => normalizeArabic(n) === v);
 }

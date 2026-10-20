@@ -4,6 +4,7 @@ import type { Lesson, Project } from '../db/db';
 import { STATUS_LABEL, STATUS_TONE } from '../db/catalog';
 import { lessonsLabel, minutesLabel, relativeTime } from '../app/format';
 import { Pill } from './ui';
+import { DemoBadge } from '../demo/DemoUI';
 
 export function StatusPill({ status }: { status: Project['status'] }) {
   return <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>;
@@ -31,7 +32,10 @@ export function ProjectCard({ project, lessonCount }: { project: Project; lesson
         <span className="project-card-icon" aria-hidden="true">
           <FolderKanban size={20} />
         </span>
-        <StatusPill status={project.status} />
+        <span className="project-card-pills">
+          <DemoBadge id={project.id} />
+          <StatusPill status={project.status} />
+        </span>
       </span>
       <span className="project-card-title">{project.title}</span>
       {meta && <span className="project-card-meta">{meta}</span>}

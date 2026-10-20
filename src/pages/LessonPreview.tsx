@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowRight, GraduationCap, Monitor, Smartphone } from 'lucide-react';
 import { db } from '../db/db';
@@ -19,7 +19,9 @@ export function LessonPreview() {
   }, [lessonId]);
   const wide = useMediaQuery('(min-width: 768px)');
   const [device, setDevice] = useState<'desktop' | 'phone'>('desktop');
-  const [notes, setNotes] = useState(false);
+  // ?notes=1 opens the preview with the teacher's decision card shown (link from the about page)
+  const [params] = useSearchParams();
+  const [notes, setNotes] = useState(params.get('notes') === '1');
 
   if (data === undefined) return <div className="preview-shell" />;
   if (data === null)

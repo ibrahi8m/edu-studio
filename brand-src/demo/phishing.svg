@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#F4F7FB"/>
+  <circle cx="160" cy="430" r="190" fill="#E3ECFA"/>
+  <!-- envelope hanging on the hook -->
+  <g transform="translate(520 350) rotate(-8)">
+    <rect width="260" height="170" rx="16" fill="#FFFFFF" stroke="#2563EB" stroke-width="8"/>
+    <path d="M12 16 L130 100 L248 16" fill="none" stroke="#2563EB" stroke-width="8" stroke-linejoin="round"/>
+  </g>
+  <!-- fishing line and hook -->
+  <path d="M700 0 V250" stroke="#5D6673" stroke-width="6"/>
+  <path d="M700 250 v70 a46 46 0 0 1 -92 0 v-18" fill="none" stroke="#5D6673" stroke-width="14" stroke-linecap="round"/>
+  <path d="M608 302 l-16 22 l28 -4 z" fill="#5D6673"/>
+  <!-- warning badge -->
+  <g transform="translate(250 120)">
+    <path d="M110 0 L220 190 H0 Z" fill="#F59E0B" stroke="#B45309" stroke-width="8" stroke-linejoin="round"/>
+    <rect x="100" y="55" width="20" height="80" rx="10" fill="#1E242C"/><circle cx="110" cy="162" r="13" fill="#1E242C"/>
+  </g>
+  <!-- shield: the safe choice -->
+  <g transform="translate(800 330)"><path d="M60 0 L120 22 V80 C120 120 92 150 60 166 C28 150 0 120 0 80 V22 Z" fill="#16A34A"/><path d="M34 82 l20 20 l36 -42" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></g>
+</svg>

@@ -54,6 +54,13 @@ describe('Bloom bank and objective checks', () => {
     expect(isNonMeasurable('يعدّد')).toBe(false);
   });
 
+  it('«يعرّف» (defines) from the verb bank is measurable; «يعرف» (knows) is not', () => {
+    expect(isNonMeasurable('يعرّف')).toBe(false);
+    expect(isNonMeasurable('يعرف')).toBe(true);
+    // every verb in the bank, written as the bank writes it, passes the check
+    for (const b of BLOOM) for (const v of b.verbs) expect(isNonMeasurable(v), v).toBe(false);
+  });
+
   it('builds the ABCD statement and grades completeness', () => {
     const o = newObjective({ level: 1, verb: 'يعدّد', content: 'ثلاثة مصادر للطاقة المتجددة', condition: 'بعد مشاهدة الفيديو', criterion: 'دون أخطاء' });
     expect(objectiveStatement(o)).toBe('أن يعدّد الطالب ثلاثة مصادر للطاقة المتجددة بعد مشاهدة الفيديو دون أخطاء.');

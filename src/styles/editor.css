@@ -8,11 +8,12 @@
 .b4 { --bc: #fbbf24; }
 .b5 { --bc: #fb923c; }
 .b6 { --bc: #c084fc; }
+/* Light theme: every level ≥ 4.7:1 on its own tinted label (checked in phase 7; levels 2–5 were 3.7–4.0). */
 :root[data-theme='light'] .b1 { --bc: #1d4ed8; }
-:root[data-theme='light'] .b2 { --bc: #0e7490; }
-:root[data-theme='light'] .b3 { --bc: #047857; }
-:root[data-theme='light'] .b4 { --bc: #a16207; }
-:root[data-theme='light'] .b5 { --bc: #c2410c; }
+:root[data-theme='light'] .b2 { --bc: #155e75; }
+:root[data-theme='light'] .b3 { --bc: #065f46; }
+:root[data-theme='light'] .b4 { --bc: #854d0e; }
+:root[data-theme='light'] .b5 { --bc: #9a3412; }
 :root[data-theme='light'] .b6 { --bc: #7e22ce; }
 
 .page-wide { max-width: 1280px; }
@@ -458,4 +459,9 @@
   .link-btn { min-height: 40px; }
   .search-clear { width: 40px; height: 40px; }
   .btn-sm { min-height: 40px; }
+}
+
+/* Narrow phones: long lesson / design titles stay readable inside the field. */
+@media (max-width: 480px) {
+  .editor-title { font-size: 1.1875rem; }
 }

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="b-silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F7"/><stop offset="0.5" stop-color="#A9B1BC"/><stop offset="1" stop-color="#5D6673"/></linearGradient>
+    <radialGradient id="b-eye" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#E3EEFF"/><stop offset="0.5" stop-color="#5B9BFF"/><stop offset="1" stop-color="#2F7BFF"/></radialGradient>
+    <filter id="b-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0E1014"/>
+  <rect x="5" y="5" width="502" height="502" rx="107" fill="none" stroke="url(#b-silver)" stroke-opacity="0.3" stroke-width="3"/>
+  <!-- lower loop of the 8: a circuit ring -->
+  <circle cx="256" cy="352" r="92" fill="none" stroke="#2F7BFF" stroke-width="22"/>
+  <g stroke="#5B9BFF" stroke-width="6" stroke-linecap="round" fill="none">
+    <path d="M164 352 H120 V312"/><path d="M348 352 H392 V392"/><path d="M256 444 V470"/>
+  </g>
+  <circle cx="120" cy="306" r="9" fill="#5B9BFF"/><circle cx="392" cy="398" r="9" fill="#5B9BFF"/><circle cx="256" cy="474" r="8" fill="#5B9BFF"/>
+  <!-- upper loop of the 8: the robot head -->
+  <path d="M256 66 V44" stroke="url(#b-silver)" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="256" cy="36" r="13" fill="url(#b-eye)"/>
+  <circle cx="256" cy="168" r="102" fill="#171B22" stroke="url(#b-silver)" stroke-width="20"/>
+  <rect x="180" y="134" width="152" height="70" rx="35" fill="#06080B" stroke="#2F7BFF" stroke-opacity="0.6" stroke-width="4"/>
+  <circle cx="222" cy="169" r="24" fill="#2F7BFF" filter="url(#b-glow)" opacity="0.85"/>
+  <circle cx="290" cy="169" r="24" fill="#2F7BFF" filter="url(#b-glow)" opacity="0.85"/>
+  <circle cx="222" cy="169" r="15" fill="url(#b-eye)"/>
+  <circle cx="290" cy="169" r="15" fill="url(#b-eye)"/>
+  <!-- the waist where the loops meet -->
+  <circle cx="256" cy="264" r="14" fill="url(#b-eye)"/>
+</svg>

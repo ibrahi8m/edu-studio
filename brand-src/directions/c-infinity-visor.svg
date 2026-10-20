@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="c-silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F7"/><stop offset="0.5" stop-color="#A9B1BC"/><stop offset="1" stop-color="#5D6673"/></linearGradient>
+    <radialGradient id="c-eye" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#E3EEFF"/><stop offset="0.5" stop-color="#5B9BFF"/><stop offset="1" stop-color="#2F7BFF"/></radialGradient>
+    <filter id="c-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0E1014"/>
+  <rect x="5" y="5" width="502" height="502" rx="107" fill="none" stroke="url(#c-silver)" stroke-opacity="0.3" stroke-width="3"/>
+  <path d="M256 128 V100" stroke="url(#c-silver)" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="256" cy="86" r="16" fill="url(#c-eye)"/>
+  <!-- flat geometric helmet, single line weight -->
+  <path d="M120 238 C120 170 176 128 256 128 C336 128 392 170 392 238 V318 C392 368 352 400 300 400 H212 C160 400 120 368 120 318 Z" fill="#171B22" stroke="url(#c-silver)" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M104 232 V312 M408 232 V312" stroke="url(#c-silver)" stroke-width="16" stroke-linecap="round"/>
+  <!-- the 8 lying down (∞): continuous learning; the eyes sit in its loops -->
+  <path d="M256 272 C226 226 166 226 166 272 C166 318 226 318 256 272 C286 226 346 226 346 272 C346 318 286 318 256 272 Z" fill="#06080B" stroke="#2F7BFF" stroke-width="12" stroke-linejoin="round"/>
+  <circle cx="206" cy="272" r="22" fill="#2F7BFF" filter="url(#c-glow)" opacity="0.85"/>
+  <circle cx="306" cy="272" r="22" fill="#2F7BFF" filter="url(#c-glow)" opacity="0.85"/>
+  <circle cx="206" cy="272" r="14" fill="url(#c-eye)"/>
+  <circle cx="306" cy="272" r="14" fill="url(#c-eye)"/>
+  <path d="M220 360 H292" stroke="url(#c-silver)" stroke-width="8" stroke-linecap="round" opacity="0.8"/>
+</svg>

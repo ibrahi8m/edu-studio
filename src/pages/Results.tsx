@@ -1,3 +1,4 @@
+import { DemoBadge } from '../demo/DemoUI';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -69,6 +70,7 @@ export function ResultsHome() {
                   <span className="quiz-row-title">{z.title}</span>
                   <span className="quiz-row-meta">
                     <span className="lesson-project">{pMap.get(z.projectId)}</span>
+                    <DemoBadge id={z.projectId} />
                     {s.attempts ? (
                       <>
                         <span>· {s.attempts} محاولة</span>
