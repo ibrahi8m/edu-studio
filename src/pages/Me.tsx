@@ -117,7 +117,7 @@ function CvSection() {
     try {
       await update('cv', clean);
       setEditing(false);
-      toast({ message: 'حُفظت السيرة الذاتية على هذا الجهاز.' });
+      toast({ message: 'حُفظت السيرة الذاتية على هذا الجهاز.', sound: 'save' });
     } catch (e) {
       toast({ message: `تعذّر حفظ السيرة الذاتية: ${errorMessage(e)}`, tone: 'danger' });
     } finally {

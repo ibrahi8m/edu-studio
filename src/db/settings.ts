@@ -3,6 +3,10 @@ import type { EduDB } from './db';
 export type ThemeMode = 'dark' | 'light' | 'system';
 export type FontScale = 1 | 1.15 | 1.3;
 export type MotionMode = 'system' | 'reduce';
+/** 1.2.0: how much the animated background moves. 'off' also stops every interface animation. */
+export type MotionLevel = 'full' | 'calm' | 'static' | 'off';
+export type BackgroundKind = 'particles' | 'gradient' | 'grid' | 'waves';
+export type MusicTrack = 'tech' | 'ambient' | 'focus' | 'space';
 
 /** 1.1.0: the CV shown in «صفحتي». Seeded with the owner's data; every field is editable. */
 export interface CvData {
@@ -85,6 +89,14 @@ export interface Settings {
   userRole: string;
   userOrganization: string;
   cv: CvData;
+  /** 1.2.0 appearance and sound. Sound is off until the user starts it; nothing plays on opening. */
+  motionLevel: MotionLevel;
+  background: BackgroundKind;
+  musicTrack: MusicTrack;
+  musicVolume: number;
+  sfxOn: boolean;
+  sfxVolume: number;
+  muted: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -102,6 +114,13 @@ export const DEFAULT_SETTINGS: Settings = {
   userRole: '',
   userOrganization: '',
   cv: DEFAULT_CV,
+  motionLevel: 'calm',
+  background: 'particles',
+  musicTrack: 'ambient',
+  musicVolume: 0.4,
+  sfxOn: false,
+  sfxVolume: 0.5,
+  muted: false,
 };
 
 const VALIDATORS: { [K in keyof Settings]: (v: unknown) => boolean } = {
@@ -119,6 +138,13 @@ const VALIDATORS: { [K in keyof Settings]: (v: unknown) => boolean } = {
   userRole: (v) => typeof v === 'string' && v.length <= 80,
   userOrganization: (v) => typeof v === 'string' && v.length <= 160,
   cv: isCv,
+  motionLevel: (v) => v === 'full' || v === 'calm' || v === 'static' || v === 'off',
+  background: (v) => v === 'particles' || v === 'gradient' || v === 'grid' || v === 'waves',
+  musicTrack: (v) => v === 'tech' || v === 'ambient' || v === 'focus' || v === 'space',
+  musicVolume: (v) => typeof v === 'number' && v >= 0 && v <= 1,
+  sfxOn: (v) => typeof v === 'boolean',
+  sfxVolume: (v) => typeof v === 'number' && v >= 0 && v <= 1,
+  muted: (v) => typeof v === 'boolean',
 };
 
 /**
@@ -144,6 +170,8 @@ export function loadSettingsFromRows(rows: { key: string; value: unknown }[]): S
       (out as unknown as Record<string, unknown>)[row.key] = row.value;
     }
   }
+  // Before 1.2.0 «تقليل الحركة» was a single switch: it becomes «إيقاف كل الحركة».
+  if (out.motion === 'reduce' && !rows.some((r) => r.key === 'motionLevel')) out.motionLevel = 'off';
   return out;
 }
 

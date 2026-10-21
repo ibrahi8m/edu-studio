@@ -87,7 +87,7 @@ export function TransferPage() {
     try {
       const f = await exportBackupFile();
       download(f.blob, f.name);
-      toast({ message: `حُفظت النسخة الاحتياطية «${f.name}» (${formatBytes(f.blob.size)}).` });
+      toast({ message: `حُفظت النسخة الاحتياطية «${f.name}» (${formatBytes(f.blob.size)}).`, sound: 'export' });
     } catch (e) {
       toast({ message: errorMessage(e), tone: 'danger' });
     } finally {
@@ -101,7 +101,7 @@ export function TransferPage() {
     try {
       const f = await exportProjectFile(exportId, withResults);
       download(f.blob, f.name);
-      toast({ message: `صُدّر المشروع إلى «${f.name}» (${formatBytes(f.blob.size)}).` });
+      toast({ message: `صُدّر المشروع إلى «${f.name}» (${formatBytes(f.blob.size)}).`, sound: 'export' });
     } catch (e) {
       toast({ message: errorMessage(e), tone: 'danger' });
     } finally {

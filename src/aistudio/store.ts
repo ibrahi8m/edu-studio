@@ -106,6 +106,7 @@ export function normalizeBrand(raw: unknown): BrandKit | null {
     logoRules: str(r.logoRules, 1000),
     rules: str(r.rules, 2000),
     avoid: str(r.avoid, 1000),
+    ...(typeof r.logoFile === 'string' && /^[\w.-]{1,80}$/.test(r.logoFile) ? { logoFile: r.logoFile } : {}),
     createdAt: typeof r.createdAt === 'number' ? r.createdAt : Date.now(),
     updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : Date.now(),
   };

@@ -9,6 +9,7 @@ import './styles/student.css';
 import './styles/studio.css';
 import './styles/library.css';
 import './styles/v11.css';
+import './styles/v12.css';
 import { App } from './app/App';
 import { paintMirroredTheme } from './app/SettingsContext';
 import { initServiceWorker } from './app/runtime';

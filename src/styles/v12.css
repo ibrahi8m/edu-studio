@@ -1,0 +1,111 @@
+/* 1.2.0 — animated background, theme button and fade, sound controls, AI Studio polish. */
+
+/* The background sits under everything and never takes clicks. */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+}
+.shell,
+.take-shell { position: relative; z-index: 1; }
+/* The learner environment shows the calm background; quiz taking keeps its plain, opaque page. */
+.student-shell { background: transparent; }
+
+/* Theme switch: a short cross-fade of colours only while switching. */
+:root.theme-fade,
+:root.theme-fade * {
+  transition: background-color 320ms ease, color 320ms ease, border-color 320ms ease, fill 320ms ease !important;
+}
+
+/* Sidebar tools (theme + sound) */
+.sidebar-brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sidebar-tools { display: flex; gap: 2px; }
+.sidebar-tools .icon-btn,
+.mobile-topbar-end .icon-btn,
+.student-bar-end .icon-btn { min-width: var(--tap); min-height: var(--tap); }
+@media (max-width: 1023px) and (min-width: 768px) {
+  .sidebar-brand { flex-direction: column; }
+  .sidebar-tools { flex-direction: column; align-items: center; }
+}
+.theme-btn svg, .sound-btn svg { transition: transform var(--dur) var(--ease); }
+.theme-btn:hover svg { transform: rotate(-18deg); }
+.sound-btn.is-playing { color: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent-soft); border-radius: 50%; }
+
+/* Sound popover (rendered at the end of <body>) */
+.sound-btn-wrap { position: relative; }
+.sound-pop {
+  position: fixed;
+  z-index: 80;
+  inline-size: min(340px, calc(100vw - 24px));
+  max-block-size: calc(100dvh - 90px);
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  animation: pop-in 160ms var(--ease) both;
+}
+.sound-pop-head { display: flex; align-items: center; gap: 6px; margin-block-end: 6px; }
+.sound-pop-head strong { flex: 1; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (max-width: 767px) {
+  /* on phones: a bottom sheet above the navigation bar */
+  .sound-pop {
+    top: auto !important;
+    left: 12px !important;
+    right: 12px;
+    inline-size: auto;
+    bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom) + 10px);
+    max-block-size: 70dvh;
+  }
+  body:has(.student-shell) .sound-pop { bottom: calc(env(safe-area-inset-bottom) + 12px); }
+}
+.sound-controls { display: grid; gap: 10px; }
+.sound-transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sound-transport .btn { min-block-size: var(--tap); }
+.slider-field input[type='range'] { inline-size: 100%; accent-color: var(--accent); min-block-size: 32px; }
+
+/* Settings «المظهر والصوت» */
+.appearance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.appearance-grid > section { display: grid; gap: 10px; align-content: start; }
+@media (max-width: 900px) { .appearance-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* AI Design Studio: a slightly more technical frame, a smooth «إعدادات متقدمة», a response on generate */
+[data-testid='page-ai-studio'] .ai-form,
+[data-testid='page-ai-studio'] .ai-output {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), var(--shadow);
+}
+.ai-more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; min-block-size: var(--tap); font-weight: 600; color: var(--accent-strong); }
+.ai-more > summary::-webkit-details-marker { display: none; }
+.ai-more > summary::before { content: '‹'; display: inline-block; transition: transform var(--dur) var(--ease); }
+.ai-more[open] > summary::before { transform: rotate(-90deg); }
+.ai-more[open] .ai-more-body { animation: reveal 240ms var(--ease) both; }
+.ai-more-body { display: grid; gap: 12px; padding-block-start: 6px; }
+@keyframes reveal { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.ai-output.is-fresh { animation: fresh-glow 1.1s var(--ease) both; }
+@keyframes fresh-glow {
+  0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  40% { box-shadow: 0 0 0 6px var(--accent-soft), 0 0 28px var(--accent-glow); }
+  100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), var(--shadow); }
+}
+.ai-logo-note { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px dashed var(--border-strong); background: var(--surface-2); font-size: 0.875rem; color: var(--text-2); }
+.ai-logo-thumb { inline-size: 36px; block-size: 36px; flex: none; }
+.ai-logo-note a { text-decoration: underline; text-underline-offset: 3px; }
+/* Small phones: the top bar holds the brand, theme, sound and the user card without widening the page. */
+@media (max-width: 767px) {
+  .mobile-topbar { gap: 6px; }
+  .mobile-topbar-end { gap: 2px; }
+}
+@media (max-width: 360px) {
+  .mobile-topbar { padding-inline: 10px; }
+  .mobile-topbar-end .icon-btn { min-width: 40px; }
+  /* the robot mark alone identifies the app; the wordmark is in the sidebar and splash */
+  .mobile-topbar .brand-lockup-text { display: none; }
+}
+/* the content page actions (edit, publish, export, delete) wrap instead of widening small phones */
+.project-hero-actions { flex-wrap: wrap; }
+@media (max-width: 767px) { .project-hero-actions .btn { flex: 1 1 auto; } }

@@ -3,6 +3,8 @@ import { HardDrive, LogOut, UserRound, Wifi, WifiOff } from 'lucide-react';
 import { BrandMark } from '../components/Brand';
 import { useOnline } from '../app/runtime';
 import { useStudent } from './identity';
+import { ThemeButton } from '../app/ThemeButton';
+import { SoundButton } from '../audio/AudioControl';
 
 /**
  * «بيئة المتعلم» (student mode before 1.1.0): its own full-screen frame, separate from the teacher's app shell.
@@ -29,6 +31,8 @@ export function StudentLayout() {
             <HardDrive size={14} aria-hidden="true" />
             <span className="sync-text">محفوظ على الجهاز · لا مزامنة</span>
           </span>
+          <ThemeButton />
+          <SoundButton />
           {name && (
             <span className="student-chip" data-testid="student-chip">
               <UserRound size={15} aria-hidden="true" /> {name}

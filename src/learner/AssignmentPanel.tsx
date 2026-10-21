@@ -57,7 +57,7 @@ export function AssignmentPanel({ block, lesson, name, stepsTicked }: { block: A
     try {
       await saveSubmission(db, name, lesson, { id: block.id, title: block.title || 'تكليف' }, { answer, files, submit });
       setDirty(false);
-      toast({ message: submit ? 'سُلّم التكليف على هذا الجهاز. يراه المعلم في «النتائج» على الجهاز نفسه.' : 'حُفظت المسودة على هذا الجهاز فقط (لم تُسلَّم).' });
+      toast({ message: submit ? 'سُلّم التكليف على هذا الجهاز. يراه المعلم في «النتائج» على الجهاز نفسه.' : 'حُفظت المسودة على هذا الجهاز فقط (لم تُسلَّم).', sound: 'save' });
     } catch (e) {
       toast({ message: isQuotaError(e) ? 'مساحة التخزين على الجهاز لا تكفي.' : errorMessage(e), tone: 'danger' });
     } finally {

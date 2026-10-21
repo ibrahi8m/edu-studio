@@ -226,7 +226,7 @@ test.describe('Phase 7 — identity and demo content', () => {
       ['about', '/about', 'page-about'],
     ];
     const problems: string[] = [];
-    for (const theme of ['داكن', 'فاتح']) {
+    for (const theme of ['ليلي', 'نهاري']) { // 1.2.0 labels (were داكن/فاتح)
       await page.goto('./#/settings');
       await page.getByRole('radio', { name: theme }).click();
       for (const [name, url, id] of screens) {
@@ -305,20 +305,21 @@ test.describe('Phase 7 — identity and demo content', () => {
     void testInfo;
   });
 
-  test('motion: short entrances by default; «تقليل الحركة» (and the system setting) turn them off and it survives reopening', async ({ page }, testInfo) => {
+  // 1.2.0: the «تقليل الحركة» switch became the «مستوى الحركة» choice; «إيقاف كل الحركة» is what the switch did.
+  test('motion: short entrances by default; «إيقاف كل الحركة» (and the system setting) turn them off and it survives reopening', async ({ page }, testInfo) => {
     await disableSplash(page);
     const duration = () => page.evaluate(() => getComputedStyle(document.querySelector('.page')!).animationDuration);
     await page.goto('./#/projects');
     expect(await duration()).toBe('0.26s');
     await page.goto('./#/settings');
-    await page.getByTestId('toggle-motion').check();
+    await page.getByRole('radio', { name: 'إيقاف كل الحركة' }).click();
     await expect.poll(() => page.evaluate(() => document.documentElement.dataset.motion)).toBe('reduce');
     await page.goto('./#/projects');
     expect(await duration()).toBe('0.001s');
     await page.reload();
     expect(await duration()).toBe('0.001s');
     await page.goto('./#/settings');
-    await page.getByTestId('toggle-motion').uncheck();
+    await page.getByRole('radio', { name: 'حركة هادئة' }).click();
     await expect.poll(() => page.evaluate(() => document.documentElement.dataset.motion)).toBe('system');
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('./#/settings');
@@ -332,7 +333,7 @@ test.describe('Phase 7 — identity and demo content', () => {
     await disableSplash(page);
     await myProject(page);
     await page.goto('./#/settings');
-    await page.getByRole('radio', { name: 'فاتح' }).click();
+    await page.getByRole('radio', { name: 'نهاري' }).click();
     let popup = false;
     page.on('dialog', async (d) => {
       popup = true;

@@ -54,13 +54,30 @@ describe('AI Design Studio engine', () => {
     expect(own.warnings).toEqual([]);
   });
 
-  it('texts are quoted exactly; logo is never drawn, only a clean area is reserved', () => {
-    const out = buildPrompt({ ...EMPTY_INPUT, idea: 'poster', texts: 'الأمن الرقمي\nاحمِ بياناتك', textPlacement: 'top', logoPlacement: 'bottom-left' }, 'pro', null);
+  it('texts are quoted exactly; the original logo of the chosen identity is added automatically, never redrawn (1.2.0)', () => {
+    const edu = resolveBrand('brand-edu-studio', [])!;
+    // nothing chosen by hand: the default placement already carries the logo
+    expect(EMPTY_INPUT.logoPlacement).toBe('bottom-left');
+    const out = buildPrompt({ ...EMPTY_INPUT, idea: 'poster', texts: 'الأمن الرقمي\nاحمِ بياناتك', textPlacement: 'top' }, 'quick', edu);
     expect(out.promptEn).toContain('"الأمن الرقمي", "احمِ بياناتك" placed at the top');
     expect(out.promptEn).toContain('right-to-left Arabic');
     expect(out.texts).toEqual(['الأمن الرقمي', 'احمِ بياناتك']);
+    expect(out.logoRules).toContain('official IBRAHI8M EDU STUDIO logo');
     expect(out.logoRules).toContain('bottom-left corner');
-    expect(out.logoRules).toContain('Do not draw, redraw');
+    expect(out.logoRules).toContain('ibrahi8m-mark.svg');
+    expect(out.logoRules).toContain('Do not draw, redraw, recolour, distort');
+    expect(out.logoRules).toContain('attach the original logo file');
+    expect(out.explanationAr).toContain('لا تستطيع رسم شعارك بدقة');
+    // every mode gets it, not only «هوية العلامة»
+    for (const m of ['quick', 'pro', 'brand'] as const) expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, m, edu).logoRules).toContain('official IBRAHI8M EDU STUDIO logo');
+    // the other identity names its own logo and never the studio's file
+    const uni = buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, 'pro', resolveBrand('brand-ai-universe', [])!);
+    expect(uni.logoRules).toContain('official IBRAHIM AI UNIVERSE logo');
+    expect(uni.logoRules).not.toContain('ibrahi8m-mark.svg');
+    expect(uni.logoRules).toContain('not part of this app');
+    // «بلا هوية» or «بلا شعار»: no logo at all
+    expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, 'pro', null).logoRules).toContain('Do not draw or invent any logo');
+    expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x', logoPlacement: '' }, 'pro', edu).logoRules).toContain('Do not draw or invent any logo');
     expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, 'pro', null).promptEn).toContain('no text in the image');
   });
 

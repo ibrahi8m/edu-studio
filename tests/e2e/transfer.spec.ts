@@ -311,7 +311,7 @@ test.describe('Phase 6 — import and export', () => {
     const netA = watchNetwork(pa, base);
     await buildProject(pa);
     await pa.goto('./#/settings');
-    await pa.getByRole('radio', { name: 'فاتح' }).click();
+    await pa.getByRole('radio', { name: 'نهاري' }).click();
     await pa.goto('./#/backup');
     await expect(pa.getByTestId('backup-due')).toContainText('لم تُنشأ أي نسخة احتياطية بعد.');
     const dl = pa.waitForEvent('download');

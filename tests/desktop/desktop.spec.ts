@@ -40,7 +40,7 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
   await w1.screenshot({ path: 'docs/screenshots/desktop-app/dashboard.png' });
 
   await w1.goto('app://edu/index.html#/settings');
-  await w1.getByRole('radio', { name: 'فاتح' }).click();
+  await w1.getByRole('radio', { name: 'نهاري' }).click();
   await w1.goto('app://edu/index.html#/me');
   const f = w1.getByTestId('profile-userOrganization');
   await f.fill('جامعة — اختبار سطح المكتب');

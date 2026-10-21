@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { db } from '../db/db';
 import { DEFAULT_SETTINGS, loadSettings, PROFILE_KEYS, resetSettings, saveSetting, type Settings } from '../db/settings';
 import { requestPersistence } from '../db/storage';
@@ -18,17 +18,26 @@ const THEME_MIRROR = 'ibrahi8m.theme';
 /** Same for «تقليل الحركة», so the very first screen after opening already respects it. */
 const MOTION_MIRROR = 'ibrahi8m.motion';
 
-function applyToDocument(s: Settings) {
+/** «إيقاف كل الحركة» (1.2.0) or the older «تقليل الحركة» switch stop every interface animation. */
+export const motionAttr = (s: Pick<Settings, 'motion' | 'motionLevel'>) => (s.motion === 'reduce' || s.motionLevel === 'off' ? 'reduce' : 'system');
+
+function applyToDocument(s: Settings, animate = false) {
   const root = document.documentElement;
   const prefersLight = window.matchMedia?.('(prefers-color-scheme: light)').matches;
   const theme = s.theme === 'system' ? (prefersLight ? 'light' : 'dark') : s.theme;
+  // A short colour cross-fade when the user switches theme (not on load, not with motion off).
+  if (animate && root.dataset.theme && root.dataset.theme !== theme && motionAttr(s) !== 'reduce') {
+    root.classList.add('theme-fade');
+    window.setTimeout(() => root.classList.remove('theme-fade'), 400);
+  }
   root.dataset.theme = theme;
   root.style.setProperty('--font-scale', String(s.fontScale));
-  root.dataset.motion = s.motion;
+  root.dataset.motion = motionAttr(s);
+  root.dataset.motionLevel = s.motionLevel;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F4F6F9' : '#0E1014');
   try {
     localStorage.setItem(THEME_MIRROR, theme);
-    localStorage.setItem(MOTION_MIRROR, s.motion);
+    localStorage.setItem(MOTION_MIRROR, motionAttr(s));
   } catch {
     /* storage may be blocked; the DB stays the source of truth */
   }
@@ -38,6 +47,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [ready, setReady] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const applied = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -67,10 +77,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     // Until the saved settings are read, keep the theme painted from the last session;
     // applying the defaults here would flash the dark theme and overwrite that memory.
     if (!ready) return;
-    applyToDocument(settings);
+    applyToDocument(settings, applied.current);
+    applied.current = true;
     if (settings.theme !== 'system') return;
+    // «تلقائي»: follow the device live when it switches between light and dark.
     const mq = window.matchMedia('(prefers-color-scheme: light)');
-    const onChange = () => applyToDocument(settings);
+    const onChange = () => applyToDocument(settings, true);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, [settings, ready]);

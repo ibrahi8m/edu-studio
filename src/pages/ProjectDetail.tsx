@@ -248,7 +248,7 @@ export function ProjectDetail() {
           try {
             await updateProject(db, project.id, input);
             setEditing(false);
-            toast({ message: 'حُفظت التعديلات على هذا الجهاز.' });
+            toast({ message: 'حُفظت التعديلات على هذا الجهاز.', sound: 'save' });
           } catch (e) {
             toast({ message: errorMessage(e), tone: 'danger' });
           }

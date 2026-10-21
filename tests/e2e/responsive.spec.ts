@@ -67,7 +67,7 @@ test.describe('Phase 0 — responsive shell', () => {
 
   test('a saved light theme never flashes dark while the app starts', async ({ page }) => {
     await page.goto('./#/settings');
-    await page.getByRole('radio', { name: 'فاتح' }).click();
+    await page.getByRole('radio', { name: 'نهاري' }).click();
     await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
     // Record every theme the page paints from the very first script onwards.
     await page.addInitScript(() => {

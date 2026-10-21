@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CheckCircle2, TriangleAlert, X } from 'lucide-react';
+import { sfx, type Sfx } from '../audio/engine';
+import { useSettings } from './SettingsContext';
 
 interface ToastSpec {
   message: string;
@@ -7,6 +9,8 @@ interface ToastSpec {
   action?: { label: string; run: () => void | Promise<void> };
   /** ms; actions get longer so there is time to undo. */
   duration?: number;
+  /** 1.2.0: optional interface sound (only if the user turned them on). Errors sound by default. */
+  sound?: Sfx | null;
 }
 
 interface ToastItem extends ToastSpec {
@@ -18,10 +22,15 @@ const Ctx = createContext<(t: ToastSpec) => void>(() => undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const seq = useRef(0);
+  const { settings } = useSettings();
+  const prefs = useRef(settings);
+  prefs.current = settings;
 
   const dismiss = useCallback((id: number) => setItems((xs) => xs.filter((x) => x.id !== id)), []);
   const show = useCallback((t: ToastSpec) => {
     const id = ++seq.current;
+    const sound = t.sound === undefined ? (t.tone === 'danger' ? 'error' : null) : t.sound;
+    if (sound) sfx(sound, prefs.current.sfxOn, prefs.current.sfxVolume, prefs.current.muted);
     // One toast at a time keeps the phone screen clear.
     setItems([{ ...t, id }]);
   }, []);

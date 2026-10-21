@@ -120,20 +120,23 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   const useBrand = mode === 'brand' && brand ? brand : null;
   if (mode === 'brand' && !brand) warnings.push('وضع «هوية العلامة» يحتاج اختيار هوية محفوظة؛ استُخدم الوضع الاحترافي.');
   if (useBrand && !useBrand.colors.trim()) warnings.push(`هوية «${useBrand.name}» بلا ألوان محددة بعد. عدّلها من «الهويات» لتُضاف ألوانها إلى البرومبت.`);
-  if (useBrand) {
-    const clash = OTHER_IDENTITY[useBrand.id];
+  // The identity chosen for the logo (every mode) is kept apart from the other one.
+  if (brand) {
+    const clash = OTHER_IDENTITY[brand.id];
     const all = [input.idea, input.subjectEn, input.texts, input.required, input.colors].join(' ');
-    if (clash && clash.test(all)) warnings.push(`نصك يذكر هوية أخرى غير «${useBrand.name}». الهويتان منفصلتان: لا تجمع بينهما في تصميم واحد.`);
+    if (clash && clash.test(all)) warnings.push(`نصك يذكر هوية أخرى غير «${brand.name}». الهويتان منفصلتان: لا تجمع بينهما في تصميم واحد.`);
   }
 
   const texts = lines(input.texts).slice(0, 6);
   const colors = clean([useBrand?.colors, input.colors].filter(Boolean).join(', '));
   const colorsEn = colors ? roughTranslate(colors).english || colors : '';
 
-  // Logo: the model must leave room for the real file, never draw one.
-  const logoRules = logoAt?.en
-    ? `Leave a clean, empty, uncluttered area in the ${logoAt.en} for the official logo, which will be placed afterwards from the original file. Do not draw, redraw, imitate, invent or alter any logo, emblem or brand mark.${useBrand?.logoRules ? ` ${useBrand.logoRules}` : ''}`
-    : 'Do not draw or invent any logo, emblem, watermark or brand mark.';
+  // Logo (1.2.0): added to every prompt automatically for the chosen identity. The model must use
+  // the real file (as a reference image where the tool allows it) or leave its place clean — never draw one.
+  const logoRules =
+    brand && logoAt?.en
+      ? `Brand logo: the official ${brand.name} logo goes in the ${logoAt.en}, used exactly as the original file${brand.logoFile ? ` (${brand.logoFile})` : ''} — same shapes, colours and proportions, with clear space around it. Do not draw, redraw, recolour, distort, crop, restyle or imitate it, and do not add any other logo or brand mark. If the tool accepts a reference image, attach the original logo file; otherwise keep that area clean and empty so the logo can be placed afterwards.${brand.logoRules ? ` ${brand.logoRules}` : ''}`
+      : 'Do not draw or invent any logo, emblem, watermark or brand mark.';
 
   const parts: string[] = [];
   const article = /^[aeiou]/i.test(type.en) ? 'An' : 'A';
@@ -201,7 +204,11 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   if (colors) ar.push(`الألوان: ${colors}.`);
   if (useBrand) ar.push(`طُبّقت قواعد هوية «${useBrand.name}» المحفوظة (النبرة والخطوط والقواعد والممنوعات).`);
   ar.push(texts.length ? `النصوص المطلوبة على التصميم كُتبت بين علامتي تنصيص كما هي، مع طلب كتابتها حرفيًا${textAt?.value ? ` في ${textAt.ar}` : ''}. أدوات توليد الصور قد تخطئ في الحروف العربية: راجع النص في الصورة الناتجة، أو أضفه لاحقًا ببرنامج تصميم.` : textAt?.value ? `طُلبت مساحة فارغة في ${textAt.ar} لتضيف النص لاحقًا.` : 'طُلب تصميم بلا نص.');
-  ar.push(logoAt?.value ? `لم يُطلب رسم شعار: طُلبت مساحة نظيفة في ${logoAt.ar} لتضع فيها شعارك الأصلي من ملفه بعد التوليد.` : 'طُلب عدم رسم أي شعار.');
+  ar.push(
+    brand && logoAt?.value
+      ? `الشعار: أُضيفت تلقائيًا تعليمات شعار «${brand.name}» الأصلي في ${logoAt.ar}، باستخدام ملفه كما هو دون إعادة رسم أو تغيير ألوانه ونسبه. تنبيه صريح: أدوات توليد الصور من النص لا تستطيع رسم شعارك بدقة من الوصف وحده؛ إن كانت الأداة تقبل صورة مرجعية فأرفق ملف الشعار الأصلي${brand.logoFile ? ` (${brand.logoFile})` : ''}، وإلا فاتركها تُبقي المكان فارغًا وضع الشعار بعد التوليد ببرنامج تصميم.`
+      : 'طُلب عدم رسم أي شعار (اخترت «بلا شعار» أو «بلا هوية»).',
+  );
   ar.push('البرومبت السلبي (Negative prompt) يذكر ما يجب تجنبه، ويُلصق في خانته إن كانت الأداة تدعمها.');
   ar.push('هذا نص يُنسخ إلى أداة توليد صور خارجية تختارها أنت؛ التطبيق لا يولّد صورًا ولا يتصل بأي خدمة.');
 

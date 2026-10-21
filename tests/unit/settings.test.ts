@@ -69,4 +69,29 @@ describe('local settings store', () => {
     expect(displayName({ userName: ' سارة ', ownerFullName: 'قديم' })).toBe('سارة');
     expect(displayName({ userName: '', ownerFullName: 'اسم من إصدار سابق' })).toBe('اسم من إصدار سابق');
   });
+
+  it('1.2.0: appearance and sound settings are saved, validated, and sound never starts on its own', async () => {
+    const d = fresh();
+    const s0 = await loadSettings(d);
+    expect(s0).toMatchObject({ motionLevel: 'calm', background: 'particles', musicTrack: 'ambient', sfxOn: false, muted: false });
+    await saveSetting(d, 'motionLevel', 'full');
+    await saveSetting(d, 'background', 'waves');
+    await saveSetting(d, 'musicTrack', 'space');
+    await saveSetting(d, 'musicVolume', 0.25);
+    await saveSetting(d, 'sfxOn', true);
+    const s1 = await loadSettings(d);
+    expect(s1).toMatchObject({ motionLevel: 'full', background: 'waves', musicTrack: 'space', musicVolume: 0.25, sfxOn: true });
+    // there is no «playing» setting: nothing can resume playing at the next launch
+    expect('musicPlaying' in s1).toBe(false);
+    await expect(saveSetting(d, 'musicVolume', 2)).rejects.toThrow();
+    await expect(saveSetting(d, 'background', 'video' as never)).rejects.toThrow();
+  });
+
+  it('1.2.0: the old «تقليل الحركة» switch becomes «إيقاف كل الحركة»', async () => {
+    const d = fresh();
+    await saveSetting(d, 'motion', 'reduce');
+    expect((await loadSettings(d)).motionLevel).toBe('off');
+    await saveSetting(d, 'motionLevel', 'static');
+    expect((await loadSettings(d)).motionLevel).toBe('static');
+  });
 });

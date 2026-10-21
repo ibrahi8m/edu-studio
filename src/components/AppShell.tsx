@@ -3,6 +3,8 @@ import { LayoutGrid, RefreshCw, UserRound, WifiOff, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { BrandLockup } from './Brand';
 import { displayName } from '../db/settings';
+import { ThemeButton } from '../app/ThemeButton';
+import { SoundButton, useSfx } from '../audio/AudioControl';
 import { GROUP_LABEL, NAV, type NavGroup } from '../app/nav';
 import { applyPendingUpdate, dismissUpdate, useOnline, useRuntime } from '../app/runtime';
 import { useSettings } from '../app/SettingsContext';
@@ -15,6 +17,10 @@ function Sidebar() {
     <aside className="sidebar" aria-label="القائمة الرئيسية">
       <div className="sidebar-brand">
         <BrandLockup />
+        <div className="sidebar-tools" role="group" aria-label="المظهر والصوت">
+          <ThemeButton />
+          <SoundButton />
+        </div>
       </div>
       <nav className="sidebar-nav">
         {GROUPS.map((g) => (
@@ -65,6 +71,8 @@ function MobileTopBar() {
     <header className="mobile-topbar">
       <BrandLockup compact />
       <div className="mobile-topbar-end">
+        <ThemeButton />
+        <SoundButton />
         {!online && (
           <span className="offline-dot" title="دون اتصال — كل شيء يعمل محليًا" data-testid="offline-indicator-mobile">
             <WifiOff size={16} aria-hidden="true" />
@@ -104,6 +112,11 @@ function BottomNav() {
 
 function UpdateToast() {
   const { needRefresh } = useRuntime();
+  const play = useSfx();
+  // an important notice: one soft alert sound (only if interface sounds are on)
+  useEffect(() => {
+    if (needRefresh) play('alert');
+  }, [needRefresh, play]);
   if (!needRefresh) return null;
   return (
     <div className="toast-stack toast-stack-update">

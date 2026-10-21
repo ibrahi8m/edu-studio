@@ -279,7 +279,7 @@ export function ProjectsPage() {
           try {
             const p = await createProject(db, input);
             setCreating(false);
-            toast({ message: `حُفظ المحتوى «${p.title}» على هذا الجهاز.` });
+            toast({ message: `حُفظ المحتوى «${p.title}» على هذا الجهاز.`, sound: 'save' });
             navigate(`/projects/${p.id}`);
           } catch (e) {
             toast({ message: errorMessage(e), tone: 'danger' });

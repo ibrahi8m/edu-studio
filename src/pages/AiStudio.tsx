@@ -9,6 +9,7 @@ import { ConfirmDialog, Dialog } from '../components/Dialog';
 import { PageHeader, Pill } from '../components/ui';
 import { db } from '../db/db';
 import { download } from '../transfer/service';
+import { useSfx } from '../audio/AudioControl';
 import {
   ANGLES,
   BACKGROUNDS,
@@ -162,7 +163,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
     if (!loaded) return;
     setInput(loaded.input);
     setMode(loaded.mode);
-    if (loaded.brandId) setBrandId(loaded.brandId);
+    setBrandId(loaded.brandId ?? '');
     setOut(loaded.output);
     setPrompt(loaded.editedPrompt || loaded.output.promptEn);
     setTitle(loaded.title);
@@ -170,7 +171,10 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
     setVariant(0);
   }, [loaded]);
 
-  const brand = mode === 'brand' ? resolveBrand(brandId, brands) : null;
+  // The identity (and its logo) applies to every prompt; its full rules only in «هوية العلامة».
+  const brand = resolveBrand(brandId, brands);
+  const play = useSfx();
+  const [fresh, setFresh] = useState(0);
   const generate = (v = variant) => {
     if (!input.idea.trim() && !input.subjectEn.trim()) {
       setIdeaError(true);
@@ -181,6 +185,8 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
     const o = buildPrompt(input, mode, brand, v);
     setOut(o);
     setPrompt(o.promptEn);
+    setFresh((n) => n + 1);
+    play('prompt');
     if (!title) setTitle((input.idea || input.subjectEn).trim().slice(0, 60));
     requestAnimationFrame(() => document.getElementById('ai-output')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   };
@@ -189,9 +195,9 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
   const save = async (asNew = false) => {
     if (!out) return;
     try {
-      const row = await savePrompt(db, { id: asNew ? undefined : (savedId ?? undefined), title: title || 'برومبت بلا عنوان', mode, brandId: mode === 'brand' ? brandId : null, input, output: out, editedPrompt: edited ? prompt : '' });
+      const row = await savePrompt(db, { id: asNew ? undefined : (savedId ?? undefined), title: title || 'برومبت بلا عنوان', mode, brandId: brandId || null, input, output: out, editedPrompt: edited ? prompt : '' });
       setSavedId(row.id);
-      toast({ message: `حُفظ «${row.title}» في مكتبة البرومبتات على هذا الجهاز.` });
+      toast({ message: `حُفظ «${row.title}» في مكتبة البرومبتات على هذا الجهاز.`, sound: 'save' });
     } catch (e) {
       toast({ message: `تعذّر الحفظ: ${errorMessage(e)}`, tone: 'danger' });
     }
@@ -207,7 +213,6 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
     onClearLoaded();
   };
 
-  const pro = mode !== 'quick';
   return (
     <div className="ai-grid">
       <form
@@ -227,35 +232,9 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
             </button>
           </p>
         )}
-        <div className="field">
-          <span className="field-label">الوضع</span>
-          <div className="segmented" role="radiogroup" aria-label="وضع الإنشاء">
-            {(Object.keys(MODE_LABEL) as PromptMode[]).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? 'is-active' : ''} onClick={() => setMode(m)} data-testid={`ai-mode-${m}`}>
-                {MODE_LABEL[m]}
-              </button>
-            ))}
-          </div>
-          <span className="field-hint">{MODE_HINT[mode]}</span>
-        </div>
-        {mode === 'brand' && (
-          <div className="field">
-            <label className="field-label" htmlFor="ai-brand">
-              الهوية
-            </label>
-            <select id="ai-brand" className="input" value={brandId} onChange={(e) => setBrandId(e.target.value)} data-testid="ai-brand">
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-            <span className="field-hint">{brands.find((b) => b.id === brandId)?.description}</span>
-          </div>
-        )}
         <div className={`field ${ideaError ? 'has-error' : ''}`}>
           <label className="field-label" htmlFor="ai-idea">
-            فكرة التصميم <span className="req" aria-hidden="true">*</span>
+            1. فكرة التصميم <span className="req" aria-hidden="true">*</span>
           </label>
           <textarea id="ai-idea" className="input textarea" rows={3} maxLength={3000} value={input.idea} placeholder="مثال: طالب يتعلم الأمن الرقمي على حاسوبه في غرفة صف حديثة" onChange={(e) => set('idea', e.target.value)} data-testid="ai-idea" aria-invalid={ideaError} />
           {ideaError && (
@@ -264,16 +243,18 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
             </span>
           )}
         </div>
-        <TextIn label="وصف الفكرة بالإنجليزية (اختياري، أدق من الترجمة الآلية)" value={input.subjectEn} onChange={(v) => set('subjectEn', v)} testId="ai-subject-en" placeholder="a student learning digital safety on a laptop" ltr />
-        <div className="form-row">
-          <Select label="نوع التصميم" value={input.type} options={DESIGN_TYPES} onChange={(v) => {
+        <Select
+          label="2. نوع التصميم"
+          value={input.type}
+          options={DESIGN_TYPES}
+          onChange={(v) => {
             const t = DESIGN_TYPES.find((x) => x.value === v);
             setInput((p) => ({ ...p, type: v, ratio: t?.ratio ?? p.ratio }));
-          }} testId="ai-type" />
-          <Select label="الأسلوب" value={input.style} options={STYLES} onChange={(v) => set('style', v)} testId="ai-style" />
-        </div>
+          }}
+          testId="ai-type"
+        />
         <div className="field">
-          <span className="field-label">المقاس</span>
+          <span className="field-label">3. المقاس</span>
           <div className="ratio-row" role="radiogroup" aria-label="المقاس">
             {RATIOS.map((r) => (
               <button key={r.value} type="button" role="radio" aria-checked={input.ratio === r.value} className={`ratio-chip ${input.ratio === r.value ? 'is-active' : ''}`} onClick={() => set('ratio', r.value)} data-testid={`ai-ratio-${r.value}`}>
@@ -284,9 +265,64 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
           </div>
           <span className="field-hint">المقاس يصف التصميم المطلوب في البرومبت فقط؛ لا تُنشأ أي صورة هنا.</span>
         </div>
-        {pro && (
-          <details className="ai-more" open>
-            <summary>إعدادات التصميم</summary>
+        <TextIn label="4. النصوص المطلوبة داخل التصميم (اختياري)" multiline value={input.texts} onChange={(v) => set('texts', v)} testId="ai-texts" hint="نص في كل سطر، يُطلب كما هو حرفيًا." />
+        <div className="ai-logo-note" data-testid="ai-logo-note">
+          {brand && input.logoPlacement ? (
+            <>
+              {brand.logoFile && <img src={`${import.meta.env.BASE_URL}brand/${brand.logoFile}`} alt="" className="ai-logo-thumb" />}
+              <span>
+                الشعار: تُضاف تلقائيًا تعليمات شعار <bdi>{brand.name}</bdi> الأصلي ({LOGO_PLACEMENTS.find((x) => x.value === input.logoPlacement)?.ar}).
+                {brand.logoFile && (
+                  <>
+                    {' '}
+                    <a href={`${import.meta.env.BASE_URL}brand/${brand.logoFile}`} download={brand.logoFile} data-testid="ai-logo-download">
+                      تنزيل ملف الشعار الأصلي
+                    </a>{' '}
+                    لإرفاقه بأداة التوليد.
+                  </>
+                )}
+              </span>
+            </>
+          ) : (
+            <span>بلا شعار: يُطلب عدم رسم أي شعار. غيّر ذلك من «إعدادات متقدمة».</span>
+          )}
+        </div>
+        <details className="ai-more" data-testid="ai-advanced">
+          <summary data-testid="ai-advanced-toggle">إعدادات متقدمة</summary>
+          <div className="ai-more-body">
+            <div className="field">
+              <span className="field-label">الوضع</span>
+              <div className="segmented" role="radiogroup" aria-label="وضع الإنشاء">
+                {(Object.keys(MODE_LABEL) as PromptMode[]).map((m) => (
+                  <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? 'is-active' : ''} onClick={() => setMode(m)} data-testid={`ai-mode-${m}`}>
+                    {MODE_LABEL[m]}
+                  </button>
+                ))}
+              </div>
+              <span className="field-hint">{MODE_HINT[mode]}</span>
+            </div>
+            <div className="form-row">
+              <div className="field">
+                <label className="field-label" htmlFor="ai-brand">
+                  الهوية والشعار
+                </label>
+                <select id="ai-brand" className="input" value={brandId} onChange={(e) => setBrandId(e.target.value)} data-testid="ai-brand">
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                  <option value="">بلا هوية ولا شعار</option>
+                </select>
+                <span className="field-hint">{brands.find((b) => b.id === brandId)?.description ?? 'لا تُضاف تعليمات شعار.'}</span>
+              </div>
+              <Select label="مكان الشعار" value={input.logoPlacement} options={LOGO_PLACEMENTS} onChange={(v) => set('logoPlacement', v)} testId="ai-logo-place" />
+            </div>
+            <TextIn label="وصف الفكرة بالإنجليزية (أدق من الترجمة التقريبية)" value={input.subjectEn} onChange={(v) => set('subjectEn', v)} testId="ai-subject-en" placeholder="a student learning digital safety on a laptop" ltr />
+            <div className="form-row">
+              <Select label="مكان النص" value={input.textPlacement} options={TEXT_PLACEMENTS} onChange={(v) => set('textPlacement', v)} testId="ai-text-place" />
+              <Select label="الأسلوب" value={input.style} options={STYLES} onChange={(v) => set('style', v)} testId="ai-style" />
+            </div>
             <div className="form-row">
               <TextIn label="الهدف" value={input.goal} onChange={(v) => set('goal', v)} testId="ai-goal" placeholder="توعية، إعلان، شرح…" />
               <TextIn label="الجمهور" value={input.audience} onChange={(v) => set('audience', v)} testId="ai-audience" placeholder="طلاب، معلمون، عائلات…" />
@@ -313,22 +349,14 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
               <Select label="زاوية التصوير" value={input.angle} options={ANGLES} onChange={(v) => set('angle', v)} testId="ai-angle" />
               <Select label="التكوين" value={input.composition} options={COMPOSITIONS} onChange={(v) => set('composition', v)} testId="ai-composition" />
             </div>
-            <div className="form-row">
-              <Select label="مكان النص" value={input.textPlacement} options={TEXT_PLACEMENTS} onChange={(v) => set('textPlacement', v)} testId="ai-text-place" />
-              <Select label="مكان الشعار" value={input.logoPlacement} options={LOGO_PLACEMENTS} onChange={(v) => set('logoPlacement', v)} testId="ai-logo-place" />
-            </div>
             <Select label="مستوى التفاصيل" value={input.detail} options={Object.values(DETAIL)} onChange={(v) => set('detail', v as DetailLevel)} testId="ai-detail" />
-            <TextIn label="النصوص المكتوبة على التصميم" multiline value={input.texts} onChange={(v) => set('texts', v)} testId="ai-texts" hint="نص في كل سطر، يُطلب كما هو حرفيًا." />
             <TextIn label="عناصر مطلوبة" value={input.required} onChange={(v) => set('required', v)} testId="ai-required" placeholder="افصل بفاصلة" />
             <TextIn label="عناصر يجب تجنبها" value={input.avoid} onChange={(v) => set('avoid', v)} testId="ai-avoid" placeholder="افصل بفاصلة" />
-          </details>
-        )}
-        {!pro && (
-          <TextIn label="الألوان (اختياري)" value={input.colors} onChange={(v) => set('colors', v)} testId="ai-colors" />
-        )}
+          </div>
+        </details>
         <div className="ai-form-actions">
           <button type="submit" className="btn btn-primary" data-testid="ai-generate">
-            <Sparkles size={18} aria-hidden="true" /> إنشاء البرومبت
+            <Sparkles size={18} aria-hidden="true" /> 5. إنشاء البرومبت
           </button>
           <button type="button" className="btn btn-ghost" onClick={reset}>
             <RotateCcw size={16} aria-hidden="true" /> مسح
@@ -336,7 +364,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
         </div>
       </form>
 
-      <section className="card ai-output" id="ai-output" aria-label="النتيجة" data-testid="ai-output">
+      <section key={fresh} className={`card ai-output ${fresh ? 'is-fresh' : ''}`} id="ai-output" aria-label="النتيجة" data-testid="ai-output">
         {!out ? (
           <div className="empty">
             <p>اكتب الفكرة واضغط «إنشاء البرومبت». تظهر النتيجة هنا.</p>
@@ -367,7 +395,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
-                onClick={async () => toast(await copyText(prompt) ? { message: 'نُسخ البرومبت.' } : { message: 'تعذّر النسخ تلقائيًا: حدّد النص وانسخه يدويًا.', tone: 'danger' })}
+                onClick={async () => toast(await copyText(prompt) ? { message: 'نُسخ البرومبت.', sound: 'copy' } : { message: 'تعذّر النسخ تلقائيًا: حدّد النص وانسخه يدويًا.', tone: 'danger' })}
                 data-testid="ai-copy"
               >
                 <Copy size={16} aria-hidden="true" /> نسخ
@@ -389,7 +417,10 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
                   <RotateCcw size={16} aria-hidden="true" /> النص المولّد
                 </button>
               )}
-              <button type="button" className="btn btn-sm" onClick={() => download(new Blob([promptAsText(title || 'برومبت', out, prompt)], { type: 'text/plain;charset=utf-8' }), fileName(title))} data-testid="ai-download">
+              <button type="button" className="btn btn-sm" onClick={() => {
+                  download(new Blob([promptAsText(title || 'برومبت', out, prompt)], { type: 'text/plain;charset=utf-8' }), fileName(title));
+                  play('export');
+                }} data-testid="ai-download">
                 <Download size={16} aria-hidden="true" /> تنزيل TXT
               </button>
             </div>

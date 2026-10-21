@@ -396,6 +396,9 @@ test('AI Design Studio: local prompt from an Arabic idea, honest notes, ratio, b
   await page.getByTestId('ai-idea').fill('طالب يقرأ كتاب في حديقة المدرسة مع زرافة');
   await page.getByTestId('ai-type').selectOption('educational');
   await page.getByTestId('ai-ratio-16:9').click();
+  // 1.2.0: style, placements, mode and identity live under «إعدادات متقدمة» (closed by default)
+  await expect(page.getByTestId('ai-style')).toBeHidden();
+  await page.getByTestId('ai-advanced-toggle').click();
   await page.getByTestId('ai-style').selectOption('flat');
   await page.getByTestId('ai-texts').fill('اقرأ كل يوم');
   await page.getByTestId('ai-text-place').selectOption('top');

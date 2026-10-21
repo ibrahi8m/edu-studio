@@ -30,7 +30,7 @@ test.describe('Phase 0 — offline foundation', () => {
     await primeOffline(p1);
     await waitPastSplash(p1);
     await p1.goto('./#/settings');
-    await p1.getByRole('radio', { name: 'فاتح' }).click();
+    await p1.getByRole('radio', { name: 'نهاري' }).click();
     await p1.getByRole('radio', { name: 'كبير' }).click();
     // 1.1.0: the user's name lives in «صفحتي» (the About page is fixed project information).
     await p1.goto('./#/me');

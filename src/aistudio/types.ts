@@ -67,6 +67,8 @@ export interface BrandKit {
   logoRules: string;
   rules: string;
   avoid: string;
+  /** 1.2.0: the original logo file of this identity, when the app has it (shown and named in prompts). */
+  logoFile?: string;
   createdAt: number;
   updatedAt: number;
 }

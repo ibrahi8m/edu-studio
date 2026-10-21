@@ -6,6 +6,8 @@ import { About } from '../pages/About';
 import { MePage } from '../pages/Me';
 import { AiStudioPage } from '../pages/AiStudio';
 import { PROJECT_INFO } from './project';
+import { AmbientBackground } from './AmbientBackground';
+import { AudioSync } from '../audio/AudioControl';
 import { LibraryPage } from '../pages/Library';
 import { TransferPage } from '../pages/Transfer';
 import { Dashboard } from '../pages/Dashboard';
@@ -39,7 +41,9 @@ function Root() {
 
   return (
     <>
+      <AudioSync />
       <HashRouter>
+        <AmbientBackground />
         <Routes>
           {/* Student preview: full screen, outside the app shell */}
           <Route path="preview/:lessonId" element={<LessonPreview />} />
