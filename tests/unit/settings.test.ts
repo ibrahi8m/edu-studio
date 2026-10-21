@@ -47,4 +47,26 @@ describe('local settings store', () => {
     await resetSettings(d);
     expect(await loadSettings(d)).toEqual(DEFAULT_SETTINGS);
   });
+
+  it('1.1.0: reset keeps the profile and the CV (user data), and an invalid CV falls back to the default', async () => {
+    const d = fresh();
+    await saveSetting(d, 'theme', 'light');
+    await saveSetting(d, 'userName', 'منى');
+    await saveSetting(d, 'cv', { ...DEFAULT_SETTINGS.cv, phone: '0590000000' });
+    await resetSettings(d);
+    const s = await loadSettings(d);
+    expect(s.theme).toBe('dark');
+    expect(s.userName).toBe('منى');
+    expect(s.cv.phone).toBe('0590000000');
+    await expect(saveSetting(d, 'cv', { name: 1 } as never)).rejects.toThrow();
+    await d.settings.put({ key: 'cv', value: { broken: true }, updatedAt: 0 });
+    expect((await loadSettings(d)).cv).toEqual(DEFAULT_SETTINGS.cv);
+  });
+
+  it('1.1.0: the greeting name is never a built-in name', async () => {
+    const { displayName } = await import('../../src/db/settings');
+    expect(displayName(DEFAULT_SETTINGS)).toBe('');
+    expect(displayName({ userName: ' سارة ', ownerFullName: 'قديم' })).toBe('سارة');
+    expect(displayName({ userName: '', ownerFullName: 'اسم من إصدار سابق' })).toBe('اسم من إصدار سابق');
+  });
 });

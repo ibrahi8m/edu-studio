@@ -47,7 +47,9 @@ const activity = (
   materials: string,
   output: string,
   objectiveIds: string[] = [],
-): Block => ({ id, type: 'activity', title, grouping, duration, steps: steps.join('\n'), materials, output, objectiveIds });
+  track: 'core' | 'remedial' | 'enrichment' = 'core',
+  submit = false,
+): Block => ({ id, type: 'activity', title, grouping, duration, steps: steps.join('\n'), materials, output, objectiveIds, track, submit });
 
 const MATCH: TextMatch = { normalize: true, ignorePunctuation: true, typos: 1, reviewAllMismatches: false };
 
@@ -189,6 +191,31 @@ export const DEMO_LESSONS: DemoLesson[] = [
           'قائمة رصد الخصائص الخمس',
           'عبارة مرور تحقق الخصائص الخمس (لا تُكتب على الورق، يكتب الطالب طريقته فقط)',
           ['demo-l1-o4'],
+          'core',
+          true,
+        ),
+        // 1.1.0: shown at the end of the lesson by a fixed rule on the learner's latest quiz result.
+        activity(
+          'demo-l1-b14',
+          'مراجعة موجّهة: الخصائص الخمس',
+          'individual',
+          8,
+          ['أعد قلب بطاقات الخصائص الخمس واحدة واحدة', 'اكتب كل خاصية بكلماتك ومثالًا عليها', 'افحص كلمتين من مختبر كلمات المرور بالخصائص الخمس من جديد'],
+          'بطاقات الخصائص الخمس',
+          'قائمة الخصائص الخمس بكلماتك مع مثال لكل خاصية',
+          ['demo-l1-o1', 'demo-l1-o3'],
+          'remedial',
+        ),
+        activity(
+          'demo-l1-b15',
+          'تحدٍّ: دليل أمان لعائلتك',
+          'individual',
+          15,
+          ['اختر ثلاثة حسابات تستخدمها عائلتك', 'اقترح لكل حساب طريقة حماية: عبارة مرور وتحقق بخطوتين', 'اكتب الدليل في خمس نقاط يفهمها أي فرد في العائلة'],
+          'ورقة أو ملف نصي',
+          'دليل أمان من خمس نقاط',
+          ['demo-l1-o2', 'demo-l1-o4'],
+          'enrichment',
         ),
       ],
     },

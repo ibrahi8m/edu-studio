@@ -11,7 +11,11 @@ import type { Attempt, Quiz } from '../quiz/types';
 import type { LessonProgress } from '../student/types';
 import { normalizeDesign } from '../studio/model';
 import type { Design } from '../studio/types';
-import { FORMAT, FORMAT_VERSION, MAX_FILE_BYTES, MAX_UNPACKED_BYTES, TransferError, type AssetMeta, type Manifest, type Package, type PackageData } from './format';
+import { FORMAT, FORMAT_VERSION, MAX_FILE_BYTES, MAX_UNPACKED_BYTES, TransferError, type AssetMeta, type Manifest, type Package, type PackageData, type SubmissionMeta } from './format';
+import { normalizeLearner } from '../learner/db';
+import type { LearnerProfile } from '../learner/types';
+import { normalizeBrand, normalizeSavedPrompt } from '../aistudio/store';
+import type { BrandKit, SavedPrompt } from '../aistudio/types';
 import { sha256 } from './pack';
 
 /* ───────── schemas (Zod): structure and types; content is then cleaned by each model's normaliser ───────── */
@@ -44,6 +48,10 @@ const ProjectSchema = z.object({
   color: z.enum(['blue', 'silver', 'teal', 'violet', 'amber']).default('blue'),
   createdAt: time,
   updatedAt: time,
+  // 1.1.0+, optional
+  kind: z.enum(['school', 'university', 'training']).optional(),
+  published: z.boolean().optional(),
+  details: z.record(z.string().max(5000)).optional(),
 });
 
 const LessonSchema = z.object({
@@ -57,12 +65,13 @@ const LessonSchema = z.object({
   order: z.number().default(0),
   createdAt: time,
   updatedAt: time,
+  unit: z.string().max(300).optional(),
 });
 
 const AssetSchema = z.object({
   id,
   lessonId: id,
-  kind: z.enum(['image', 'audio', 'video']),
+  kind: z.enum(['image', 'audio', 'video', 'file']),
   mime: z.string().max(100),
   name: z.string().max(300).default(''),
   size: z.number().int().min(0),
@@ -92,6 +101,28 @@ const AttemptShape = z
 const ProgressShape = z
   .object({ id, studentKey: z.string().max(200), studentName: z.string().max(200), lessonId: id, projectId: id, visited: z.array(z.string()), updatedAt: time })
   .passthrough();
+const SubmissionShape = z
+  .object({
+    id,
+    studentKey: z.string().min(1).max(200),
+    studentName: z.string().max(200),
+    projectId: id,
+    lessonId: id,
+    blockId: id,
+    title: z.string().max(400).default(''),
+    answer: z.string().max(25000).default(''),
+    files: z
+      .array(z.object({ id, name: z.string().max(300), mime: z.string().max(200), size: z.number().int().min(0), path: z.string().regex(/^submissions\/[^/]+$/), sha256: z.string().regex(/^[0-9a-f]{64}$/) }))
+      .max(10)
+      .default([]),
+    status: z.enum(['draft', 'submitted', 'graded']),
+    createdAt: time,
+    updatedAt: time,
+    submittedAt: time.nullable().default(null),
+    score: z.number().min(0).max(100).nullable().default(null),
+    feedback: z.string().max(5000).default(''),
+    gradedAt: time.nullable().default(null),
+  });
 const SettingShape = z.object({ key: z.string().max(100), value: z.unknown(), updatedAt: time.default(0) });
 
 const DataSchema = z.object({
@@ -106,6 +137,10 @@ const DataSchema = z.object({
   designs: z.array(z.unknown()).default([]),
   library: z.array(z.unknown()).default([]),
   settings: z.array(z.unknown()).default([]),
+  learners: z.array(z.unknown()).default([]),
+  submissions: z.array(z.unknown()).default([]),
+  prompts: z.array(z.unknown()).default([]),
+  brands: z.array(z.unknown()).default([]),
 });
 
 function parseList<T>(list: unknown[], schema: z.ZodType<T>, what: string): T[] {
@@ -143,7 +178,7 @@ export async function readPackage(bytes: Uint8Array): Promise<Package> {
       filter: (f) => {
         declared += f.originalSize;
         if (declared > MAX_UNPACKED_BYTES) throw new TransferError('too-large', 'محتوى الملف بعد فك ضغطه أكبر من الحد المسموح.');
-        return f.name === 'manifest.json' || f.name === 'data.json' || f.name.startsWith('assets/');
+        return f.name === 'manifest.json' || f.name === 'data.json' || f.name.startsWith('assets/') || f.name.startsWith('submissions/');
       },
     });
   } catch (e) {
@@ -199,6 +234,22 @@ export async function readPackage(bytes: Uint8Array): Promise<Package> {
     if (!r) throw new TransferError('invalid', `بيانات غير صالحة في الملف (عنصر المكتبة رقم ${i + 1}).`);
     return r;
   });
+  const learners: LearnerProfile[] = d.learners.map((x, i) => {
+    const r = normalizeLearner(x);
+    if (!r) throw new TransferError('invalid', `بيانات غير صالحة في الملف (المتعلم رقم ${i + 1}).`);
+    return r;
+  });
+  const submissions = parseList(d.submissions, SubmissionShape, 'تسليم التكليف') as SubmissionMeta[];
+  const prompts: SavedPrompt[] = d.prompts.map((x, i) => {
+    const r = normalizeSavedPrompt(x);
+    if (!r) throw new TransferError('invalid', `بيانات غير صالحة في الملف (البرومبت رقم ${i + 1}).`);
+    return r;
+  });
+  const brands: BrandKit[] = d.brands.map((x, i) => {
+    const r = normalizeBrand(x);
+    if (!r) throw new TransferError('invalid', `بيانات غير صالحة في الملف (الهوية رقم ${i + 1}).`);
+    return r;
+  });
   const settingsRows = parseList(d.settings, SettingShape, 'الإعداد');
   // Only known settings with valid values are kept.
   const valid = loadSettingsFromRows(settingsRows as SettingRow[]);
@@ -214,6 +265,9 @@ export async function readPackage(bytes: Uint8Array): Promise<Package> {
     [progress, 'تقدم'],
     [designs, 'تصميم'],
     [library, 'عنصر مكتبة'],
+    [submissions, 'تسليم'],
+    [prompts, 'برومبت'],
+    [brands, 'هوية'],
   ] as const)
     unique(list as { id: string }[], what);
 
@@ -222,12 +276,13 @@ export async function readPackage(bytes: Uint8Array): Promise<Package> {
   const lessonIds = new Set(lessons.map((l) => l.id));
   const quizIds = new Set(quizzes.map((q) => q.id));
   if (manifest.kind === 'project' && projects.length !== 1) throw new TransferError('invalid', 'ملف المشروع يجب أن يحتوي على مشروع واحد.');
-  if (!projects.length && !library.length && !settings.length) throw new TransferError('empty', 'الملف لا يحتوي على أي بيانات لاستيرادها.');
+  if (!projects.length && !library.length && !settings.length && !prompts.length && !brands.length && !learners.length) throw new TransferError('empty', 'الملف لا يحتوي على أي بيانات لاستيرادها.');
   for (const l of lessons) if (!projectIds.has(l.projectId)) throw new TransferError('invalid', `الدرس «${l.title}» ينتمي إلى مشروع غير موجود في الملف.`);
   for (const doc of lessonDocs) if (!lessonIds.has(doc.lessonId)) throw new TransferError('invalid', 'محتوى درس في الملف لا ينتمي إلى أي درس فيه.');
   for (const q of quizzes) if (!projectIds.has(q.projectId)) throw new TransferError('invalid', `الاختبار «${q.title}» ينتمي إلى مشروع غير موجود في الملف.`);
   for (const a of attempts) if (!quizIds.has(a.quizId)) throw new TransferError('invalid', 'محاولة طالب في الملف تخص اختبارًا غير موجود فيه.');
   for (const p of progress) if (!lessonIds.has(p.lessonId) || !projectIds.has(p.projectId)) throw new TransferError('invalid', 'تقدم طالب في الملف يخص درسًا غير موجود فيه.');
+  for (const x of submissions) if (!lessonIds.has(x.lessonId) || !projectIds.has(x.projectId)) throw new TransferError('invalid', 'تسليم تكليف في الملف يخص درسًا غير موجود فيه.');
   for (const x of designs) if (!projectIds.has(x.projectId)) throw new TransferError('invalid', `التصميم «${x.title}» ينتمي إلى مشروع غير موجود في الملف.`);
   for (const a of assets) if (!lessonIds.has(a.lessonId) && a.lessonId !== LIBRARY_OWNER) throw new TransferError('invalid', `ملف الوسائط «${a.name}» لا ينتمي إلى أي درس في الملف.`);
   // A quiz linked to a lesson that is not in the file keeps working without that link.
@@ -242,11 +297,18 @@ export async function readPackage(bytes: Uint8Array): Promise<Package> {
     if (b.byteLength !== a.size || (await sha256(b)) !== a.sha256) throw new TransferError('corrupt', `الملف تالف: ملف الوسائط «${a.name}» لا يطابق بصمته المسجلة.`);
     files.set(a.id, b);
   }
+  for (const sub of submissions)
+    for (const f of sub.files) {
+      const b = entries[f.path];
+      if (!b) throw new TransferError('corrupt', `الملف ناقص: مرفق التسليم «${f.name}» غير موجود فيه.`);
+      if (b.byteLength !== f.size || (await sha256(b)) !== f.sha256) throw new TransferError('corrupt', `الملف تالف: مرفق التسليم «${f.name}» لا يطابق بصمته المسجلة.`);
+      files.set(`sub:${f.id}`, b);
+    }
   const assetIds = new Set(assets.map((a) => a.id));
   const missing = lessonDocs.flatMap((doc) => doc.blocks.flatMap((b) => ('assetId' in b && b.assetId && !assetIds.has(b.assetId) ? [b.assetId] : [])));
   if (missing.length) warnings.push(`${missing.length === 1 ? 'ملف وسائط واحد مشار إليه' : `${missing.length} ملفات وسائط مشار إليها`} في الدروس غير موجود في الملف؛ سيظهر مكانه «غير موجود على هذا الجهاز».`);
   if (manifest.schemaVersion < SCHEMA_VERSION) warnings.push(`الملف من إصدار أقدم (${manifest.appVersion || `قاعدة بيانات v${manifest.schemaVersion}`})، وقد حُوّلت بياناته إلى الإصدار الحالي.`);
 
-  const data: PackageData = { projects, lessons, lessonDocs, assets, quizzes, attempts, progress, designs, library, settings };
+  const data: PackageData = { projects, lessons, lessonDocs, assets, quizzes, attempts, progress, designs, library, settings, learners, submissions, prompts, brands };
   return { manifest, data, files, warnings };
 }

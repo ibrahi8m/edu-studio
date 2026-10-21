@@ -64,7 +64,9 @@ export function newBlock(type: BlockType): Block {
     case 'summary':
       return { ...base, type, title: '', style: 'grid', points: [newPoint(), newPoint(), newPoint()] };
     case 'activity':
-      return { ...base, type, title: '', grouping: 'individual', duration: 0, steps: '', materials: '', output: '' };
+      return { ...base, type, title: '', grouping: 'individual', duration: 0, steps: '', materials: '', output: '', track: 'core', submit: false };
+    case 'file':
+      return { ...base, type, assetId: null, title: '', description: '' };
   }
 }
 
@@ -125,6 +127,13 @@ function normBlock(raw: unknown): Block | null {
       b.steps = str(r.steps, 5000);
       b.materials = str(r.materials, 1000);
       b.output = str(r.output, 1000);
+      b.track = r.track === 'remedial' || r.track === 'enrichment' ? r.track : 'core';
+      b.submit = r.submit === true;
+      break;
+    case 'file':
+      b.assetId = typeof r.assetId === 'string' ? r.assetId : null;
+      b.title = str(r.title, 300);
+      b.description = str(r.description, 1000);
       break;
   }
   return b;
@@ -298,7 +307,7 @@ export function filledPoints(b: SummaryBlock): SummaryPoint[] {
 
 export function referencedAssetIds(doc: LessonDoc): Set<string> {
   const ids = new Set<string>();
-  for (const b of doc.blocks) if ((b.type === 'image' || b.type === 'audio' || b.type === 'video') && b.assetId) ids.add(b.assetId);
+  for (const b of doc.blocks) if ((b.type === 'image' || b.type === 'audio' || b.type === 'video' || b.type === 'file') && b.assetId) ids.add(b.assetId);
   return ids;
 }
 

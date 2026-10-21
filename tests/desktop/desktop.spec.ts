@@ -41,7 +41,8 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
 
   await w1.goto('app://edu/index.html#/settings');
   await w1.getByRole('radio', { name: 'فاتح' }).click();
-  const f = w1.getByTestId('owner-university');
+  await w1.goto('app://edu/index.html#/me');
+  const f = w1.getByTestId('profile-userOrganization');
   await f.fill('جامعة — اختبار سطح المكتب');
   await f.blur();
   await expect(w1.getByText('تم الحفظ')).toBeVisible();
@@ -81,8 +82,9 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
   const w2 = await app2.firstWindow();
   await expect(w2.getByTestId('page-dashboard')).toBeVisible({ timeout: 8000 });
   await expect.poll(() => w2.evaluate(() => document.documentElement.dataset.theme), { timeout: 5000 }).toBe('light');
+  await w2.goto('app://edu/index.html#/me');
+  await expect(w2.getByText('جامعة — اختبار سطح المكتب').first()).toBeVisible();
   await w2.goto('app://edu/index.html#/about');
-  await expect(w2.getByText('جامعة — اختبار سطح المكتب')).toBeVisible();
   await w2.screenshot({ path: 'docs/screenshots/desktop-app/about-light.png' });
   await w2.goto('app://edu/index.html#/projects');
   await w2.getByTestId('project-card').first().click();

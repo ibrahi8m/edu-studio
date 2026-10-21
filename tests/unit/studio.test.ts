@@ -284,7 +284,7 @@ describe('migration from phase 4', () => {
     v5.close();
     const v6 = new EduDB(name);
     await v6.open();
-    expect(v6.verno).toBe(7);
+    expect(v6.verno).toBe(8);
     expect((await v6.projects.get('p1'))?.title).toBe('قديم');
     expect((await v6.progress.get('ساره|l1'))?.visited).toEqual(['intro']);
     expect(await v6.designs.count()).toBe(0);

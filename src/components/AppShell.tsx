@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutGrid, RefreshCw, WifiOff, X } from 'lucide-react';
+import { LayoutGrid, RefreshCw, UserRound, WifiOff, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { BrandLockup, Portrait } from './Brand';
+import { BrandLockup } from './Brand';
+import { displayName } from '../db/settings';
 import { GROUP_LABEL, NAV, type NavGroup } from '../app/nav';
 import { applyPendingUpdate, dismissUpdate, useOnline, useRuntime } from '../app/runtime';
 import { useSettings } from '../app/SettingsContext';
@@ -31,14 +32,29 @@ function Sidebar() {
           </div>
         ))}
       </nav>
-      <NavLink to="/about" className="sidebar-owner" title="عن صاحب المشروع">
-        <Portrait variant="avatar" alt={`صورة ${settings.ownerName}`} />
+      <NavLink to="/me" className="sidebar-owner" title="صفحتي" data-testid="user-card">
+        <UserAvatar name={displayName(settings)} />
         <span className="sidebar-owner-text">
-          <strong>{settings.ownerName}</strong>
-          <span>صاحب المشروع</span>
+          <strong data-testid="user-card-name">{displayName(settings) || 'أضف اسمك'}</strong>
+          <span>{settings.userRole || 'صفحتي'}</span>
         </span>
       </NavLink>
     </aside>
+  );
+}
+
+/** Initials of the user's name (or a neutral icon): no built-in photo or name. */
+export function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'lg' }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('');
+  return (
+    <span className={`user-avatar user-avatar-${size}`} aria-hidden="true">
+      {initials || <UserRound size={size === 'lg' ? 30 : 18} />}
+    </span>
   );
 }
 
@@ -55,8 +71,8 @@ function MobileTopBar() {
             <span className="sr-only">دون اتصال</span>
           </span>
         )}
-        <NavLink to="/about" className="mobile-avatar" aria-label="عن صاحب المشروع">
-          <Portrait variant="avatar" alt={`صورة ${settings.ownerName}`} />
+        <NavLink to="/me" className="mobile-avatar" aria-label={`صفحتي${displayName(settings) ? `: ${displayName(settings)}` : ''}`}>
+          <UserAvatar name={displayName(settings)} />
         </NavLink>
       </div>
     </header>

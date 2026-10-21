@@ -5,6 +5,7 @@
  *   manifest.json   what the file is: format, version, kind (project | backup), counts, checksums
  *   data.json       the records (projects, lessons, lesson content, quizzes, designs, …)
  *   assets/<id>     each media file as raw bytes, its SHA-256 listed in the manifest
+ *   submissions/<id> (1.1.0+) files attached to learners' assignment answers, SHA-256 in data.json
  *
  * Records keep the exact shape of the local database tables, so an export from any
  * version can be read by later versions (missing tables or fields fall back to defaults).
@@ -15,6 +16,8 @@ import type { LibraryItem } from '../library/types';
 import type { Attempt, Quiz } from '../quiz/types';
 import type { LessonProgress } from '../student/types';
 import type { Design } from '../studio/types';
+import type { LearnerProfile, Submission, SubmissionFile } from '../learner/types';
+import type { BrandKit, SavedPrompt } from '../aistudio/types';
 
 export const FORMAT = 'ibrahi8m-edu';
 /** Bump only for changes older readers cannot understand. */
@@ -61,6 +64,19 @@ export interface PackageData {
   designs: Design[];
   library: LibraryItem[];
   settings: SettingRow[];
+  /** 1.1.0+ (missing in older files). Attached files are stored in the ZIP, not in data.json. */
+  learners: LearnerProfile[];
+  submissions: SubmissionMeta[];
+  prompts: SavedPrompt[];
+  brands: BrandKit[];
+}
+
+export interface SubmissionFileMeta extends Omit<SubmissionFile, 'data'> {
+  path: string;
+  sha256: string;
+}
+export interface SubmissionMeta extends Omit<Submission, 'files'> {
+  files: SubmissionFileMeta[];
 }
 
 /** A parsed, validated package: records plus the bytes of each asset. */

@@ -3,6 +3,7 @@ import {
   AudioLines,
   ClipboardList,
   Clapperboard,
+  FileText,
   Heading,
   Image as ImageIcon,
   Layers,
@@ -18,10 +19,10 @@ import { db } from '../../db/db';
 import { addAsset } from '../../db/lessonDocs';
 import { formatBytes } from '../../db/storage';
 import { useToast } from '../../app/Toasts';
-import { GROUPING_LABEL, SUMMARY_STYLE_LABEL } from '../catalog';
+import { GROUPING_LABEL, SUMMARY_STYLE_LABEL, TRACK_LABEL } from '../catalog';
 import { ACCEPT, isQuotaError, MediaError, prepareFile, useAssetUrl } from '../media';
 import { newCard, newPoint } from '../model';
-import type { ActivityBlock, AudioBlock, Block, BlockType, CardsBlock, Grouping, HeadingBlock, ImageBlock, SummaryBlock, SummaryStyle, TextBlock, VideoBlock } from '../types';
+import type { ActivityBlock, ActivityTrack, AudioBlock, Block, BlockType, CardsBlock, FileBlock, Grouping, HeadingBlock, ImageBlock, SummaryBlock, SummaryStyle, TextBlock, VideoBlock } from '../types';
 import { AutoTextarea, TextField } from './parts';
 
 export const BLOCK_ICON: Record<BlockType, LucideIcon> = {
@@ -33,6 +34,7 @@ export const BLOCK_ICON: Record<BlockType, LucideIcon> = {
   cards: Layers,
   summary: Network,
   activity: ClipboardList,
+  file: FileText,
 };
 
 type Patch<B extends Block> = (patch: Partial<B>) => void;
@@ -54,6 +56,8 @@ export function BlockBody({ block, lessonId, onPatch }: { block: Block; lessonId
       return <SummaryEditor b={block} on={onPatch as Patch<SummaryBlock>} />;
     case 'activity':
       return <ActivityEditor b={block} on={onPatch as Patch<ActivityBlock>} />;
+    case 'file':
+      return <FileEditor b={block} on={onPatch as Patch<FileBlock>} lessonId={lessonId} />;
   }
 }
 
@@ -101,7 +105,7 @@ function TextEditor({ b, on }: { b: TextBlock; on: Patch<TextBlock> }) {
 
 /* ───────── media ───────── */
 
-function useUpload(lessonId: string, kind: 'image' | 'audio' | 'video', onDone: (assetId: string) => void) {
+function useUpload(lessonId: string, kind: 'image' | 'audio' | 'video' | 'file', onDone: (assetId: string) => void) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const pick = async (file: File | undefined) => {
@@ -122,9 +126,9 @@ function useUpload(lessonId: string, kind: 'image' | 'audio' | 'video', onDone: 
   return { busy, pick };
 }
 
-function FilePicker({ kind, busy, onPick, hasFile, testId }: { kind: 'image' | 'audio' | 'video'; busy: boolean; onPick: (f: File | undefined) => void; hasFile: boolean; testId: string }) {
+function FilePicker({ kind, busy, onPick, hasFile, testId }: { kind: 'image' | 'audio' | 'video' | 'file'; busy: boolean; onPick: (f: File | undefined) => void; hasFile: boolean; testId: string }) {
   const ref = useRef<HTMLInputElement>(null);
-  const label = kind === 'image' ? 'صورة' : kind === 'audio' ? 'ملفًا صوتيًا' : 'فيديو';
+  const label = kind === 'image' ? 'صورة' : kind === 'audio' ? 'ملفًا صوتيًا' : kind === 'file' ? 'ملفًا (PDF أو Word أو PowerPoint…)' : 'فيديو';
   return (
     <>
       <input
@@ -343,6 +347,43 @@ function ActivityEditor({ b, on }: { b: ActivityBlock; on: Patch<ActivityBlock> 
         <TextField label="المواد والأدوات" value={b.materials} maxLength={1000} onChange={(v) => on({ materials: v })} testId="activity-materials" />
         <TextField label="الناتج المطلوب" value={b.output} maxLength={1000} onChange={(v) => on({ output: v })} testId="activity-output" />
       </div>
+      <div className="field">
+        <span className="field-label">لمن هذا النشاط؟</span>
+        <div className="segmented segmented-sm" role="radiogroup" aria-label="مسار النشاط">
+          {(Object.keys(TRACK_LABEL) as ActivityTrack[]).map((t) => (
+            <button key={t} type="button" role="radio" aria-checked={b.track === t} className={b.track === t ? 'is-active' : ''} onClick={() => on({ track: t })} data-testid={`activity-track-${t}`}>
+              {TRACK_LABEL[t]}
+            </button>
+          ))}
+        </div>
+        <span className="field-hint">
+          {b.track === 'remedial'
+            ? 'يظهر للمتعلم في نهاية الدرس إذا كانت نتيجته في آخر محاولة اختبار أقل من درجة النجاح.'
+            : b.track === 'enrichment'
+              ? 'يظهر للمتعلم في نهاية الدرس إذا حصل على 85٪ فأكثر في آخر محاولة اختبار.'
+              : 'يظهر لكل المتعلمين في مكانه من الدرس.'}
+        </span>
+      </div>
+      <label className="switch-row">
+        <input type="checkbox" checked={b.submit} onChange={(e) => on({ submit: e.target.checked })} data-testid="activity-submit" />
+        <span>تكليف يُسلَّم: يكتب المتعلم إجابته ويرفق ملفًا، ثم تقيّمه أنت من «النتائج»</span>
+      </label>
+    </div>
+  );
+}
+
+function FileEditor({ b, on, lessonId }: { b: FileBlock; on: Patch<FileBlock>; lessonId: string }) {
+  const { asset, state } = useAssetUrl(b.assetId);
+  const { busy, pick } = useUpload(lessonId, 'file', (assetId) => on({ assetId, title: b.title || '' }));
+  return (
+    <div className="media-ed">
+      {state === 'missing' && <p className="field-error">الملف غير موجود على هذا الجهاز. اختره من جديد.</p>}
+      <div className="media-row">
+        <FilePicker kind="file" busy={busy} onPick={pick} hasFile={state === 'ready'} testId="file-input" />
+        {asset && <FileMeta name={asset.name} size={asset.size} />}
+      </div>
+      <TextField label="عنوان الملف" value={b.title} maxLength={300} placeholder="مثل: ورقة العمل" onChange={(v) => on({ title: v })} testId="file-title" />
+      <TextField label="وصف أو تعليمات (اختياري)" multiline minRows={2} value={b.description} maxLength={2000} onChange={(v) => on({ description: v })} testId="file-description" />
     </div>
   );
 }

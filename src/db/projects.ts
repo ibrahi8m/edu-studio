@@ -2,7 +2,9 @@ import type { Asset, LessonDoc } from '../lesson/types';
 import type { Attempt, Quiz } from '../quiz/types';
 import type { LessonProgress } from '../student/types';
 import type { Design } from '../studio/types';
-import type { EduDB, ItemStatus, Lesson, Project, ProjectColor } from './db';
+import type { Submission } from '../learner/types';
+import type { ContentKind, EduDB, ItemStatus, Lesson, Project, ProjectColor } from './db';
+import { cleanDetails, CONTENT_KINDS, KIND_SPECS, kindOf } from './contentKinds';
 import { GRADES, LIMITS, STATUSES } from './catalog';
 import { newId } from './ids';
 import { matchesQuery, normalizeArabic } from './search';
@@ -34,6 +36,9 @@ export interface ProjectInput {
   status?: ItemStatus;
   tags?: string[] | string;
   color?: ProjectColor;
+  kind?: ContentKind;
+  published?: boolean;
+  details?: Record<string, string>;
 }
 
 export interface LessonInput {
@@ -42,6 +47,7 @@ export interface LessonInput {
   duration?: number;
   status?: ItemStatus;
   tags?: string[] | string;
+  unit?: string;
 }
 
 export type FieldErrors = Partial<Record<'title' | 'subject' | 'grade' | 'description' | 'summary' | 'duration' | 'status', string>>;
@@ -57,10 +63,11 @@ const COLORS: ProjectColor[] = ['blue', 'silver', 'teal', 'violet', 'amber'];
 export function validateProject(input: ProjectInput): FieldErrors {
   const e: FieldErrors = {};
   const title = (input.title ?? '').trim();
-  if (!title) e.title = 'عنوان المشروع مطلوب.';
+  if (!title) e.title = 'العنوان مطلوب.';
   else if (title.length > LIMITS.title) e.title = `العنوان أطول من ${LIMITS.title} حرفًا.`;
   if ((input.subject ?? '').trim().length > LIMITS.subject) e.subject = `اسم المادة أطول من ${LIMITS.subject} حرفًا.`;
   if (input.grade && !GRADES.includes(input.grade)) e.grade = 'اختر المرحلة من القائمة.';
+  if (input.kind && !CONTENT_KINDS.includes(input.kind)) e.status = 'نوع محتوى غير معروف.';
   if ((input.description ?? '').length > LIMITS.description) e.description = `الوصف أطول من ${LIMITS.description} حرف.`;
   if (input.status && !STATUSES.includes(input.status)) e.status = 'حالة غير معروفة.';
   return e;
@@ -85,6 +92,29 @@ function assertValid(errors: FieldErrors) {
 
 /* ───────── projects ───────── */
 
+/** kind/published/details as stored; kinds without a grade list keep a fixed grade so older filters still work. */
+function kindFields(input: ProjectInput): Pick<Project, 'kind' | 'published' | 'details'> & { grade?: string } {
+  const kind = input.kind && CONTENT_KINDS.includes(input.kind) ? input.kind : 'school';
+  const spec = KIND_SPECS[kind];
+  return {
+    kind,
+    published: input.published !== false,
+    details: cleanDetails(kind, input.details),
+    ...(spec.fixedGrade ? { grade: spec.fixedGrade } : {}),
+  };
+}
+
+/** Publishes or unpublishes content for the learner environment. */
+export async function setPublished(database: EduDB, id: string, published: boolean): Promise<Project> {
+  return database.transaction('rw', database.projects, async () => {
+    const current = await database.projects.get(id);
+    if (!current) throw new Error('المحتوى غير موجود.');
+    const next = { ...current, published, updatedAt: Math.max(Date.now(), current.updatedAt + 1) };
+    await database.projects.put(next);
+    return next;
+  });
+}
+
 export async function createProject(database: EduDB, input: ProjectInput): Promise<Project> {
   assertValid(validateProject(input));
   const now = Date.now();
@@ -99,6 +129,7 @@ export async function createProject(database: EduDB, input: ProjectInput): Promi
     color: input.color && COLORS.includes(input.color) ? input.color : 'blue',
     createdAt: now,
     updatedAt: now,
+    ...kindFields(input),
   };
   await database.projects.add(project);
   return project;
@@ -120,6 +151,7 @@ export async function updateProject(database: EduDB, id: string, patch: Partial<
       tags: cleanTags(merged.tags ?? []),
       color: merged.color && COLORS.includes(merged.color) ? merged.color : current.color,
       updatedAt: Math.max(Date.now(), current.updatedAt + 1),
+      ...kindFields({ ...merged, kind: merged.kind ?? kindOf(current), published: merged.published ?? current.published !== false }),
     };
     await database.projects.put(next);
     return next;
@@ -135,11 +167,12 @@ export interface ProjectSnapshot {
   attempts?: Attempt[];
   progress?: LessonProgress[];
   designs?: Design[];
+  submissions?: Submission[];
 }
 
 /** Deletes a project with its lessons, their content and media, its quizzes and their attempts, atomically; returns what was removed so it can be restored. */
 export async function deleteProject(database: EduDB, id: string): Promise<ProjectSnapshot> {
-  return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.quizzes, database.attempts, database.progress, database.designs], async () => {
+  return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.quizzes, database.attempts, database.progress, database.designs, database.submissions], async () => {
     const project = await database.projects.get(id);
     if (!project) throw new Error('المشروع غير موجود.');
     const lessons = await database.lessons.where('projectId').equals(id).toArray();
@@ -163,12 +196,14 @@ export async function deleteProject(database: EduDB, id: string): Promise<Projec
     await database.progress.where('projectId').equals(id).delete();
     const designs = await database.designs.where('projectId').equals(id).toArray();
     await database.designs.where('projectId').equals(id).delete();
-    return { project, lessons, docs, assets, quizzes, attempts, progress, designs };
+    const submissions = await database.submissions.where('projectId').equals(id).toArray();
+    await database.submissions.where('projectId').equals(id).delete();
+    return { project, lessons, docs, assets, quizzes, attempts, progress, designs, submissions };
   });
 }
 
 export async function restoreProject(database: EduDB, snap: ProjectSnapshot): Promise<void> {
-  await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.quizzes, database.attempts, database.progress, database.designs], async () => {
+  await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.quizzes, database.attempts, database.progress, database.designs, database.submissions], async () => {
     await database.projects.put(snap.project);
     if (snap.lessons.length) await database.lessons.bulkPut(snap.lessons);
     if (snap.docs?.length) await database.lessonDocs.bulkPut(snap.docs);
@@ -177,6 +212,7 @@ export async function restoreProject(database: EduDB, snap: ProjectSnapshot): Pr
     if (snap.attempts?.length) await database.attempts.bulkPut(snap.attempts);
     if (snap.progress?.length) await database.progress.bulkPut(snap.progress);
     if (snap.designs?.length) await database.designs.bulkPut(snap.designs);
+    if (snap.submissions?.length) await database.submissions.bulkPut(snap.submissions);
   });
 }
 
@@ -208,6 +244,7 @@ export async function createLesson(database: EduDB, projectId: string, input: Le
       order: existing.length ? existing[existing.length - 1].order + 1 : 1,
       createdAt: now,
       updatedAt: now,
+      ...((input.unit ?? '').trim() ? { unit: input.unit!.trim().slice(0, LIMITS.title) } : {}),
     };
     await database.lessons.add(lesson);
     await touchProject(database, projectId);
@@ -229,7 +266,9 @@ export async function updateLesson(database: EduDB, id: string, patch: Partial<L
       status: merged.status ?? current.status,
       tags: cleanTags(merged.tags ?? []),
       updatedAt: Math.max(Date.now(), current.updatedAt + 1),
+      unit: (merged.unit ?? '').trim().slice(0, LIMITS.title) || undefined,
     };
+    if (!next.unit) delete next.unit;
     await database.lessons.put(next);
     await touchProject(database, current.projectId);
     return next;
@@ -241,13 +280,14 @@ export interface LessonSnapshot {
   doc: LessonDoc | null;
   assets: Asset[];
   progress?: LessonProgress[];
+  submissions?: Submission[];
   /** Designs that pointed at the lesson: kept, unlinked, and linked again on undo. */
   unlinkedDesigns?: string[];
 }
 
 /** Deletes a lesson with its content and media; returns a snapshot for undo. */
 export async function deleteLesson(database: EduDB, id: string): Promise<LessonSnapshot> {
-  return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.progress, database.designs], async () => {
+  return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.progress, database.designs, database.submissions], async () => {
     const lesson = await database.lessons.get(id);
     if (!lesson) throw new Error('الدرس غير موجود.');
     const doc = (await database.lessonDocs.get(id)) ?? null;
@@ -257,20 +297,23 @@ export async function deleteLesson(database: EduDB, id: string): Promise<LessonS
     await database.lessons.delete(id);
     const progress = await database.progress.where('lessonId').equals(id).toArray();
     await database.progress.where('lessonId').equals(id).delete();
+    const submissions = await database.submissions.where('lessonId').equals(id).toArray();
+    await database.submissions.where('lessonId').equals(id).delete();
     const unlinkedDesigns = await database.designs.where('lessonId').equals(id).primaryKeys();
     for (const d of unlinkedDesigns) await database.designs.update(d, { lessonId: null });
     await touchProject(database, lesson.projectId);
-    return { lesson, doc, assets, progress, unlinkedDesigns };
+    return { lesson, doc, assets, progress, submissions, unlinkedDesigns };
   });
 }
 
 export async function restoreLesson(database: EduDB, snap: LessonSnapshot): Promise<void> {
-  await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.progress, database.designs], async () => {
+  await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.progress, database.designs, database.submissions], async () => {
     if (!(await database.projects.get(snap.lesson.projectId))) throw new Error('المشروع الأصلي لم يعد موجودًا.');
     await database.lessons.put(snap.lesson);
     if (snap.doc) await database.lessonDocs.put(snap.doc);
     if (snap.assets.length) await database.assets.bulkPut(snap.assets);
     if (snap.progress?.length) await database.progress.bulkPut(snap.progress);
+    if (snap.submissions?.length) await database.submissions.bulkPut(snap.submissions);
     if (snap.unlinkedDesigns?.length)
       for (const id of snap.unlinkedDesigns) {
         const d = await database.designs.get(id);
@@ -307,6 +350,9 @@ export interface ProjectQuery {
   grade?: string;
   status?: ItemStatus | 'all' | 'active';
   sort?: ProjectSort;
+  kind?: ContentKind | '';
+  /** 'published' | 'unpublished' | '' (both) */
+  publication?: 'published' | 'unpublished' | '';
 }
 
 const collator = new Intl.Collator('ar');
@@ -325,9 +371,12 @@ export function queryProjects(projects: Project[], lessons: Lesson[], query: Pro
     if (status !== 'active' && status !== 'all' && p.status !== status) return false;
     if (query.subject && normalizeArabic(p.subject) !== normalizeArabic(query.subject)) return false;
     if (query.grade && p.grade !== query.grade) return false;
+    if (query.kind && kindOf(p) !== query.kind) return false;
+    if (query.publication === 'published' && p.published === false) return false;
+    if (query.publication === 'unpublished' && p.published !== false) return false;
     if (!query.q) return true;
-    if (matchesQuery(query.q, p.title, p.subject, p.grade, p.description, p.tags)) return true;
-    return (byProject.get(p.id) ?? []).some((l) => matchesQuery(query.q!, l.title, l.summary, l.tags));
+    if (matchesQuery(query.q, p.title, p.subject, p.grade, p.description, p.tags, Object.values(p.details ?? {}))) return true;
+    return (byProject.get(p.id) ?? []).some((l) => matchesQuery(query.q!, l.title, l.summary, l.tags, l.unit));
   });
   const sort = query.sort ?? 'updated';
   out.sort((a, b) =>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Circle, Flag, ListChecks } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Circle, Flag, ListChecks, Scale } from 'lucide-react';
 import { errorMessage } from '../../app/data';
 import { useToast } from '../../app/Toasts';
 import { db } from '../../db/db';
@@ -14,6 +14,10 @@ import { myQuiz } from '../../student/data';
 import { useStudent } from '../../student/identity';
 import { QuizRow } from '../../student/QuizRow';
 import { lessonSections, summarizeProgress } from '../../student/sections';
+import { AssignmentPanel } from '../../learner/AssignmentPanel';
+import { ENRICHMENT_PERCENT, recommend } from '../../learner/rules';
+import { isPublished } from '../../db/contentKinds';
+import { TRACK_LABEL } from '../../lesson/catalog';
 
 /** A lesson, part by part, for the student. Progress is saved after every part opened, card turned and step ticked. */
 export function LessonPlayer() {
@@ -74,6 +78,7 @@ export function LessonPlayer() {
       onFlip: (blockId, cardId) => void markCardSeen(db, name, lesson, blockId, cardId).catch((e) => toast({ message: errorMessage(e), tone: 'danger' })),
       stepsDone: (blockId) => p?.activities[blockId] ?? [],
       onStep: (blockId, step) => void toggleActivityStep(db, name, lesson, blockId, step).catch((e) => toast({ message: errorMessage(e), tone: 'danger' })),
+      activityExtra: (b) => (b.submit ? <AssignmentPanel block={b} lesson={lesson} name={name} stepsTicked={(p?.activities[b.id] ?? []).length} /> : null),
     };
   }, [lesson, name, data?.progress, toast]);
 
@@ -91,7 +96,24 @@ export function LessonPlayer() {
       </main>
     );
 
+  if (!isPublished(data.project))
+    return (
+      <main className="take-wrap">
+        <div className="empty" data-testid="lesson-unpublished">
+          <p>هذا المحتوى غير منشور حاليًا.</p>
+          <Link to="/learn" className="btn btn-ghost btn-sm">
+            العودة إلى دروسي
+          </Link>
+        </div>
+      </main>
+    );
+
   const summary = summarizeProgress(data.doc, data.progress);
+  const advice = recommend(
+    data.doc,
+    data.quizzes.flatMap((q) => q.done),
+  );
+  const hasTracks = data.doc.blocks.some((b) => b.type === 'activity' && b.track !== 'core');
   const visited = new Set(data.progress?.visited ?? []);
   const prev = sections[index - 1];
   const next = sections[index + 1];
@@ -232,6 +254,28 @@ export function LessonPlayer() {
                     </section>
                   ) : (
                     <p className="muted">لا يوجد اختبار مرتبط بهذا الدرس.</p>
+                  )}
+                  {hasTracks && (
+                    <section className="lp-recommend" aria-labelledby="lp-rec-h" data-testid="lp-recommend" data-kind={advice.kind}>
+                      <h3 id="lp-rec-h" className="sub-h">
+                        <Scale size={16} aria-hidden="true" /> أنشطة تناسب نتيجتك
+                      </h3>
+                      <p data-testid="lp-recommend-reason">{advice.reason}</p>
+                      {advice.activities.length > 0 ? (
+                        <LessonInteractionContext.Provider value={interaction}>
+                          <div className="lv-blocks">
+                            {advice.activities.map((b) => (
+                              <ViewBlock key={b.id} block={b} />
+                            ))}
+                          </div>
+                        </LessonInteractionContext.Provider>
+                      ) : (
+                        advice.kind !== 'none' && advice.kind !== 'on_track' && <p className="muted">لم يضف المعلم أنشطة {advice.kind === 'remedial' ? TRACK_LABEL.remedial : TRACK_LABEL.enrichment}ة لهذا الدرس.</p>
+                      )}
+                      <p className="field-hint">
+                        قاعدة ثابتة يحددها التطبيق، وليست ذكاءً اصطناعيًا: أقل من درجة نجاح الاختبار ← أنشطة علاجية؛ {ENRICHMENT_PERCENT}٪ فأكثر ← أنشطة إثرائية. تُحسب من آخر محاولة لك.
+                      </p>
+                    </section>
                   )}
                   {summary.completed ? (
                     <div className="align-alert is-ok" role="status" data-testid="lesson-done">

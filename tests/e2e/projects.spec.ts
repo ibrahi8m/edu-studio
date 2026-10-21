@@ -23,7 +23,7 @@ async function createProject(page: Page, p: P) {
   if (p.grade) await d.getByTestId('project-grade').selectOption(p.grade);
   if (p.description) await d.getByTestId('project-description').fill(p.description);
   if (p.tags) await d.getByTestId('project-tags').fill(p.tags);
-  if (p.status) await d.locator('select').nth(1).selectOption(p.status);
+  if (p.status) await d.getByTestId('project-status').selectOption(p.status); // 1.1.0: the dialog has more selects (kind fields)
   await d.getByTestId('project-save').click();
   await expect(page.getByTestId('project-heading')).toHaveText(p.title);
 }
@@ -35,7 +35,7 @@ async function addLesson(page: Page, title: string, opts: { duration?: string; s
   await d.getByTestId('lesson-title').fill(title);
   if (opts.summary) await d.getByTestId('lesson-summary').fill(opts.summary);
   if (opts.duration) await d.getByTestId('lesson-duration').fill(opts.duration);
-  if (opts.status) await d.locator('select').selectOption(opts.status);
+  if (opts.status) await d.getByTestId('lesson-status').selectOption(opts.status);
   await d.getByTestId('lesson-save').click();
   await expect(d).toBeHidden();
 }
@@ -57,7 +57,7 @@ test.describe('Phase 1 — projects and lessons', () => {
     // Validation: empty title is refused and nothing is saved
     await page.getByTestId('new-project').click();
     await page.getByTestId('project-save').click();
-    await expect(page.getByTestId('project-dialog').getByRole('alert')).toHaveText('عنوان المشروع مطلوب.');
+    await expect(page.getByTestId('project-dialog').getByRole('alert')).toHaveText('العنوان مطلوب.');
     await page.getByTestId('project-dialog').getByRole('button', { name: 'إلغاء' }).click();
     await expect(page.getByTestId('projects-empty')).toBeVisible();
 
@@ -113,7 +113,7 @@ test.describe('Phase 1 — projects and lessons', () => {
     // Delete the project → lessons go with it; undo brings both back
     await page.getByTestId('delete-project').click();
     await expect(page.getByTestId('confirm-delete-project')).toContainText('3 دروس');
-    await page.getByTestId('confirm-delete-project').getByRole('button', { name: 'حذف المشروع ودروسه' }).click();
+    await page.getByTestId('confirm-delete-project').getByRole('button', { name: 'حذف المحتوى ودروسه' }).click();
     await expect(page.getByTestId('projects-empty')).toBeVisible();
     await page.getByTestId('toast').getByRole('button', { name: 'تراجع' }).click();
     await expect(page.getByTestId('project-heading')).toHaveText('وحدة الطاقة المتجددة');
@@ -121,7 +121,7 @@ test.describe('Phase 1 — projects and lessons', () => {
 
     // Delete for real → no orphan lessons remain
     await page.getByTestId('delete-project').click();
-    await page.getByTestId('confirm-delete-project').getByRole('button', { name: 'حذف المشروع ودروسه' }).click();
+    await page.getByTestId('confirm-delete-project').getByRole('button', { name: 'حذف المحتوى ودروسه' }).click();
     await expect(page.getByTestId('projects-empty')).toBeVisible();
     await page.goto('./');
     await expect(page.getByTestId('stat-projects')).toHaveText('0');

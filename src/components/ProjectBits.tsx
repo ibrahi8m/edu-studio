@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Clock, FolderKanban, Pencil } from 'lucide-react';
 import type { Lesson, Project } from '../db/db';
+import { audienceLine, isPublished, KIND_SPECS, kindOf } from '../db/contentKinds';
 import { STATUS_LABEL, STATUS_TONE } from '../db/catalog';
 import { lessonsLabel, minutesLabel, relativeTime } from '../app/format';
 import { Pill } from './ui';
@@ -24,7 +25,8 @@ export function Tags({ tags }: { tags: string[] }) {
 }
 
 export function ProjectCard({ project, lessonCount }: { project: Project; lessonCount: number }) {
-  const meta = [project.subject, project.grade].filter(Boolean).join(' · ');
+  const meta = audienceLine(project);
+  const kind = kindOf(project);
   return (
     <Link to={`/projects/${project.id}`} className={`project-card c-${project.color}`} data-testid="project-card">
       <span className="project-card-bar" aria-hidden="true" />
@@ -34,6 +36,12 @@ export function ProjectCard({ project, lessonCount }: { project: Project; lesson
         </span>
         <span className="project-card-pills">
           <DemoBadge id={project.id} />
+          <Pill tone="neutral">{KIND_SPECS[kind].short}</Pill>
+          {!isPublished(project) && (
+            <span data-testid="unpublished-pill">
+              <Pill tone="warning">غير منشور</Pill>
+            </span>
+          )}
           <StatusPill status={project.status} />
         </span>
       </span>
@@ -43,7 +51,7 @@ export function ProjectCard({ project, lessonCount }: { project: Project; lesson
       <Tags tags={project.tags.slice(0, 4)} />
       <span className="project-card-foot">
         <span>{lessonsLabel(lessonCount)}</span>
-        <span>عُدّل {relativeTime(project.updatedAt)}</span>
+        <span title={`أُنشئ ${new Date(project.createdAt).toLocaleDateString('ar')}`}>عُدّل {relativeTime(project.updatedAt)}</span>
       </span>
     </Link>
   );

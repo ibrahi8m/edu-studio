@@ -10,7 +10,11 @@ export interface LessonSection {
   blocks: Block[];
 }
 
+/** Remedial and enrichment activities are shown at the end, to the learners the rule selects. */
+export const isTrackActivity = (b: Block) => b.type === 'activity' && b.track !== 'core';
+
 const hasContent = (b: Block) => {
+  if (isTrackActivity(b)) return false;
   switch (b.type) {
     case 'heading':
     case 'text':
@@ -67,7 +71,7 @@ export function summarizeProgress(doc: LessonDoc, p: LessonProgress | null | und
   let cards = 0;
   let cardsSeen = 0;
   for (const b of doc.blocks) {
-    if (b.type === 'activity') {
+    if (b.type === 'activity' && b.track === 'core') {
       const n = activitySteps(b).length;
       steps += n;
       stepsDone += (p?.activities[b.id] ?? []).filter((i) => i >= 0 && i < n).length;

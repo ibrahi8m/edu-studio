@@ -24,6 +24,7 @@ const LEGACY6 = resolve('.legacy/0.6.0');
 const LEGACY7 = resolve('.legacy/0.7.0');
 // 0.8.0 plus the update hardening of phase 8 (commit 32211f7)
 const LEGACY8FIX = resolve('.legacy/0.8.0-fix');
+const LEGACY10 = resolve('.legacy/1.0.0');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -161,12 +162,13 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
 
       // Settings from 0.2.0
       await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
-      await page.goto(`${ORIGIN}#/about`);
-      await expect(page.getByTestId('about-name')).toHaveText('إبراهيم — بيانات الإصدار 0.2.0');
+      // 1.1.0: the full name written in 0.2.0's settings is kept and becomes the name in «صفحتي».
+      await page.goto(`${ORIGIN}#/me`);
+      await expect(page.getByTestId('me-name')).toHaveText('إبراهيم — بيانات الإصدار 0.2.0');
 
       // Projects and lessons from 0.2.0
       await page.goto(`${ORIGIN}#/projects`);
@@ -365,7 +367,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
       // the finished attempt is there
       await page.goto(`${ORIGIN}#/results`);
       await page.getByTestId('results-row').first().click();
@@ -453,7 +455,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
       // the student's progress from 0.5.0
       await page.goto(`${ORIGIN}#/learn`);
       await expect(page.getByTestId('student-chip')).toHaveText('سلمى');
@@ -539,7 +541,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7');
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
       // the 0.6.0 design opens as it was
       await page.goto(`${ORIGIN}#/studio`);
       await page.getByRole('link', { name: /خريطة 0\.6/ }).first().click();
@@ -621,7 +623,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
-      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v7'); // phase 7 needed no database change
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
       // the new logo is served
       expect(await page.evaluate(async () => (await fetch('favicon.svg')).text())).toContain('final, phase 7');
       // add the demo next to the old project
@@ -681,6 +683,93 @@ test.describe('Upgrades keep every record', () => {
         stop(server);
         await waitForPort(true);
       }
+    }
+  });
+  test('1.0.0 → 1.1.0: a project, a lesson with an activity, a student attempt and owner settings survive; they read as published school content and the new features work on them', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    const profile = newProfileDir();
+    let server: ChildProcess | undefined;
+    try {
+      server = await serve(LEGACY10);
+      const ctx1 = await launchProfile(profile, info);
+      const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+      await p1.goto(ORIGIN);
+      await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+      await p1.reload();
+      await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+      await skipSplash(p1);
+      await p1.goto(`${ORIGIN}#/settings`);
+      await expect(p1.locator('.kv dd[dir=ltr]').nth(1)).toHaveText('1.0.0');
+      const full = p1.getByTestId('owner-ownerFullName');
+      await full.fill('اسم من 1.0.0');
+      await full.blur();
+      await expect(p1.getByText('تم الحفظ')).toBeVisible();
+      await p1.goto(`${ORIGIN}#/projects`);
+      await p1.getByTestId('new-project').click();
+      await p1.getByTestId('project-title').fill('مشروع 1.0.0');
+      await p1.getByTestId('project-grade').selectOption('الصف الثامن');
+      await p1.getByTestId('project-save').click();
+      await p1.getByTestId('new-lesson').first().click();
+      await p1.getByTestId('lesson-title').fill('درس 1.0.0');
+      await p1.getByTestId('lesson-save').click();
+      await expect(p1.getByTestId('lesson-dialog')).toBeHidden();
+      await p1.getByRole('button', { name: 'فتح محرر الدرس: درس 1.0.0' }).click();
+      await p1.getByTestId('tab-content').click();
+      await p1.getByTestId('add-block').last().click();
+      await p1.getByTestId('add-activity').click();
+      await p1.getByTestId('activity-title').fill('نشاط قديم');
+      await p1.getByTestId('activity-steps').fill('خطوة أولى\nخطوة ثانية');
+      await p1.waitForTimeout(150);
+      await expect(p1.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+      // a student opens the lesson and ticks a step in 1.0.0
+      await p1.goto(`${ORIGIN}#/learn`);
+      await p1.getByTestId('learn-name').fill('طالب قديم');
+      await p1.getByTestId('learn-continue').click();
+      await p1.getByTestId('open-lesson').first().click();
+      await p1.getByTestId('lp-next').click();
+      await p1.getByTestId('activity-step').first().click();
+      await expect(p1.getByTestId('activity-progress')).toContainText('1/2');
+      await ctx1.close();
+      stop(server);
+      await waitForPort(true);
+
+      server = await serve(ROOT);
+      const ctx2 = await launchProfile(profile, info);
+      const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+      await page.goto(ORIGIN);
+      await skipSplash(page);
+      await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+      await applyUpdateAndWait(page);
+      await skipSplash(page);
+      await page.goto(`${ORIGIN}#/settings`);
+      await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
+      // the 1.0.0 owner name becomes the profile name; About shows the fixed project information
+      await page.goto(`${ORIGIN}#/me`);
+      await expect(page.getByTestId('me-name')).toHaveText('اسم من 1.0.0');
+      await page.goto(`${ORIGIN}#/about`);
+      await expect(page.getByTestId('about-name')).toHaveText('إبراهيم سمير الخطيب');
+      // the old project is published school content
+      await page.goto(`${ORIGIN}#/projects?kind=school&pub=published`);
+      await expect(page.getByTestId('project-card')).toHaveCount(1);
+      await page.getByTestId('project-card').click();
+      await expect(page.getByTestId('publish-state')).toHaveText('منشور');
+      // the old activity becomes an assignment; the old student's progress is still there
+      await page.getByRole('button', { name: 'فتح محرر الدرس: درس 1.0.0' }).click();
+      await page.getByTestId('tab-content').click();
+      await expect(page.getByTestId('activity-title')).toHaveValue('نشاط قديم');
+      await page.getByTestId('activity-submit').check();
+      await page.waitForTimeout(150);
+      await expect(page.getByTestId('save-status')).toHaveAttribute('data-state', 'saved', { timeout: 10_000 });
+      await page.goto(`${ORIGIN}#/learn`);
+      await expect(page.getByTestId('student-chip')).toHaveText('طالب قديم');
+      await expect(page.getByTestId('learner-type')).toHaveText('طالب مدرسة');
+      await expect(page.getByTestId('lesson-progress-text')).toContainText('الأنشطة 1/2');
+      await expect(page.getByTestId('lesson-assignment')).toContainText('قيد الإنجاز');
+      await ctx2.close();
+    } finally {
+      stop(server);
+      await waitForPort(true);
     }
   });
 });

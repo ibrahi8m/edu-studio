@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { FlaskConical, HardDrive, Monitor, Moon, ShieldCheck, Sun, Type, UserRound } from 'lucide-react';
 import { ConfirmDialog } from '../components/Dialog';
 import { DemoPanel } from '../demo/DemoUI';
@@ -8,48 +8,8 @@ import { useSettings } from '../app/SettingsContext';
 import { OFFLINE_LABEL, useRuntime } from '../app/runtime';
 import { Card, PageHeader, Pill, Segmented } from '../components/ui';
 import { DB_NAME, SCHEMA_VERSION } from '../db/db';
-import type { FontScale, Settings as S, ThemeMode } from '../db/settings';
+import { displayName, type FontScale, type ThemeMode } from '../db/settings';
 import { formatBytes, getStorageInfo, requestPersistence, type StorageInfo } from '../db/storage';
-
-const OWNER_FIELDS: { key: keyof S; label: string; placeholder: string }[] = [
-  { key: 'ownerName', label: 'الاسم المختصر (يظهر في الترحيب)', placeholder: 'إبراهيم' },
-  { key: 'ownerFullName', label: 'الاسم الكامل', placeholder: 'اكتب اسمك الكامل' },
-  { key: 'university', label: 'الجامعة', placeholder: 'اسم الجامعة' },
-  { key: 'program', label: 'البرنامج', placeholder: 'ماجستير المناهج وطرق التدريس' },
-  { key: 'course', label: 'المساق', placeholder: 'تصميم المحتوى الرقمي' },
-  { key: 'instructor', label: 'أستاذ المساق', placeholder: 'اسم أستاذ المساق' },
-];
-
-function OwnerField({ k, label, placeholder }: { k: keyof S; label: string; placeholder: string }) {
-  const { settings, update } = useSettings();
-  const [value, setValue] = useState(String(settings[k] ?? ''));
-  const [saved, setSaved] = useState(false);
-  useEffect(() => setValue(String(settings[k] ?? '')), [settings, k]);
-  return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      <input
-        className="input"
-        value={value}
-        placeholder={placeholder}
-        maxLength={k === 'ownerName' ? 80 : 160}
-        data-testid={`owner-${k}`}
-        onChange={(e) => {
-          setValue(e.target.value);
-          setSaved(false);
-        }}
-        onBlur={async () => {
-          const v = k === 'ownerName' ? value.trim() || 'إبراهيم' : value.trim();
-          if (v !== settings[k]) {
-            await update(k, v as never);
-            setSaved(true);
-          }
-        }}
-      />
-      {saved && <span className="field-hint ok">تم الحفظ</span>}
-    </label>
-  );
-}
 
 export function SettingsPage() {
   const { settings, update, reset } = useSettings();
@@ -142,13 +102,17 @@ export function SettingsPage() {
           <p className="muted">الواجهة عربية بالكامل من اليمين إلى اليسار. الإنجليزية مخطط لها لاحقًا، ولم تُضف بعد.</p>
         </Card>
 
-        <Card title="بيانات صاحب المشروع" icon={UserRound} className="span-2">
-          <p className="muted">تظهر في الترحيب وصفحة «عن صاحب المشروع». تُحفظ عند مغادرة الحقل.</p>
-          <div className="field-grid">
-            {OWNER_FIELDS.map((f) => (
-              <OwnerField key={f.key} k={f.key} label={f.label} placeholder={f.placeholder} />
-            ))}
-          </div>
+        <Card title="ملفك الشخصي" icon={UserRound} className="span-2" testId="settings-profile">
+          <p>
+            {displayName(settings) ? (
+              <>
+                الاسم في الترحيب: <strong>{displayName(settings)}</strong>.{' '}
+              </>
+            ) : (
+              'لم تكتب اسمك بعد. '
+            )}
+            الاسم والصفة والسيرة الذاتية في <Link to="/me" data-testid="settings-to-me">صفحتي</Link>. معلومات المشروع الأكاديمية ثابتة في صفحة <Link to="/about">عن المشروع</Link>.
+          </p>
         </Card>
 
         <Card title="المحتوى التجريبي" icon={FlaskConical} className="span-2" testId="settings-demo">
@@ -196,7 +160,7 @@ export function SettingsPage() {
         <ConfirmDialog
           open={confirmReset}
           title="إعادة الإعدادات الافتراضية؟"
-          message="تعود السمة وحجم الخط والحركة وشاشة البداية وبيانات صاحب المشروع إلى قيمها الأولى. المشاريع والدروس والنتائج لا تتغير."
+          message="تعود السمة وحجم الخط والحركة وشاشة البداية إلى قيمها الأولى. اسمك وسيرتك الذاتية في «صفحتي»، والمحتوى والنتائج، لا تتغير."
           confirmLabel="نعم، أعِدها"
           testId="confirm-settings-reset"
           onClose={() => setConfirmReset(false)}

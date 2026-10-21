@@ -7,6 +7,9 @@ import { normalizeQuiz, quizReadiness, studentKey } from '../quiz/model';
 import type { Attempt, Quiz } from '../quiz/types';
 import { summarizeProgress, type ProgressSummary } from './sections';
 import type { LessonProgress } from './types';
+import { isPublished, kindOf } from '../db/contentKinds';
+import { getLearner } from '../learner/db';
+import { CONTENT_FOR, type LearnerProfile, type Submission } from '../learner/types';
 
 export interface MyQuiz {
   quiz: Quiz;
@@ -27,6 +30,11 @@ export interface MyLesson {
 
 export interface LearnData {
   groups: { project: Project; lessons: MyLesson[]; quizzes: MyQuiz[] }[];
+  /** 1.1.0: the learner's profile (null = not saved yet: treated as a school student). */
+  profile: LearnerProfile | null;
+  /** Published content of the learner's kind, for choosing what they are enrolled in. */
+  available: Project[];
+  submissions: Submission[];
 }
 
 export function myQuiz(quiz: Quiz, mine: Attempt[]): MyQuiz {
@@ -45,18 +53,25 @@ export function myQuiz(quiz: Quiz, mine: Attempt[]): MyQuiz {
 export function useLearnData(name: string): LearnData | undefined {
   return useLiveQuery(async () => {
     const key = studentKey(name);
-    const [projects, lessons, rawQuizzes, mine, progress] = await Promise.all([
+    const [projects, lessons, rawQuizzes, mine, progress, profile, submissions] = await Promise.all([
       db.projects.toArray(),
       db.lessons.toArray(),
       db.quizzes.toArray(),
       key ? db.attempts.filter((a) => a.studentKey === key && !a.preview).toArray() : Promise.resolve([] as Attempt[]),
       key ? db.progress.where('studentKey').equals(key).toArray() : Promise.resolve([] as LessonProgress[]),
+      getLearner(db, name),
+      key ? db.submissions.where('studentKey').equals(key).toArray() : Promise.resolve([] as Submission[]),
     ]);
+    // Only published content of the learner's kind; if they chose courses, only those.
+    const want = CONTENT_FOR[profile?.type ?? 'school'];
+    const available = projects.filter((p) => p.status !== 'archived' && isPublished(p) && kindOf(p) === want);
+    const assigned = new Set(profile?.assigned ?? []);
+    const visible = assigned.size ? available.filter((p) => assigned.has(p.id)) : available;
     const docs = await db.lessonDocs.bulkGet(lessons.map((l) => l.id));
     const quizzes = rawQuizzes.map(normalizeQuiz).filter((q): q is Quiz => !!q && quizReadiness(q).ready);
     const lessonIds = new Set(lessons.map((l) => l.id));
-    const groups = projects
-      .filter((p) => p.status !== 'archived')
+    const groups = visible
+      .slice()
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((project) => {
         const ls = lessons
@@ -83,6 +98,6 @@ export function useLearnData(name: string): LearnData | undefined {
         return { project, lessons: ls, quizzes: general };
       })
       .filter((g) => g.lessons.length || g.quizzes.length);
-    return { groups };
+    return { groups, profile, available, submissions };
   }, [name]);
 }

@@ -3,7 +3,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-export const ROUTES = ['', 'projects', 'builder', 'studio', 'quizzes', 'learn', 'results', 'library', 'backup', 'settings', 'about', 'more'];
+export const ROUTES = ['', 'projects', 'builder', 'studio', 'quizzes', 'learn', 'results', 'library', 'backup', 'settings', 'about', 'more', 'ai-studio', 'me'];
 
 /** A real on-disk browser profile, so a "restart" keeps IndexedDB and the service worker. */
 export function newProfileDir() {

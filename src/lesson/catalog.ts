@@ -75,14 +75,23 @@ export const BLOCK_META: Record<BlockType, BlockMeta> = {
   video: { type: 'video', label: 'فيديو', hint: 'فيديو محلي مع وصف', role: 'content' },
   cards: { type: 'cards', label: 'بطاقات تعليمية', hint: 'وجه وظهر للمراجعة والتذكر', role: 'practice' },
   summary: { type: 'summary', label: 'ملخص بصري', hint: 'نقاط رئيسية في شكل بصري', role: 'content' },
-  activity: { type: 'activity', label: 'نشاط تعليمي', hint: 'مهمة يؤديها الطالب بخطوات', role: 'practice' },
+  activity: { type: 'activity', label: 'نشاط تعليمي', hint: 'مهمة يؤديها الطالب بخطوات، ويمكن أن تكون تكليفًا يُسلَّم', role: 'practice' },
+  file: { type: 'file', label: 'ملف', hint: 'ملف يفتحه المتعلم أو ينزّله (PDF، Word، PowerPoint…)', role: 'content' },
 };
 
-export const BLOCK_ORDER: BlockType[] = ['heading', 'text', 'image', 'video', 'audio', 'summary', 'cards', 'activity'];
+export const TRACK_LABEL: Record<'core' | 'remedial' | 'enrichment', string> = {
+  core: 'للجميع',
+  remedial: 'علاجي',
+  enrichment: 'إثرائي',
+};
+
+export const BLOCK_ORDER: BlockType[] = ['heading', 'text', 'image', 'video', 'audio', 'file', 'summary', 'cards', 'activity'];
 
 export const MEDIA_LIMITS = {
   imageInputBytes: 30 * 1024 * 1024,
   imageMaxSide: 1600,
   audioBytes: 50 * 1024 * 1024,
   videoBytes: 150 * 1024 * 1024,
+  /** 1.1.0: attached files (lesson files and learners' assignment files). */
+  fileBytes: 25 * 1024 * 1024,
 };

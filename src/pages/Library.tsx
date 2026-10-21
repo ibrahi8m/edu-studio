@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { BookOpen, Eye, FileAudio, FileVideo, Image as ImageIcon, LayoutTemplate, Library as LibraryIcon, Pencil, Plus, Search, Shapes, Trash2, Upload, X } from 'lucide-react';
+import { BookOpen, Eye, FileAudio, FileText, FileVideo, Image as ImageIcon, LayoutTemplate, Library as LibraryIcon, Pencil, Plus, Search, Shapes, Trash2, Upload, X } from 'lucide-react';
 import { errorMessage, useAllLessons, useAllProjects } from '../app/data';
 import { relativeTime } from '../app/format';
 import { useToast } from '../app/Toasts';
@@ -38,8 +38,8 @@ type Entry =
   | { key: string; source: 'lesson'; asset: { id: string; kind: AssetKind; name: string; size: number; mime: string; lessonId: string; createdAt: number } };
 
 const KIND_ICON: Record<LibraryKind, typeof BookOpen> = { lesson: LayoutTemplate, block: Shapes, design: LayoutTemplate, media: ImageIcon };
-const MEDIA_ICON: Record<AssetKind, typeof BookOpen> = { image: ImageIcon, audio: FileAudio, video: FileVideo };
-const MEDIA_LABEL: Record<AssetKind, string> = { image: 'صورة', audio: 'صوت', video: 'فيديو' };
+const MEDIA_ICON: Record<AssetKind, typeof BookOpen> = { image: ImageIcon, audio: FileAudio, video: FileVideo, file: FileText };
+const MEDIA_LABEL: Record<AssetKind, string> = { image: 'صورة', audio: 'صوت', video: 'فيديو', file: 'ملف' };
 
 export function LibraryPage() {
   const projects = useAllProjects();

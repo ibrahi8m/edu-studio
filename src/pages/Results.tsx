@@ -15,6 +15,7 @@ import { useAllAttempts, useAllQuizzes, useQuizAttempts } from '../quiz/data';
 import { questionTitle } from '../quiz/describe';
 import { questionBloom, SCORE_POLICY_LABEL, TYPE_LABEL } from '../quiz/model';
 import { AnswerReview } from '../quiz/take/AnswerReview';
+import { SubmissionsPanel } from '../learner/SubmissionsPanel';
 import type { Attempt, Question } from '../quiz/types';
 
 export const pct = (f: number) => `${Math.round(f * 1000) / 10}٪`;
@@ -60,7 +61,7 @@ export function ResultsHome() {
           {total === 0 && quizzes !== undefined && (
             <div className="empty" data-testid="results-none">
               <p>لم يُسلّم أي طالب اختبارًا على هذا الجهاز بعد.</p>
-              <p className="muted">تظهر النتائج هنا بعد أول محاولة من «وضع الطالب».</p>
+              <p className="muted">تظهر النتائج هنا بعد أول محاولة من «بيئة المتعلم».</p>
             </div>
           )}
           <ul className="quiz-list">
@@ -116,6 +117,7 @@ export function ResultsHome() {
           )}
         </>
       )}
+      <SubmissionsPanel />
     </div>
   );
 }

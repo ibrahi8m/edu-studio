@@ -8,7 +8,8 @@ import { LIBRARY_OWNER, type LibraryItem } from '../library/types';
 import type { Attempt, Question, Quiz } from '../quiz/types';
 import type { LessonProgress } from '../student/types';
 import type { Design } from '../studio/types';
-import type { AssetMeta, Package } from './format';
+import type { AssetMeta, Package, SubmissionMeta } from './format';
+import type { Submission } from '../learner/types';
 
 /**
  * What to do with each project in the file:
@@ -58,6 +59,7 @@ function bundle(pkg: Package, projectId: string) {
     attempts: d.attempts.filter((a) => quizIds.has(a.quizId)),
     progress: d.progress.filter((p) => p.projectId === projectId),
     designs: d.designs.filter((x) => x.projectId === projectId),
+    submissions: d.submissions.filter((x) => x.projectId === projectId),
   };
 }
 type Bundle = ReturnType<typeof bundle>;
@@ -162,7 +164,8 @@ function remap(b: Bundle, titleSuffix: boolean) {
   const progress: LessonProgress[] = b.progress.map((p) => ({ ...p, id: `${p.studentKey}|${m(p.lessonId)}`, lessonId: m(p.lessonId)!, projectId }));
   const designs: Design[] = b.designs.map((x) => ({ ...x, id: newId(), projectId, lessonId: m(x.lessonId) }));
   const assets = b.assets.map((a) => ({ meta: a, patch: { id: m(a.id)!, lessonId: m(a.lessonId)! } }));
-  return { project, lessons, docs, quizzes, attempts, progress, designs, assets };
+  const submissions: SubmissionMeta[] = b.submissions.map((x) => ({ ...x, id: `${x.studentKey}|${m(x.lessonId)}|${x.blockId}`, lessonId: m(x.lessonId)!, projectId }));
+  return { project, lessons, docs, quizzes, attempts, progress, designs, assets, submissions };
 }
 
 export interface ImportResult {
@@ -178,18 +181,27 @@ export interface ImportResult {
   progress: number;
   library: number;
   settings: number;
+  submissions: number;
+  learners: number;
+  prompts: number;
+  brands: number;
   /** Ids of the projects now on the device from this file. */
   projectIds: string[];
 }
 
-const ALL = (d: EduDB) => [d.projects, d.lessons, d.lessonDocs, d.assets, d.quizzes, d.attempts, d.progress, d.designs, d.library, d.settings];
+const ALL = (d: EduDB) => [d.projects, d.lessons, d.lessonDocs, d.assets, d.quizzes, d.attempts, d.progress, d.designs, d.library, d.settings, d.learners, d.submissions, d.prompts, d.brands];
+
+const toSubmission = (s: SubmissionMeta, file: (id: string) => Uint8Array): Submission => ({
+  ...s,
+  files: s.files.map((f) => ({ id: f.id, name: f.name, mime: f.mime, size: f.size, data: file(`sub:${f.id}`).slice().buffer as ArrayBuffer })),
+});
 
 /**
  * Writes the file into the local database in ONE transaction: if anything fails,
  * nothing is changed. Only what the plan says is written.
  */
 export async function applyImport(database: EduDB, pkg: Package, plan: ImportPlan): Promise<ImportResult> {
-  const r: ImportResult = { added: 0, replaced: 0, copied: 0, skipped: 0, lessons: 0, quizzes: 0, designs: 0, assets: 0, attempts: 0, progress: 0, library: 0, settings: 0, projectIds: [] };
+  const r: ImportResult = { added: 0, replaced: 0, copied: 0, skipped: 0, lessons: 0, quizzes: 0, designs: 0, assets: 0, attempts: 0, progress: 0, library: 0, settings: 0, submissions: 0, learners: 0, prompts: 0, brands: 0, projectIds: [] };
   const file = (id: string) => {
     const b = pkg.files.get(id);
     if (!b) throw new Error('ملف وسائط ناقص في الملف المستورد.');
@@ -209,7 +221,15 @@ export async function applyImport(database: EduDB, pkg: Package, plan: ImportPla
       await database.designs.bulkAdd(d.designs);
       await database.library.bulkAdd(d.library);
       await database.settings.bulkPut(d.settings);
+      await database.learners.bulkPut(d.learners);
+      await database.submissions.bulkPut(d.submissions.map((x) => toSubmission(x, file)));
+      await database.prompts.bulkPut(d.prompts);
+      await database.brands.bulkPut(d.brands);
       Object.assign(r, {
+        submissions: d.submissions.length,
+        learners: d.learners.length,
+        prompts: d.prompts.length,
+        brands: d.brands.length,
         added: d.projects.length,
         lessons: d.lessons.length,
         quizzes: d.quizzes.length,
@@ -246,6 +266,8 @@ export async function applyImport(database: EduDB, pkg: Package, plan: ImportPla
         await database.attempts.bulkAdd(b.attempts);
         await database.progress.bulkPut(b.progress);
         await database.designs.bulkAdd(b.designs);
+        await database.submissions.bulkPut(b.submissions.map((x) => toSubmission(x, file)));
+        r.submissions += b.submissions.length;
         if (pp.choice === 'add') r.added++;
         r.projectIds.push(pp.id);
         Object.assign(r, { lessons: r.lessons + b.lessons.length, quizzes: r.quizzes + b.quizzes.length, designs: r.designs + b.designs.length, assets: r.assets + b.assets.length, attempts: r.attempts + b.attempts.length, progress: r.progress + b.progress.length });
@@ -261,6 +283,8 @@ export async function applyImport(database: EduDB, pkg: Package, plan: ImportPla
       await database.attempts.bulkAdd(c.attempts);
       await database.progress.bulkPut(c.progress);
       await database.designs.bulkAdd(c.designs);
+      await database.submissions.bulkPut(c.submissions.map((x) => toSubmission(x, file)));
+      r.submissions += c.submissions.length;
       r.copied++;
       r.projectIds.push(c.project.id);
       Object.assign(r, { lessons: r.lessons + c.lessons.length, quizzes: r.quizzes + c.quizzes.length, designs: r.designs + c.designs.length, assets: r.assets + c.assets.length, attempts: r.attempts + c.attempts.length, progress: r.progress + c.progress.length });
@@ -277,6 +301,22 @@ export async function applyImport(database: EduDB, pkg: Package, plan: ImportPla
       await database.library.add(clash ? relink(item, map) : item);
       r.library++;
       r.assets += metas.length;
+    }
+    // Learner profiles, prompts and identities: added when missing; the ones on this device are kept.
+    for (const x of pkg.data.learners) {
+      if (await database.learners.get(x.key)) continue;
+      await database.learners.add(x);
+      r.learners++;
+    }
+    for (const x of pkg.data.prompts) {
+      if (await database.prompts.get(x.id)) continue;
+      await database.prompts.add(x);
+      r.prompts++;
+    }
+    for (const x of pkg.data.brands) {
+      if (await database.brands.get(x.id)) continue;
+      await database.brands.add(x);
+      r.brands++;
     }
     if (plan.restoreSettings && pkg.data.settings.length) {
       await database.settings.bulkPut(pkg.data.settings);

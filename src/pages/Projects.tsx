@@ -1,10 +1,11 @@
 import { DemoInstallButton } from '../demo/DemoUI';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FolderPlus, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { errorMessage, useAllLessons, useAllProjects } from '../app/data';
 import { useToast } from '../app/Toasts';
-import { db, type ItemStatus, type Project } from '../db/db';
+import { db, type ContentKind, type ItemStatus, type Project } from '../db/db';
+import { CONTENT_KINDS, KIND_SPECS } from '../db/contentKinds';
 import { GRADES, STATUSES, STATUS_LABEL } from '../db/catalog';
 import { createProject, distinctSubjects, queryLessons, queryProjects, type ProjectSort } from '../db/projects';
 import { ProjectFormDialog } from '../components/forms';
@@ -29,6 +30,16 @@ export function ProjectsPage() {
   const status = (params.get('status') ?? 'active') as ItemStatus | 'all' | 'active';
   const lessonStatus = (params.get('lstatus') ?? 'all') as ItemStatus | 'all';
   const sort = (params.get('sort') ?? 'updated') as ProjectSort;
+  const kind = (CONTENT_KINDS.includes(params.get('kind') as ContentKind) ? params.get('kind') : '') as ContentKind | '';
+  const publication = (['published', 'unpublished'].includes(params.get('pub') ?? '') ? params.get('pub') : '') as 'published' | 'unpublished' | '';
+  // «إضافة محتوى تعليمي جديد» from the dashboard opens the dialog here (?new=1).
+  useEffect(() => {
+    if (params.get('new') !== '1') return;
+    setCreating(true);
+    const next = new URLSearchParams(params);
+    next.delete('new');
+    setParams(next, { replace: true });
+  }, [params, setParams]);
 
   const setParam = (k: string, v: string, fallback = '') => {
     const next = new URLSearchParams(params);
@@ -46,8 +57,8 @@ export function ProjectsPage() {
   }, [lessons]);
 
   const shownProjects = useMemo(
-    () => (projects && lessons ? queryProjects(projects, lessons, { q, subject, grade, status, sort }) : []),
-    [projects, lessons, q, subject, grade, status, sort],
+    () => (projects && lessons ? queryProjects(projects, lessons, { q, subject, grade, status, sort, kind, publication }) : []),
+    [projects, lessons, q, subject, grade, status, sort, kind, publication],
   );
   const shownLessons = useMemo(
     () => (lessons ? queryLessons(lessons, projectMap, { q, status: lessonStatus }) : []),
@@ -55,7 +66,7 @@ export function ProjectsPage() {
   );
 
   const loading = projects === undefined || lessons === undefined;
-  const filtersActive = !!(subject || grade || status !== 'active' || sort !== 'updated' || lessonStatus !== 'all');
+  const filtersActive = !!(subject || grade || kind || publication || status !== 'active' || sort !== 'updated' || lessonStatus !== 'all');
   const total = projects?.length ?? 0;
 
   const clearAll = () => setParams(tab === 'lessons' ? { tab } : {}, { replace: true });
@@ -63,12 +74,12 @@ export function ProjectsPage() {
   return (
     <div className="page" data-testid="page-projects">
       <PageHeader
-        title="المشاريع والدروس"
-        subtitle="كل مشروع يجمع دروسًا مترابطة. تُحفظ البيانات على هذا الجهاز فقط."
+        title="المحتوى التعليمي"
+        subtitle="محتوى مدرسي، وجامعي، وبرامج تدريب معلمين؛ كلٌّ بوحداته ودروسه. تُحفظ البيانات على هذا الجهاز فقط."
         actions={
           <button type="button" className="btn btn-primary fab-mobile" onClick={() => setCreating(true)} data-testid="new-project">
             <Plus size={18} aria-hidden="true" />
-            <span>مشروع جديد</span>
+            <span>إضافة محتوى تعليمي جديد</span>
           </button>
         }
       />
@@ -78,15 +89,15 @@ export function ProjectsPage() {
           <span className="coming-icon" aria-hidden="true">
             <FolderPlus size={30} />
           </span>
-          <h2>ابدأ بأول مشروع تعليمي</h2>
-          <p className="muted">مثال: «وحدة الطاقة — العلوم — الصف السابع». بعد إنشائه أضف إليه الدروس.</p>
+          <h2>إضافة محتوى تعليمي جديد</h2>
+          <p className="muted">مدرسي (مثل «وحدة الطاقة — العلوم — الصف السابع»)، أو جامعي، أو برنامج تدريب معلمين. بعد إنشائه أضف إليه الوحدات والدروس.</p>
           <div className="empty-actions">
             <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-              <Plus size={18} aria-hidden="true" /> إنشاء مشروع
+              <Plus size={18} aria-hidden="true" /> إضافة محتوى تعليمي جديد
             </button>
             <DemoInstallButton />
           </div>
-          <p className="muted">أو جرّب التطبيق أولًا بمشروع جاهز فيه دروس واختبارات ونتائج طلاب.</p>
+          <p className="muted">أو جرّب التطبيق أولًا بمحتوى جاهز فيه دروس واختبارات ونتائج طلاب.</p>
         </section>
       ) : (
         <>
@@ -99,7 +110,7 @@ export function ProjectsPage() {
                 className={tab === 'projects' ? 'is-active' : ''}
                 onClick={() => setParam('tab', '', '')}
               >
-                المشاريع <span className="tab-count">{shownProjects.length}</span>
+                المحتوى <span className="tab-count">{shownProjects.length}</span>
               </button>
               <button
                 type="button"
@@ -120,7 +131,7 @@ export function ProjectsPage() {
                 <input
                   type="search"
                   className="search-input"
-                  placeholder={tab === 'projects' ? 'ابحث في المشاريع ودروسها…' : 'ابحث في عناوين الدروس وملخصاتها…'}
+                  placeholder={tab === 'projects' ? 'ابحث في المحتوى ودروسه…' : 'ابحث في عناوين الدروس وملخصاتها…'}
                   value={q}
                   onChange={(e) => setParam('q', e.target.value)}
                   data-testid="search"
@@ -148,7 +159,26 @@ export function ProjectsPage() {
               {tab === 'projects' ? (
                 <>
                   <label className="filter">
-                    <span>المادة</span>
+                    <span>النوع</span>
+                    <select className="input" value={kind} onChange={(e) => setParam('kind', e.target.value)} data-testid="filter-kind">
+                      <option value="">كل الأنواع</option>
+                      {CONTENT_KINDS.map((k) => (
+                        <option key={k} value={k}>
+                          {KIND_SPECS[k].label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="filter">
+                    <span>النشر</span>
+                    <select className="input" value={publication} onChange={(e) => setParam('pub', e.target.value)} data-testid="filter-publication">
+                      <option value="">المنشور وغير المنشور</option>
+                      <option value="published">المنشور فقط</option>
+                      <option value="unpublished">المسودات غير المنشورة</option>
+                    </select>
+                  </label>
+                  <label className="filter">
+                    <span>المادة أو المساق</span>
                     <select className="input" value={subject} onChange={(e) => setParam('subject', e.target.value)} data-testid="filter-subject">
                       <option value="">كل المواد</option>
                       {subjects.map((s) => (
@@ -159,7 +189,7 @@ export function ProjectsPage() {
                     </select>
                   </label>
                   <label className="filter">
-                    <span>المرحلة</span>
+                    <span>الصف أو المرحلة</span>
                     <select className="input" value={grade} onChange={(e) => setParam('grade', e.target.value)} data-testid="filter-grade">
                       <option value="">كل المراحل</option>
                       {GRADES.map((g) => (
@@ -170,7 +200,7 @@ export function ProjectsPage() {
                     </select>
                   </label>
                   <label className="filter">
-                    <span>الحالة</span>
+                    <span>مرحلة الإعداد</span>
                     <select className="input" value={status} onChange={(e) => setParam('status', e.target.value, 'active')} data-testid="filter-status">
                       <option value="active">غير المؤرشفة</option>
                       <option value="all">الكل</option>
@@ -248,7 +278,7 @@ export function ProjectsPage() {
           try {
             const p = await createProject(db, input);
             setCreating(false);
-            toast({ message: `أُنشئ المشروع «${p.title}».` });
+            toast({ message: `حُفظ المحتوى «${p.title}» على هذا الجهاز.` });
             navigate(`/projects/${p.id}`);
           } catch (e) {
             toast({ message: errorMessage(e), tone: 'danger' });
@@ -262,7 +292,7 @@ export function ProjectsPage() {
 function NoResults({ onClear, lessons }: { onClear: () => void; lessons?: boolean }) {
   return (
     <div className="empty" data-testid="no-results">
-      <p>{lessons ? 'لا توجد دروس مطابقة.' : 'لا توجد مشاريع مطابقة.'}</p>
+      <p>{lessons ? 'لا توجد دروس مطابقة.' : 'لا يوجد محتوى مطابق.'}</p>
       <button type="button" className="btn btn-ghost btn-sm" onClick={onClear}>
         مسح البحث والتصنيف
       </button>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Compass, FlaskConical, GraduationCap, Info, Layers, Sparkles, Target } from 'lucide-react';
-import { useSettings } from '../app/SettingsContext';
+import { PROJECT_INFO } from '../app/project';
 import { BrandGlyph, Portrait, Wordmark } from '../components/Brand';
 import { Card } from '../components/ui';
 import { DB_NAME, SCHEMA_VERSION } from '../db/db';
@@ -19,45 +19,31 @@ const PRINCIPLES: { title: string; how: string; to: string; where: string }[] = 
 ];
 
 export function About() {
-  const { settings } = useSettings();
   const demo = useDemoInstalled();
-  const name = settings.ownerFullName || settings.ownerName;
-  const rows: [string, string][] = [
-    ['البرنامج', settings.program],
-    ['المساق', settings.course],
-    ['الجامعة', settings.university],
-    ['أستاذ المساق', settings.instructor],
-  ];
-  const missing = !settings.ownerFullName || !settings.university || !settings.instructor;
 
   return (
     <div className="page" data-testid="page-about">
       <section className="about-hero">
         <div className="about-portrait">
-          <Portrait variant="hero" alt={`صورة ${name}`} />
+          <Portrait variant="hero" alt={`صورة ${PROJECT_INFO.owner}`} />
         </div>
         <div className="about-text">
-          <span className="about-kicker">صاحب المشروع ومصممه</span>
-          <h1 className="about-name" data-testid="about-name">{name}</h1>
-          <p className="about-brand">
+          <span className="about-kicker">{PROJECT_INFO.ownerLabel}</span>
+          <h1 className="about-name" data-testid="about-name">{PROJECT_INFO.owner}</h1>
+          <p className="about-brand" aria-label={PROJECT_INFO.product}>
             <span dir="ltr" className="ltr-run">
               <Wordmark size="md" /> EDU STUDIO
             </span>
           </p>
           <p className="hero-slogan" dir="ltr">Create. Teach. Inspire.</p>
-          <dl className="kv about-kv">
-            {rows.map(([k, v]) => (
+          <dl className="kv about-kv" data-testid="about-info">
+            {PROJECT_INFO.rows.map(([k, v]) => (
               <div key={k} className="kv-row">
                 <dt>{k}</dt>
-                <dd>{v || <span className="muted">لم يُحدَّد بعد</span>}</dd>
+                <dd>{v}</dd>
               </div>
             ))}
           </dl>
-          {missing && (
-            <p className="muted">
-              يمكنك إكمال البيانات من <Link to="/settings">الإعدادات</Link>.
-            </p>
-          )}
         </div>
       </section>
 
@@ -66,7 +52,9 @@ export function About() {
           <p>منصة عربية تساعد المعلم على تصميم المحتوى التعليمي الرقمي من الهدف حتى التقويم، وتعمل وظائفها الأساسية دون إنترنت.</p>
         </Card>
         <Card title="السياق الأكاديمي" icon={GraduationCap}>
-          <p>مشروع مساق {settings.course} ضمن {settings.program}.</p>
+          <p>
+            مشروع مساق {PROJECT_INFO.rows[1][1]} ضمن برنامج {PROJECT_INFO.rows[0][1]}، {PROJECT_INFO.rows[2][1]}.
+          </p>
         </Card>
       </div>
 
@@ -138,7 +126,7 @@ export function About() {
             <Link to={`/projects/${DEMO_PROJECT_ID}`} data-testid="about-demo-open">
               افتحه
             </Link>
-            ، أو ادخل <Link to="/learn">وضع الطالب</Link> باسم أحد طلابه، أو راجع <Link to="/results">نتائجهم</Link>.
+            ، أو ادخل <Link to="/learn">بيئة المتعلم</Link> باسم أحد طلابه، أو راجع <Link to="/results">نتائجهم</Link>.
           </p>
         ) : (
           <>

@@ -4,6 +4,8 @@ import type { Attempt, Quiz } from '../quiz/types';
 import type { LessonProgress } from '../student/types';
 import type { Design } from '../studio/types';
 import type { LibraryItem } from '../library/types';
+import type { LearnerProfile, Submission } from '../learner/types';
+import type { BrandKit, SavedPrompt } from '../aistudio/types';
 
 /**
  * Local database (IndexedDB) — one per device. No cloud, no sync.
@@ -17,6 +19,9 @@ import type { LibraryItem } from '../library/types';
  *   v5 (phase 4): progress (each student's progress through each lesson)
  *   v6 (phase 5): designs (studio: cards, visual summaries, concept maps)
  *   v7 (phase 6): library (reusable lesson templates, blocks, designs and media)
+ *   v8 (1.1.0):   learners (learner profiles), submissions (assignment answers),
+ *                 prompts and brands (AI Design Studio). Projects and lessons gain optional
+ *                 fields only (kind, published, details, unit), read with defaults when missing.
  */
 export interface SettingRow {
   key: string;
@@ -31,6 +36,9 @@ export interface MetaRow {
 
 export type ItemStatus = 'draft' | 'in_progress' | 'ready' | 'archived';
 
+/** Who the content is for. Projects saved before 1.1.0 have no kind and are school content. */
+export type ContentKind = 'school' | 'university' | 'training';
+
 export interface Project {
   id: string;
   title: string;
@@ -42,6 +50,12 @@ export interface Project {
   color: ProjectColor;
   createdAt: number;
   updatedAt: number;
+  /** 1.1.0+: missing = 'school'. */
+  kind?: ContentKind;
+  /** 1.1.0+: shown in the learner environment. Missing = published (as every project was before). */
+  published?: boolean;
+  /** 1.1.0+: the fields specific to the kind (semester, degree, target teachers…). */
+  details?: Record<string, string>;
 }
 
 export type ProjectColor = 'blue' | 'silver' | 'teal' | 'violet' | 'amber';
@@ -58,10 +72,12 @@ export interface Lesson {
   order: number;
   createdAt: number;
   updatedAt: number;
+  /** 1.1.0+: the unit (or topic / program axis) the lesson belongs to. Missing = none. */
+  unit?: string;
 }
 
 export const DB_NAME = 'ibrahi8m-edu';
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export class EduDB extends Dexie {
   settings!: Table<SettingRow, string>;
@@ -75,6 +91,10 @@ export class EduDB extends Dexie {
   progress!: Table<LessonProgress, string>;
   designs!: Table<Design, string>;
   library!: Table<LibraryItem, string>;
+  learners!: Table<LearnerProfile, string>;
+  submissions!: Table<Submission, string>;
+  prompts!: Table<SavedPrompt, string>;
+  brands!: Table<BrandKit, string>;
 
   constructor(name: string = DB_NAME) {
     super(name);
@@ -107,6 +127,13 @@ export class EduDB extends Dexie {
     // Adds one table only: everything from v1–v6 is untouched.
     this.version(7).stores({
       library: 'id, kind, updatedAt, *tags',
+    });
+    // Adds tables only: everything from v1–v7 is untouched (new project/lesson fields are optional).
+    this.version(8).stores({
+      learners: 'key, type, updatedAt',
+      submissions: 'id, studentKey, lessonId, projectId, status, updatedAt',
+      prompts: 'id, type, brandId, updatedAt',
+      brands: 'id, updatedAt',
     });
   }
 }

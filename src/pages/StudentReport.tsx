@@ -182,7 +182,7 @@ export function StudentReport() {
           <BookOpen size={18} aria-hidden="true" /> التقدم في الدروس
         </h2>
         {data.lessonRows.length === 0 ? (
-          <p className="muted">لم يفتح أي درس في وضع الطالب على هذا الجهاز.</p>
+          <p className="muted">لم يفتح أي درس في بيئة المتعلم على هذا الجهاز.</p>
         ) : (
           <ul className="obj-bars" data-testid="student-lessons">
             {data.lessonRows.map((l) => (

@@ -3,6 +3,9 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Splash } from '../components/Splash';
 import { About } from '../pages/About';
+import { MePage } from '../pages/Me';
+import { AiStudioPage } from '../pages/AiStudio';
+import { PROJECT_INFO } from './project';
 import { LibraryPage } from '../pages/Library';
 import { TransferPage } from '../pages/Transfer';
 import { Dashboard } from '../pages/Dashboard';
@@ -66,12 +69,14 @@ function Root() {
             <Route path="backup" element={<TransferPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="about" element={<About />} />
+            <Route path="me" element={<MePage />} />
+            <Route path="ai-studio" element={<AiStudioPage />} />
             <Route path="more" element={<More />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </HashRouter>
-      {showSplash && <Splash onDone={done} ownerName={settings.ownerName} />}
+      {showSplash && <Splash onDone={done} ownerName={PROJECT_INFO.owner} />}
     </>
   );
 }

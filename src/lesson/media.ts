@@ -26,12 +26,26 @@ const EXT_MIME: Record<string, string> = {
   webp: 'image/webp',
   gif: 'image/gif',
   svg: 'image/svg+xml',
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  txt: 'text/plain',
+  csv: 'text/csv',
+  zip: 'application/zip',
 };
+
+/** Document types a lesson or an assignment may carry (no executables or scripts). */
+export const FILE_EXTS = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'csv', 'zip', 'jpg', 'jpeg', 'png', 'webp', 'mp3', 'm4a', 'mp4'];
 
 export const ACCEPT: Record<AssetKind, string> = {
   image: 'image/*',
   audio: 'audio/*,.mp3,.m4a,.wav,.ogg,.aac',
   video: 'video/*,.mp4,.webm,.mov,.m4v',
+  file: FILE_EXTS.map((e) => `.${e}`).join(','),
 };
 
 function mimeOf(file: File): string {
@@ -82,6 +96,7 @@ async function prepareImage(file: File, mime: string): Promise<NewAsset & { note
 /** Validates and reads a picked file so it can be stored in the local database. */
 export async function prepareFile(file: File, kind: AssetKind): Promise<NewAsset & { note?: string }> {
   const mime = mimeOf(file);
+  if (kind === 'file') return prepareDocument(file);
   if (!mime.startsWith(`${kind}/`)) {
     const label = kind === 'image' ? 'صورة' : kind === 'audio' ? 'ملفًا صوتيًا' : 'فيديو';
     throw new MediaError(`الملف «${file.name}» ليس ${label}.`);
@@ -89,9 +104,19 @@ export async function prepareFile(file: File, kind: AssetKind): Promise<NewAsset
   if (kind === 'image') return prepareImage(file, mime);
   const limit = kind === 'audio' ? MEDIA_LIMITS.audioBytes : MEDIA_LIMITS.videoBytes;
   if (file.size > limit) throw new MediaError(`حجم الملف ${formatBytes(file.size)} أكبر من الحد المسموح (${formatBytes(limit)}).`);
-  const probe = document.createElement(kind);
+  const probe = document.createElement(kind as 'audio' | 'video');
   const note = probe.canPlayType(mime) === '' ? 'قد لا يستطيع هذا المتصفح تشغيل هذه الصيغة. الصيغ الأضمن: MP4 (H.264) أو WebM للفيديو، وMP3 أو M4A للصوت.' : undefined;
   return { kind, mime, name: file.name, data: await file.arrayBuffer(), note };
+}
+
+/** Checks an attached document by extension and size; it is stored byte-for-byte. */
+export async function prepareDocument(file: File, limit: number = MEDIA_LIMITS.fileBytes): Promise<NewAsset & { note?: string }> {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  if (!FILE_EXTS.includes(ext))
+    throw new MediaError(`نوع الملف «${file.name}» غير مسموح. المسموح: ${FILE_EXTS.join('، ')}.`);
+  if (file.size === 0) throw new MediaError(`الملف «${file.name}» فارغ.`);
+  if (file.size > limit) throw new MediaError(`حجم الملف ${formatBytes(file.size)} أكبر من الحد المسموح (${formatBytes(limit)}).`);
+  return { kind: 'file', mime: EXT_MIME[ext] ?? file.type ?? 'application/octet-stream', name: file.name, data: await file.arrayBuffer() };
 }
 
 export function isQuotaError(e: unknown): boolean {

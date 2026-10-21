@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { db } from '../db/db';
-import { DEFAULT_SETTINGS, loadSettings, resetSettings, saveSetting, type Settings } from '../db/settings';
+import { DEFAULT_SETTINGS, loadSettings, PROFILE_KEYS, resetSettings, saveSetting, type Settings } from '../db/settings';
 import { requestPersistence } from '../db/storage';
 
 interface SettingsState {
@@ -82,7 +82,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [storageError]);
 
   const reset = useCallback(async () => {
-    setSettings(DEFAULT_SETTINGS);
+    setSettings((prev) => {
+      const next = { ...DEFAULT_SETTINGS };
+      for (const k of PROFILE_KEYS) (next as unknown as Record<string, unknown>)[k] = prev[k];
+      return next;
+    });
     if (!storageError) await resetSettings(db);
   }, [storageError]);
 

@@ -2,12 +2,13 @@ import { DemoBadge, DemoBanner } from '../demo/DemoUI';
 import { isDemoId } from '../demo/content';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BarChart3, BookOpen, FolderOutput, ListChecks, Palette, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowRight, BarChart3, BookOpen, Eye, EyeOff, FolderOutput, Layers, ListChecks, Palette, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { errorMessage, useAllProjects, useProject, useProjectLessons } from '../app/data';
 import { lessonsLabel, minutesLabel, relativeTime } from '../app/format';
 import { useToast } from '../app/Toasts';
 import { db, type Lesson } from '../db/db';
+import { detailLines, isPublished, KIND_SPECS, kindOf } from '../db/contentKinds';
 import {
   createLesson,
   deleteLesson,
@@ -17,6 +18,7 @@ import {
   queryLessons,
   restoreLesson,
   restoreProject,
+  setPublished,
   updateLesson,
   updateProject,
 } from '../db/projects';
@@ -66,19 +68,32 @@ export function ProjectDetail() {
     return (
       <div className="page" data-testid="project-missing">
         <div className="empty">
-          <p>هذا المشروع غير موجود على هذا الجهاز.</p>
-          <Link to="/projects" className="btn btn-ghost btn-sm">العودة إلى المشاريع</Link>
+          <p>هذا المحتوى غير موجود على هذا الجهاز.</p>
+          <Link to="/projects" className="btn btn-ghost btn-sm">العودة إلى المحتوى التعليمي</Link>
         </div>
       </div>
     );
 
-  const meta = [project.subject, project.grade].filter(Boolean);
+  const kind = kindOf(project);
+  const spec = KIND_SPECS[kind];
+  const published = isPublished(project);
+  const meta = [project.subject, spec.usesGrade ? project.grade : ''].filter(Boolean);
+  const units = [...new Set(lessons.map((l) => l.unit ?? '').filter(Boolean))];
+  const details = spec.fields.filter((f) => project.details?.[f.key]);
+  const togglePublish = async () => {
+    try {
+      await setPublished(db, project.id, !published);
+      toast({ message: published ? 'أُلغي النشر: لم يعد المحتوى يظهر في بيئة المتعلم.' : 'نُشر المحتوى: يظهر الآن في بيئة المتعلم على هذا الجهاز.' });
+    } catch (e) {
+      toast({ message: errorMessage(e), tone: 'danger' });
+    }
+  };
 
   return (
     <div className="page" data-testid="page-project">
       <nav className="breadcrumb" aria-label="مسار التنقل">
         <Link to="/projects">
-          <ArrowRight size={16} aria-hidden="true" /> المشاريع
+          <ArrowRight size={16} aria-hidden="true" /> المحتوى التعليمي
         </Link>
       </nav>
 
@@ -89,6 +104,10 @@ export function ProjectDetail() {
         <div className="project-hero-main">
           <div className="project-hero-tags">
             <DemoBadge id={project.id} />
+            <Pill tone="accent">{spec.label}</Pill>
+            <span data-testid="publish-state">
+              <Pill tone={published ? 'success' : 'warning'}>{published ? 'منشور' : 'غير منشور'}</Pill>
+            </span>
             <StatusPill status={project.status} />
             {meta.map((m) => (
               <Pill key={m}>{m}</Pill>
@@ -97,14 +116,38 @@ export function ProjectDetail() {
           <h1 className="project-hero-title" data-testid="project-heading">{project.title}</h1>
           {project.description && <p className="project-hero-desc">{project.description}</p>}
           <Tags tags={project.tags} />
+          {details.length > 0 && (
+            <dl className="kv kind-kv" data-testid="project-details">
+              {details.map((f) => (
+                <div key={f.key} className="kv-row">
+                  <dt>{f.label}</dt>
+                  <dd>
+                    {f.multiline ? (
+                      <ul className="plain-list">
+                        {detailLines(project, f.key).map((x, i) => (
+                          <li key={i}>{x}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      project.details![f.key]
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
           <p className="muted">
             {lessonsLabel(lessons.length)}
-            {totalMinutes > 0 && ` · ${minutesLabel(totalMinutes)}`} · عُدّل {relativeTime(project.updatedAt)}
+            {units.length > 0 && ` · ${units.length.toLocaleString('ar')} ${spec.unitLabel === 'المحور' ? 'محاور' : 'وحدات'}`}
+            {totalMinutes > 0 && ` · ${minutesLabel(totalMinutes)}`} · أُنشئ {new Date(project.createdAt).toLocaleDateString('ar')} · عُدّل {relativeTime(project.updatedAt)}
           </p>
         </div>
         <div className="project-hero-actions">
           <button type="button" className="btn" onClick={() => setEditing(true)} data-testid="edit-project">
             <Pencil size={16} aria-hidden="true" /> تعديل
+          </button>
+          <button type="button" className="btn" onClick={() => void togglePublish()} data-testid="toggle-publish">
+            {published ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />} {published ? 'إلغاء النشر' : 'نشر'}
           </button>
           <Link to={`/backup?export=${project.id}`} className="btn" data-testid="export-this-project">
             <FolderOutput size={16} aria-hidden="true" /> تصدير
@@ -118,7 +161,7 @@ export function ProjectDetail() {
       <section className="card">
         <div className="lessons-head">
           <h2 className="card-title">
-            <BookOpen size={18} aria-hidden="true" /> دروس المشروع
+            <BookOpen size={18} aria-hidden="true" /> {kind === 'training' ? 'المحاور والجلسات' : kind === 'university' ? 'الموضوعات والمحاضرات' : 'الوحدات والدروس'}
           </h2>
           <button type="button" className="btn btn-primary fab-mobile" onClick={() => setLessonDialog({ open: true, lesson: null })} data-testid="new-lesson">
             <Plus size={18} aria-hidden="true" />
@@ -130,7 +173,7 @@ export function ProjectDetail() {
           <label className="search">
             <Search size={18} aria-hidden="true" />
             <span className="sr-only">بحث في الدروس</span>
-            <input type="search" className="search-input" placeholder="ابحث في دروس هذا المشروع…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input type="search" className="search-input" placeholder="ابحث في دروس هذا المحتوى…" value={q} onChange={(e) => setQ(e.target.value)} />
             {q && (
               <button type="button" className="icon-btn search-clear" aria-label="مسح البحث" onClick={() => setQ('')}>
                 <X size={16} />
@@ -141,7 +184,7 @@ export function ProjectDetail() {
 
         {lessons.length === 0 ? (
           <div className="empty" data-testid="lessons-empty">
-            <p>لا توجد دروس في هذا المشروع بعد.</p>
+            <p>لا توجد دروس في هذا المحتوى بعد.</p>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setLessonDialog({ open: true, lesson: null })}>
               <Plus size={16} aria-hidden="true" /> إضافة أول درس
             </button>
@@ -150,7 +193,17 @@ export function ProjectDetail() {
           <div className="empty"><p>لا توجد دروس مطابقة.</p></div>
         ) : (
           <ol className="lesson-list" data-testid="project-lessons">
-            {shown.map((l) => {
+            {groupByUnit(shown).map(({ unit, lessons: group }) => [
+              unit ? (
+                <li key={`u:${unit}`} className="unit-head" data-testid="unit-head">
+                  <Layers size={16} aria-hidden="true" /> {unit}
+                </li>
+              ) : units.length > 0 ? (
+                <li key="u:none" className="unit-head is-none">
+                  بلا {spec.unitLabel}
+                </li>
+              ) : null,
+              ...group.map((l) => {
               const index = lessons.findIndex((x) => x.id === l.id);
               return (
                 <LessonRow
@@ -175,7 +228,8 @@ export function ProjectDetail() {
                   isLast={index === lessons.length - 1}
                 />
               );
-            })}
+            }),
+            ])}
           </ol>
         )}
         <p className="muted builder-note">افتح أي درس لكتابة أهدافه وبناء محتواه ومعاينته كما يراه الطالب. زر القلم يعدّل بيانات الدرس فقط.</p>
@@ -193,7 +247,7 @@ export function ProjectDetail() {
           try {
             await updateProject(db, project.id, input);
             setEditing(false);
-            toast({ message: 'حُفظت تعديلات المشروع.' });
+            toast({ message: 'حُفظت التعديلات على هذا الجهاز.' });
           } catch (e) {
             toast({ message: errorMessage(e), tone: 'danger' });
           }
@@ -202,16 +256,17 @@ export function ProjectDetail() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="حذف المشروع"
+        title="حذف المحتوى التعليمي"
         testId="confirm-delete-project"
-        confirmLabel="حذف المشروع ودروسه"
+        confirmLabel="حذف المحتوى ودروسه"
         onClose={() => setConfirmDelete(false)}
         message={
           <>
             <p>
               سيُحذف «<strong>{project.title}</strong>» مع {lessonsLabel(lessons.length)} من هذا الجهاز.
             </p>
-            <p className="muted">يمكنك التراجع خلال ثوانٍ من التنبيه الذي سيظهر.</p>
+            <p>يُحذف معه أيضًا: اختباراته، ونتائج المتعلمين وتقدمهم فيه، وتسليمات تكاليفه، وتصاميمه.</p>
+            <p className="muted">يمكنك التراجع خلال ثوانٍ من التنبيه الذي سيظهر، أو صدّره أولًا لتحتفظ بنسخة.</p>
           </>
         }
         onConfirm={async () => {
@@ -220,7 +275,7 @@ export function ProjectDetail() {
             setConfirmDelete(false);
             navigate('/projects');
             toast({
-              message: `حُذف المشروع «${snap.project.title}».`,
+              message: `حُذف «${snap.project.title}».`,
               action: {
                 label: 'تراجع',
                 run: async () => {
@@ -239,6 +294,9 @@ export function ProjectDetail() {
         open={lessonDialog.open}
         initial={lessonDialog.lesson}
         projectTitle={project.title}
+        unitLabel={spec.unitLabel}
+        lessonLabel={spec.lessonLabel}
+        units={units}
         onClose={() => setLessonDialog({ open: false, lesson: null })}
         onDelete={() => {
           setConfirmLesson(lessonDialog.lesson);
@@ -270,7 +328,13 @@ export function ProjectDetail() {
         testId="confirm-delete-lesson"
         confirmLabel="حذف الدرس"
         onClose={() => setConfirmLesson(null)}
-        message={<p>سيُحذف الدرس «<strong>{confirmLesson?.title}</strong>» من هذا المشروع.</p>}
+        message={
+          <>
+            <p>سيُحذف الدرس «<strong>{confirmLesson?.title}</strong>» ومحتواه ووسائطه.</p>
+            <p>يُحذف معه تقدم المتعلمين فيه وتسليمات تكاليفه. الاختبارات المرتبطة به تبقى، والتصاميم تبقى دون ربط.</p>
+            <p className="muted">يمكنك التراجع خلال ثوانٍ من التنبيه.</p>
+          </>
+        }
         onConfirm={async () => {
           if (!confirmLesson) return;
           try {
@@ -289,6 +353,18 @@ export function ProjectDetail() {
   );
 }
 
+/** Lessons grouped by unit, units in the order of their first lesson; lessons without a unit last. */
+function groupByUnit(list: Lesson[]): { unit: string; lessons: Lesson[] }[] {
+  const groups = new Map<string, Lesson[]>();
+  for (const l of list) {
+    const u = l.unit ?? '';
+    if (!groups.has(u)) groups.set(u, []);
+    groups.get(u)!.push(l);
+  }
+  const out = [...groups.entries()].map(([unit, lessons]) => ({ unit, lessons }));
+  return [...out.filter((g) => g.unit), ...out.filter((g) => !g.unit)];
+}
+
 function ProjectQuizzes({ projectId, lessons }: { projectId: string; lessons: Lesson[] }) {
   const quizzes = useProjectQuizzes(projectId);
   const lessonTitle = new Map(lessons.map((l) => [l.id, l.title]));
@@ -296,14 +372,14 @@ function ProjectQuizzes({ projectId, lessons }: { projectId: string; lessons: Le
     <section className="card" data-testid="project-quizzes">
       <div className="lessons-head">
         <h2 className="card-title">
-          <ListChecks size={18} aria-hidden="true" /> اختبارات المشروع
+          <ListChecks size={18} aria-hidden="true" /> الاختبارات
         </h2>
         <Link to={`/quizzes?new=1&project=${projectId}`} className="btn btn-sm" data-testid="project-new-quiz">
           <Plus size={16} aria-hidden="true" /> اختبار جديد
         </Link>
       </div>
       {!quizzes?.length ? (
-        <p className="muted">لا توجد اختبارات لهذا المشروع بعد.</p>
+        <p className="muted">لا توجد اختبارات لهذا المحتوى بعد.</p>
       ) : (
         <ul className="quiz-list">
           {quizzes
@@ -344,14 +420,14 @@ function ProjectDesigns({ projectId, lessons }: { projectId: string; lessons: Le
     <section className="card" data-testid="project-designs">
       <div className="lessons-head">
         <h2 className="card-title">
-          <Palette size={18} aria-hidden="true" /> تصاميم المشروع
+          <Palette size={18} aria-hidden="true" /> التصاميم
         </h2>
         <Link to={`/studio?new=1&project=${projectId}`} className="btn btn-sm" data-testid="project-new-design">
           <Plus size={16} aria-hidden="true" /> تصميم جديد
         </Link>
       </div>
       {!designs?.length ? (
-        <p className="muted">لا توجد تصاميم لهذا المشروع بعد.</p>
+        <p className="muted">لا توجد تصاميم لهذا المحتوى بعد.</p>
       ) : (
         <ul className="quiz-list">
           {designs

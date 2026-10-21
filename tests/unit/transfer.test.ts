@@ -97,7 +97,7 @@ describe('ACCEPTANCE (plan, phase 6): export, delete, import — data and media 
     expect(await d.assets.count()).toBe(0);
 
     const pkg = await readPackage(file);
-    expect(pkg.manifest).toMatchObject({ format: 'ibrahi8m-edu', formatVersion: 1, kind: 'project', schemaVersion: 7, includesResults: true });
+    expect(pkg.manifest).toMatchObject({ format: 'ibrahi8m-edu', formatVersion: 1, kind: 'project', schemaVersion: 8, includesResults: true });
     expect(pkg.manifest.counts).toMatchObject({ projects: 1, lessons: 2, quizzes: 1, attempts: 1, progress: 1, designs: 1, assets: 2, assetBytes: 25000 });
     const plan = await planImport(d, pkg);
     expect(plan.projects[0]).toMatchObject({ state: 'none', choice: 'add', titleClash: false });
@@ -395,8 +395,101 @@ describe('migration from phase 5', () => {
     v6.close();
     const v7 = new EduDB(name);
     await v7.open();
-    expect(v7.verno).toBe(7);
+    expect(v7.verno).toBe(8);
     expect((await v7.designs.get('d1'))?.title).toBe('ب');
     expect(await v7.library.count()).toBe(0);
+  });
+});
+
+/* ───────── 1.1.0 data: content kinds, file assets, learners, submissions, prompts, identities ───────── */
+
+describe('1.1.0 data travels in project files and backups', () => {
+  it('backup → empty device: kinds, units, file assets, learners, submissions (with attachments), prompts and identities are identical', async () => {
+    const { saveLearner, saveSubmission, gradeSubmission, newSubmissionFile } = await import('../../src/learner/db');
+    const { savePrompt, saveBrand } = await import('../../src/aistudio/store');
+    const { buildPrompt } = await import('../../src/aistudio/engine');
+    const { EMPTY_INPUT, BUILTIN_BRANDS } = await import('../../src/aistudio/catalog');
+    const d = fresh();
+    const p = await createProject(d, { title: 'مساق', kind: 'university', published: false, details: { degree: 'ماجستير', references: 'مرجع' } });
+    const l = await createLesson(d, p.id, { title: 'محاضرة', unit: 'الموضوع الأول' });
+    const pdf = await addAsset(d, l.id, { kind: 'file', mime: 'application/pdf', name: 'ورقة.pdf', data: bytes(4000, 5) });
+    await saveLearner(d, { name: 'سارة', type: 'university', specialization: 'تكنولوجيا' });
+    const sub = await saveSubmission(d, 'سارة', l, { id: 'blk', title: 'تكليف' }, { answer: 'إجابتي', files: [newSubmissionFile('حل.pdf', 'application/pdf', bytes(3000, 11))], submit: true });
+    await gradeSubmission(d, sub.id, 88, 'جيد');
+    const input = { ...EMPTY_INPUT, idea: 'olive' };
+    const pr = await savePrompt(d, { title: 'زيتون', mode: 'pro', brandId: null, input, output: buildPrompt(input, 'pro', null) });
+    await saveBrand(d, { ...BUILTIN_BRANDS[1], colors: 'violet' });
+
+    const { bytes: file, manifest } = await buildPackage(await collectBackup(d), 'backup', { title: 'b', appVersion: '1.1.0', includesResults: true });
+    expect(manifest.counts).toMatchObject({ learners: 1, submissions: 1, prompts: 1, brands: 1, assets: 1 });
+    const zip = unzipSync(file);
+    expect(Object.keys(zip).some((k) => k.startsWith('submissions/'))).toBe(true);
+
+    const empty = fresh();
+    const pkg = await readPackage(file);
+    const r = await applyImport(empty, pkg, { ...(await planImport(empty, pkg)), mode: 'replace-all' });
+    expect(r).toMatchObject({ submissions: 1, learners: 1, prompts: 1, brands: 1 });
+    const p2 = (await empty.projects.get(p.id))!;
+    expect(p2).toMatchObject({ kind: 'university', published: false, details: { degree: 'ماجستير', references: 'مرجع' } });
+    expect((await empty.lessons.get(l.id))!.unit).toBe('الموضوع الأول');
+    const a2 = (await empty.assets.get(pdf.id))!;
+    expect(a2.kind).toBe('file');
+    expect(await sha256(a2.data)).toBe(await sha256(pdf.data));
+    const s2 = (await empty.submissions.get(sub.id))!;
+    expect(s2).toMatchObject({ status: 'graded', score: 88, feedback: 'جيد', answer: 'إجابتي' });
+    expect(await sha256(s2.files[0].data)).toBe(await sha256(sub.files[0].data));
+    expect((await empty.prompts.get(pr.id))!.title).toBe('زيتون');
+    expect((await empty.brands.get('brand-ai-universe'))!.colors).toBe('violet');
+    expect((await empty.learners.toArray())[0].type).toBe('university');
+  });
+
+  it('project file with results carries its submissions; a copy re-links them; a damaged attachment is refused', async () => {
+    const { saveSubmission, newSubmissionFile } = await import('../../src/learner/db');
+    const d = fresh();
+    const p = await createProject(d, { title: 'برنامج', kind: 'training' });
+    const l = await createLesson(d, p.id, { title: 'جلسة' });
+    await saveSubmission(d, 'منى', l, { id: 'blk', title: 't' }, { answer: 'x', files: [newSubmissionFile('a.txt', 'text/plain', bytes(100, 2))], submit: true });
+    const noResults = await buildPackage(await collectProject(d, p.id, { includeResults: false }), 'project', { title: 'x', appVersion: '1.1.0', includesResults: false });
+    expect(noResults.manifest.counts.submissions).toBe(0);
+    const { bytes: file } = await buildPackage(await collectProject(d, p.id, { includeResults: true }), 'project', { title: 'x', appVersion: '1.1.0', includesResults: true });
+    const pkg = await readPackage(file);
+    const plan = await planImport(d, pkg);
+    plan.projects[0].choice = 'copy';
+    const r = await applyImport(d, pkg, plan);
+    const copyId = r.projectIds[0];
+    expect(copyId).not.toBe(p.id);
+    const copies = await d.submissions.where('projectId').equals(copyId).toArray();
+    expect(copies).toHaveLength(1);
+    const copyLesson = (await d.lessons.where('projectId').equals(copyId).first())!;
+    expect(copies[0].lessonId).toBe(copyLesson.id);
+    expect(copies[0].id).toBe(`${copies[0].studentKey}|${copyLesson.id}|blk`);
+
+    // Change one byte of the attachment: the whole file is refused before anything is written.
+    const entries = unzipSync(file);
+    const key = Object.keys(entries).find((k) => k.startsWith('submissions/'))!;
+    entries[key] = entries[key].slice();
+    entries[key][0] ^= 0xff;
+    await expect(readPackage(zipSync(entries))).rejects.toMatchObject({ code: 'corrupt' });
+  });
+
+  it('files from 1.0.0 (no new tables or fields) still import', async () => {
+    const d = fresh();
+    await seed(d);
+    const { bytes: file } = await buildPackage(await collectBackup(d), 'backup', { title: 'b', appVersion: '1.0.0', includesResults: true });
+    const entries = unzipSync(file);
+    const data = JSON.parse(strFromU8(entries['data.json']));
+    for (const k of ['learners', 'submissions', 'prompts', 'brands']) delete data[k];
+    const json = strToU8(JSON.stringify(data));
+    const manifest = JSON.parse(strFromU8(entries['manifest.json']));
+    manifest.schemaVersion = 7;
+    manifest.dataSha256 = await sha256(json);
+    entries['data.json'] = json;
+    entries['manifest.json'] = strToU8(JSON.stringify(manifest));
+    const pkg = await readPackage(zipSync(entries));
+    expect(pkg.data.submissions).toEqual([]);
+    expect(pkg.warnings.join(' ')).toContain('إصدار أقدم');
+    const empty = fresh();
+    const r = await applyImport(empty, pkg, await planImport(empty, pkg));
+    expect(r.added).toBe(1);
   });
 });

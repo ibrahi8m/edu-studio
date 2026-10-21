@@ -32,8 +32,10 @@ test.describe('Phase 0 — offline foundation', () => {
     await p1.goto('./#/settings');
     await p1.getByRole('radio', { name: 'فاتح' }).click();
     await p1.getByRole('radio', { name: 'كبير' }).click();
-    const full = p1.getByTestId('owner-ownerFullName');
-    await full.fill('إبراهيم — اختبار الحفظ');
+    // 1.1.0: the user's name lives in «صفحتي» (the About page is fixed project information).
+    await p1.goto('./#/me');
+    const full = p1.getByTestId('profile-userName');
+    await full.fill('مستخدم — اختبار الحفظ');
     await full.blur();
     await expect(p1.getByText('تم الحفظ')).toBeVisible();
     await ctx1.close(); // the whole browser process exits
@@ -63,8 +65,9 @@ test.describe('Phase 0 — offline foundation', () => {
     // Settings survived the restart
     expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--font-scale').trim())).toBe('1.15');
-    await page.goto('./#/about');
-    await expect(page.getByTestId('about-name')).toHaveText('إبراهيم — اختبار الحفظ');
+    await expect(page.getByTestId('hero-title')).toContainText('مستخدم — اختبار الحفظ');
+    await page.goto('./#/me');
+    await expect(page.getByTestId('me-name')).toHaveText('مستخدم — اختبار الحفظ');
 
     // Every screen opens offline
     for (const r of ROUTES) {

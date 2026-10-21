@@ -1,12 +1,12 @@
-import { createContext, useContext, useState } from 'react';
-import { CheckCircle2, Circle, ClipboardList, Clock, GraduationCap, ImageOff, Lightbulb, Package, Repeat2, Target, Users } from 'lucide-react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { CheckCircle2, Circle, ClipboardList, Clock, Download, FileText, GraduationCap, ImageOff, Lightbulb, Package, Repeat2, Target, Users } from 'lucide-react';
 import type { Lesson, Project } from '../../db/db';
 import { minutesLabel } from '../../app/format';
 import { bloomInfo, objectiveStatement } from '../bloom';
-import { ASSESSMENT_TOOLS, ASSESSMENT_TYPES, GROUPING_LABEL, optionLabel, STRATEGIES } from '../catalog';
+import { ASSESSMENT_TOOLS, ASSESSMENT_TYPES, GROUPING_LABEL, optionLabel, STRATEGIES, TRACK_LABEL } from '../catalog';
 import { activitySteps, alignment, filledCards, filledPoints } from '../model';
 import { useAssetUrl } from '../media';
-import type { ActivityBlock, AudioBlock, Block, CardsBlock, ImageBlock, LessonDoc, SummaryBlock, VideoBlock } from '../types';
+import type { ActivityBlock, AudioBlock, Block, CardsBlock, FileBlock, ImageBlock, LessonDoc, SummaryBlock, VideoBlock } from '../types';
 import { COVERAGE_LABEL } from '../editor/AlignmentTab';
 import { RichText } from './RichText';
 
@@ -128,6 +128,8 @@ export interface LessonInteraction {
   onFlip: (blockId: string, cardId: string) => void;
   stepsDone: (blockId: string) => number[];
   onStep: (blockId: string, step: number) => void;
+  /** Extra content under an activity (the learner's assignment panel). */
+  activityExtra?: (block: ActivityBlock) => ReactNode;
 }
 export const LessonInteractionContext = createContext<LessonInteraction | null>(null);
 
@@ -148,7 +150,33 @@ export function ViewBlock({ block: b }: { block: Block }) {
       return <ViewSummary b={b} />;
     case 'activity':
       return <ViewActivity b={b} />;
+    case 'file':
+      return <ViewFile b={b} />;
   }
+}
+
+function ViewFile({ b }: { b: FileBlock }) {
+  const { url, asset, state } = useAssetUrl(b.assetId);
+  return (
+    <section className="lv-file" aria-label={b.title || 'ملف مرفق'} data-testid="lv-file">
+      <span className="lv-activity-icon" aria-hidden="true">
+        <FileText size={20} />
+      </span>
+      <div className="lv-file-body">
+        <h3>{b.title || asset?.name || 'ملف مرفق'}</h3>
+        {b.description && <p className="pre">{b.description}</p>}
+        {state === 'none' || state === 'missing' ? (
+          <span className="lv-missing">{state === 'none' ? 'لم يُرفق ملف بعد.' : 'الملف غير موجود على هذا الجهاز.'}</span>
+        ) : url && asset ? (
+          <a className="btn btn-sm" href={url} download={asset.name} data-testid="lv-file-download">
+            <Download size={16} aria-hidden="true" /> تنزيل «{asset.name}»
+          </a>
+        ) : (
+          <span className="lv-media-loading" />
+        )}
+      </div>
+    </section>
+  );
 }
 
 function ViewImage({ b }: { b: ImageBlock }) {
@@ -296,7 +324,10 @@ function ViewActivity({ b }: { b: ActivityBlock }) {
           <ClipboardList size={20} />
         </span>
         <div>
-          <span className="lv-kicker">نشاط</span>
+          <span className="lv-kicker">
+            {b.submit ? 'تكليف' : 'نشاط'}
+            {b.track !== 'core' && <span className={`track-tag track-${b.track}`}> · {TRACK_LABEL[b.track]}</span>}
+          </span>
           <h3>{b.title || 'نشاط تعليمي'}</h3>
         </div>
       </div>
@@ -365,6 +396,7 @@ function ViewActivity({ b }: { b: ActivityBlock }) {
           )}
         </dl>
       )}
+      {host?.activityExtra?.(b)}
     </section>
   );
 }

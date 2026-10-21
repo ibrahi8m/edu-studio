@@ -82,6 +82,12 @@ export interface SummaryBlock extends BlockBase {
 
 export type Grouping = 'individual' | 'pairs' | 'groups' | 'class';
 
+/**
+ * Who an activity is for (1.1.0). «core» = everyone. «remedial» / «enrichment» are shown to a learner
+ * only by a stated rule on their quiz result for the lesson (see student/tracks.ts).
+ */
+export type ActivityTrack = 'core' | 'remedial' | 'enrichment';
+
 export interface ActivityBlock extends BlockBase {
   type: 'activity';
   title: string;
@@ -91,9 +97,21 @@ export interface ActivityBlock extends BlockBase {
   steps: string;
   materials: string;
   output: string;
+  /** 1.1.0: core / remedial / enrichment (older lessons: core). */
+  track: ActivityTrack;
+  /** 1.1.0: the learner writes an answer (and may attach files) and submits it — an assignment. */
+  submit: boolean;
 }
 
-export type Block = HeadingBlock | TextBlock | ImageBlock | AudioBlock | VideoBlock | CardsBlock | SummaryBlock | ActivityBlock;
+/** 1.1.0: a file the learner can open or download (PDF, Word, PowerPoint, Excel, text, zip). */
+export interface FileBlock extends BlockBase {
+  type: 'file';
+  assetId: string | null;
+  title: string;
+  description: string;
+}
+
+export type Block = HeadingBlock | TextBlock | ImageBlock | AudioBlock | VideoBlock | CardsBlock | SummaryBlock | ActivityBlock | FileBlock;
 export type BlockType = Block['type'];
 
 export interface LessonDoc {
@@ -112,7 +130,7 @@ export interface LessonDoc {
   updatedAt: number;
 }
 
-export type AssetKind = 'image' | 'audio' | 'video';
+export type AssetKind = 'image' | 'audio' | 'video' | 'file';
 
 /** A media file stored inside IndexedDB, so it works offline and survives restarts. */
 export interface Asset {

@@ -162,7 +162,7 @@ describe('schema migration', () => {
 
     const v2 = new EduDB(name);
     await v2.open();
-    expect(v2.verno).toBe(7); // opens at the current schema version
+    expect(v2.verno).toBe(8); // opens at the current schema version
     const s = await loadSettings(v2);
     expect(s.theme).toBe('light');
     expect(s.ownerFullName).toBe('إبراهيم');

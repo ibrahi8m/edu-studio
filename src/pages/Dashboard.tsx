@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, FolderKanban, HardDrive, Plus, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
+import { BookOpen, FolderKanban, HardDrive, MonitorPlay, Plus, ShieldCheck, Sparkles, Wifi, WifiOff } from 'lucide-react';
 import { useAllLessons, useAllProjects } from '../app/data';
 import { LessonRow, ProjectCard } from '../components/ProjectBits';
 import type { Project } from '../db/db';
 import { CURRENT_PHASE, NAV, PHASES } from '../app/nav';
 import { OFFLINE_LABEL, useOnline, useRuntime } from '../app/runtime';
 import { useSettings } from '../app/SettingsContext';
+import { displayName } from '../db/settings';
 import { Portrait, Wordmark } from '../components/Brand';
 import { Card, PhaseBadge, Pill } from '../components/ui';
 import { formatBytes, getStorageInfo, type StorageInfo } from '../db/storage';
@@ -56,9 +57,18 @@ export function Dashboard() {
         <div className="hero-grid" aria-hidden="true" />
         <div className="hero-text">
           <p className="hero-date">{today}</p>
-          <h1 className="hero-title">
-            {greeting()}، {settings.ownerName}
+          <h1 className="hero-title" data-testid="hero-title">
+            {greeting()}
+            {displayName(settings) ? `، ${displayName(settings)}` : ''}
           </h1>
+          {!displayName(settings) && (
+            <p className="hero-sub">
+              <Link to="/me" data-testid="hero-add-name">
+                اكتب اسمك في «صفحتي»
+              </Link>{' '}
+              ليظهر هنا.
+            </p>
+          )}
           <p className="hero-sub">
             مرحبًا بك في{' '}
             <span dir="ltr" className="ltr-run">
@@ -68,7 +78,7 @@ export function Dashboard() {
           <p className="hero-slogan" dir="ltr">Create. Teach. Inspire.</p>
         </div>
         <div className="hero-portrait">
-          <Portrait variant="card" alt={`صورة ${settings.ownerName}`} />
+          <Portrait variant="card" alt="صورة صاحب المشروع ومصممه" />
         </div>
       </section>
 
@@ -90,7 +100,7 @@ export function Dashboard() {
       <div className="stat-row" data-testid="stats">
         <Link to="/projects" className="stat">
           <span className="stat-n" data-testid="stat-projects">{(projects?.length ?? 0).toLocaleString('ar')}</span>
-          <span className="stat-l">مشروع</span>
+          <span className="stat-l">محتوى تعليمي</span>
         </Link>
         <Link to="/projects?tab=lessons" className="stat">
           <span className="stat-n" data-testid="stat-lessons">{(lessons?.length ?? 0).toLocaleString('ar')}</span>
@@ -102,13 +112,25 @@ export function Dashboard() {
         </Link>
       </div>
 
-      <Card title="المشاريع الأخيرة" icon={FolderKanban} testId="recent-projects">
+      <div className="quick-actions" data-testid="quick-actions">
+        <Link to="/projects?new=1" className="btn btn-primary" data-testid="dashboard-new-content">
+          <Plus size={18} aria-hidden="true" /> إضافة محتوى تعليمي جديد
+        </Link>
+        <Link to="/learn" className="btn">
+          <MonitorPlay size={18} aria-hidden="true" /> بيئة المتعلم
+        </Link>
+        <Link to="/ai-studio" className="btn">
+          <Sparkles size={18} aria-hidden="true" /> AI Design Studio
+        </Link>
+      </div>
+
+      <Card title="المحتوى التعليمي الأخير" icon={FolderKanban} testId="recent-projects">
         {projects && projects.length === 0 ? (
           <div className="empty">
-            <p>لا توجد مشاريع بعد.</p>
+            <p>لا يوجد محتوى تعليمي بعد.</p>
             <div className="empty-actions">
-              <Link to="/projects" className="btn btn-primary btn-sm">
-                <Plus size={16} aria-hidden="true" /> إنشاء أول مشروع
+              <Link to="/projects?new=1" className="btn btn-primary btn-sm">
+                <Plus size={16} aria-hidden="true" /> إضافة محتوى تعليمي جديد
               </Link>
               <DemoInstallButton className="btn btn-sm" />
             </div>
@@ -120,7 +142,7 @@ export function Dashboard() {
                 <ProjectCard key={p.id} project={p} lessonCount={counts.get(p.id) ?? 0} />
               ))}
             </div>
-            <Link to="/projects" className="card-link">كل المشاريع</Link>
+            <Link to="/projects" className="card-link">كل المحتوى التعليمي</Link>
           </>
         )}
       </Card>
