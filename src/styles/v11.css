@@ -24,8 +24,8 @@
 
 /* ───────── content kinds ───────── */
 .kind-field { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
-.kind-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.kind-option {
+.ck-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ck-option {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -38,10 +38,10 @@
   cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
-.kind-option input { position: absolute; opacity: 0; pointer-events: none; }
-.kind-option span { font-size: 0.8125rem; color: var(--text-2); }
-.kind-option.is-active { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
-.kind-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ck-option input { position: absolute; opacity: 0; pointer-events: none; }
+.ck-option span { font-size: 0.8125rem; color: var(--text-2); }
+.ck-option.is-active { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.ck-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .kind-kv { margin-block: 10px; }
 .unit-head {
   display: flex;
@@ -55,7 +55,7 @@
 }
 .unit-head.is-none { color: var(--text-3); font-weight: 500; }
 @media (max-width: 767px) {
-  .kind-options { grid-template-columns: minmax(0, 1fr); }
+  .ck-options { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ───────── learner environment ───────── */

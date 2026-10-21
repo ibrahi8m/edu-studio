@@ -563,7 +563,7 @@ test.describe('Upgrades keep every record', () => {
       const manifest = JSON.parse(strFromU8(zip['manifest.json']));
       const data = JSON.parse(strFromU8(zip['data.json']));
       expect(manifest.kind).toBe('backup');
-      expect(manifest.schemaVersion).toBe(7);
+      expect(manifest.schemaVersion).toBe(8);
       expect(data.lessons.map((l: { title: string }) => l.title)).toEqual(['مصادر الطاقة']);
       expect(data.designs.map((d: { title: string }) => d.title)).toEqual(['خريطة 0.6']);
       expect(data.library.map((d: { title: string }) => d.title)).toEqual(['قالب من 0.6']);

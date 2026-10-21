@@ -123,7 +123,7 @@ test.describe('Phase 6 — import and export', () => {
     // the file is a ZIP with manifest.json, data.json and the image, its hash listed
     const zip = unzipSync(readFileSync(file));
     const manifest = JSON.parse(strFromU8(zip['manifest.json']));
-    expect(manifest).toMatchObject({ format: 'ibrahi8m-edu', formatVersion: 1, kind: 'project', schemaVersion: 7, includesResults: true, counts: { lessons: 1, quizzes: 1, attempts: 1, designs: 1, assets: 1 } });
+    expect(manifest).toMatchObject({ format: 'ibrahi8m-edu', formatVersion: 1, kind: 'project', schemaVersion: 8, includesResults: true, counts: { lessons: 1, quizzes: 1, attempts: 1, designs: 1, assets: 1 } });
     const data = JSON.parse(strFromU8(zip['data.json']));
     const asset = data.assets[0];
     expect(createHash('sha256').update(zip[asset.path]).digest('hex')).toBe(asset.sha256);

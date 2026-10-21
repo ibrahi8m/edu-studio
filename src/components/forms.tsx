@@ -126,9 +126,9 @@ export function ProjectFormDialog({
       <div className="form-grid">
         <fieldset className="kind-field">
           <legend className="field-label">نوع المحتوى</legend>
-          <div className="kind-options" role="radiogroup" aria-label="نوع المحتوى">
+          <div className="ck-options" role="radiogroup" aria-label="نوع المحتوى">
             {CONTENT_KINDS.map((k) => (
-              <label key={k} className={`kind-option ${kind === k ? 'is-active' : ''}`} data-testid={`content-kind-${k}`}>
+              <label key={k} className={`ck-option ${kind === k ? 'is-active' : ''}`} data-testid={`content-kind-${k}`}>
                 <input type="radio" name={`${uid}-kind`} value={k} checked={kind === k} onChange={() => set('kind', k)} />
                 <strong>{KIND_SPECS[k].label}</strong>
                 <span>{KIND_SPECS[k].hint}</span>
