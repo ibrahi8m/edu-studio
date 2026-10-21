@@ -25,6 +25,7 @@ const LEGACY7 = resolve('.legacy/0.7.0');
 // 0.8.0 plus the update hardening of phase 8 (commit 32211f7)
 const LEGACY8FIX = resolve('.legacy/0.8.0-fix');
 const LEGACY10 = resolve('.legacy/1.0.0');
+const LEGACY11 = resolve('.legacy/1.1.0');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -766,6 +767,57 @@ test.describe('Upgrades keep every record', () => {
       await expect(page.getByTestId('learner-type')).toHaveText('طالب مدرسة');
       await expect(page.getByTestId('lesson-progress-text')).toContainText('الأنشطة 1/2');
       await expect(page.getByTestId('lesson-assignment')).toContainText('قيد الإنجاز');
+      await ctx2.close();
+    } finally {
+      stop(server);
+      await waitForPort(true);
+    }
+  });
+  test('1.1.0 → 1.2.0: light theme, «تقليل الحركة», a prompt and an assignment survive; motion becomes «إيقاف كل الحركة»; nothing plays after the update', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    const profile = newProfileDir();
+    let server: ChildProcess | undefined;
+    try {
+      server = await serve(LEGACY11);
+      const ctx1 = await launchProfile(profile, info);
+      const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+      await p1.goto(ORIGIN);
+      await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+      await p1.reload();
+      await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+      await skipSplash(p1);
+      await p1.goto(`${ORIGIN}#/settings`);
+      await expect(p1.locator('.kv dd[dir=ltr]').nth(1)).toHaveText('1.1.0');
+      await p1.getByRole('radio', { name: 'فاتح' }).click();
+      await p1.getByTestId('toggle-motion').check();
+      await p1.goto(`${ORIGIN}#/ai-studio`);
+      await p1.getByTestId('ai-idea').fill('olive tree');
+      await p1.getByTestId('ai-generate').click();
+      await p1.getByTestId('ai-title').fill('برومبت من 1.1.0');
+      await p1.getByTestId('ai-save').click();
+      await expect(p1.getByTestId('toast').last()).toContainText('حُفظ');
+      await ctx1.close();
+      stop(server);
+      await waitForPort(true);
+
+      server = await serve(ROOT);
+      const ctx2 = await launchProfile(profile, info);
+      const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+      await page.goto(ORIGIN);
+      await skipSplash(page);
+      await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+      await applyUpdateAndWait(page);
+      await skipSplash(page);
+      await page.goto(`${ORIGIN}#/settings`);
+      await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
+      await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
+      await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+      await expect(page.getByRole('radio', { name: 'إيقاف كل الحركة' })).toHaveAttribute('aria-checked', 'true');
+      await expect.poll(() => page.evaluate(() => document.documentElement.dataset.motion)).toBe('reduce');
+      await expect(page.getByTestId('ambient-bg')).toHaveCount(0);
+      expect(await page.evaluate(() => (window as unknown as { ibrahi8mAudio: { getState: () => { transport: string } } }).ibrahi8mAudio.getState().transport)).toBe('stopped');
+      await page.goto(`${ORIGIN}#/ai-studio?tab=library`);
+      await expect(page.getByTestId('ai-lib-item')).toContainText('برومبت من 1.1.0');
       await ctx2.close();
     } finally {
       stop(server);
