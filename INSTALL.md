@@ -9,7 +9,7 @@
 | `IBRAHI8M-EDU-STUDIO-Setup-1.0.0.exe` | ملف التثبيت لـ Windows (الطريقة المقترحة) |
 | `IBRAHI8M-EDU-STUDIO-1.0.0-windows.zip` | النسخة المحمولة لـ Windows دون تثبيت (بديل) |
 | `IBRAHI8M-EDU-STUDIO-1.0.0-web.zip` | نسخة الويب، وهي نفسها المنشورة على الرابط |
-| `IBRAHI8M-EDU-STUDIO-1.0.0-source.zip` | الكود المصدري مع تاريخ Git كاملًا |
+| `IBRAHI8M-EDU-STUDIO-1.0.0-source.zip` | الكود المصدري للإصدار 1.0.0 (التاريخ الكامل في المستودع على GitHub) |
 | `demo.ibm` | المشروع التجريبي جاهزًا للاستيراد |
 | `دليل-التشغيل.pdf` | هذا الدليل مختصرًا مع قائمة فحص يوم العرض |
 
