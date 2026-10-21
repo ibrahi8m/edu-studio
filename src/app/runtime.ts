@@ -62,7 +62,13 @@ export async function initServiceWorker() {
 }
 
 export async function applyPendingUpdate() {
-  if (applyUpdate) await applyUpdate(true);
+  if (!applyUpdate) return;
+  // The new version reloads the page as soon as it takes control. If that reload is
+  // cancelled (another navigation at the same moment, a slow phone), the page would stay
+  // on the old version while the new one controls it: reload once more, a second later.
+  // When the first reload goes through, this page is gone and the timer never fires.
+  navigator.serviceWorker?.addEventListener('controllerchange', () => window.setTimeout(() => window.location.reload(), 1000), { once: true });
+  await applyUpdate(true);
 }
 
 export function dismissUpdate() {

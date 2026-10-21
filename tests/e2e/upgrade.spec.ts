@@ -74,6 +74,18 @@ async function waitForPort(free: boolean) {
   }
 }
 
+/**
+ * Clicks «تحديث الآن» and waits until the NEW page has loaded. The app reloads itself when
+ * the new version takes control; navigating before that reload starts cancels it and leaves
+ * the old page in front (the cause of the intermittent Pixel 7 failures, phase 8).
+ */
+async function applyUpdateAndWait(page: Page) {
+  await page.evaluate(() => ((window as unknown as { __beforeUpdate: boolean }).__beforeUpdate = true));
+  await page.getByRole('button', { name: 'تحديث الآن' }).click();
+  await page.waitForFunction(() => !(window as unknown as { __beforeUpdate?: boolean }).__beforeUpdate, undefined, { timeout: 30_000 });
+  await page.waitForLoadState('load');
+}
+
 async function skipSplash(page: Page) {
   const s = page.getByTestId('splash');
   if (await s.isVisible().catch(() => false)) await page.getByRole('button', { name: 'تخطي' }).click();
@@ -142,8 +154,7 @@ test.describe('Upgrades keep every record', () => {
       await skipSplash(page);
       // The installed 0.2.0 app detects the new version and asks before switching.
       await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
-      await page.getByRole('button', { name: 'تحديث الآن' }).click();
-      await page.waitForLoadState('load');
+      await applyUpdateAndWait(page);
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
@@ -232,8 +243,7 @@ test.describe('Upgrades keep every record', () => {
       await page.goto(ORIGIN);
       await skipSplash(page);
       await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
-      await page.getByRole('button', { name: 'تحديث الآن' }).click();
-      await page.waitForLoadState('load');
+      await applyUpdateAndWait(page);
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
@@ -348,8 +358,7 @@ test.describe('Upgrades keep every record', () => {
       await page.goto(ORIGIN);
       await skipSplash(page);
       await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
-      await page.getByRole('button', { name: 'تحديث الآن' }).click();
-      await page.waitForLoadState('load');
+      await applyUpdateAndWait(page);
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
@@ -437,8 +446,7 @@ test.describe('Upgrades keep every record', () => {
       await page.goto(ORIGIN);
       await skipSplash(page);
       await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
-      await page.getByRole('button', { name: 'تحديث الآن' }).click();
-      await page.waitForLoadState('load');
+      await applyUpdateAndWait(page);
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
@@ -524,8 +532,7 @@ test.describe('Upgrades keep every record', () => {
       await page.goto(ORIGIN);
       await skipSplash(page);
       await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
-      await page.getByRole('button', { name: 'تحديث الآن' }).click();
-      await page.waitForLoadState('load');
+      await applyUpdateAndWait(page);
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
@@ -607,8 +614,7 @@ test.describe('Upgrades keep every record', () => {
       await page.goto(ORIGIN);
       await skipSplash(page);
       await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
-      await page.getByRole('button', { name: 'تحديث الآن' }).click();
-      await page.waitForLoadState('load');
+      await applyUpdateAndWait(page);
       await skipSplash(page);
       await page.goto(`${ORIGIN}#/settings`);
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
