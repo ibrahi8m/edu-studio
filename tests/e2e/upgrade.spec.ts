@@ -22,6 +22,8 @@ const LEGACY4 = resolve('.legacy/0.4.0');
 const LEGACY5 = resolve('.legacy/0.5.0');
 const LEGACY6 = resolve('.legacy/0.6.0');
 const LEGACY7 = resolve('.legacy/0.7.0');
+// 0.8.0 plus the update hardening of phase 8 (commit 32211f7)
+const LEGACY8FIX = resolve('.legacy/0.8.0-fix');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -102,6 +104,7 @@ test.describe('Upgrades keep every record', () => {
     execSync('node scripts/build-legacy.mjs 41a5797 0.6.0', { cwd: ROOT, stdio: 'inherit' });
     // 02f8d6f = 0.7.0 with its package.json restored (e9092d1 shipped a stripped one)
     execSync('node scripts/build-legacy.mjs 02f8d6f 0.7.0', { cwd: ROOT, stdio: 'inherit' });
+    execSync('node scripts/build-legacy.mjs 32211f7 0.8.0-fix', { cwd: ROOT, stdio: 'inherit' });
   });
 
   test('projects, lessons and settings created in 0.2.0 survive the update and open in the current lesson editor', async ({}, info) => {
@@ -642,6 +645,42 @@ test.describe('Upgrades keep every record', () => {
     } finally {
       stop(server);
       await waitForPort(true);
+    }
+  });
+  test('the update finishes even when something navigates at the moment of «تحديث الآن» (the Pixel 7 root cause, fixed in phase 8)', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    // Before the fix, navigating right after the click cancelled the app's own reload 3 times in 8
+    // (measured on Pixel 7, upgrading from 0.7.0): the old page stayed in front. The fixed app
+    // reloads again when that happens. Three attempts per run, each must reach the new version.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const profile = newProfileDir();
+      let server: ChildProcess | undefined;
+      try {
+        server = await serve(LEGACY8FIX);
+        const ctx1 = await launchProfile(profile, info);
+        const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+        await p1.goto(ORIGIN);
+        await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+        await p1.reload();
+        await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+        await ctx1.close();
+        stop(server);
+        await waitForPort(true);
+
+        server = await serve(ROOT);
+        const ctx2 = await launchProfile(profile, info);
+        const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+        await page.goto(ORIGIN);
+        await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+        await page.getByRole('button', { name: 'تحديث الآن' }).click();
+        // navigate immediately, racing the reload on purpose
+        await page.goto(`${ORIGIN}#/settings`).catch(() => undefined);
+        await expect(page.locator('.kv dd[dir=ltr]').nth(1), `attempt ${attempt}`).toHaveText(CURRENT, { timeout: 20_000 });
+        await ctx2.close();
+      } finally {
+        stop(server);
+        await waitForPort(true);
+      }
     }
   });
 });
