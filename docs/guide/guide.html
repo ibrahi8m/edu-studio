@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>دليل التشغيل — IBRAHI8M EDU STUDIO 1.0.0</title>
+<style>
+  /* Fonts are the app's own (copied next to this file by scripts/build-guide.mjs). */
+  @font-face { font-family: Plex; src: url(fonts/plex-ar-400.woff2); font-weight: 400; unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F, U+066B-066C; }
+  @font-face { font-family: Plex; src: url(fonts/plex-ar-600.woff2); font-weight: 600; unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F, U+066B-066C; }
+  @font-face { font-family: Plex; src: url(fonts/plex-la-400.woff2); font-weight: 400; }
+  @font-face { font-family: Plex; src: url(fonts/plex-la-600.woff2); font-weight: 600; }
+  @font-face { font-family: Readex; src: url(fonts/readex-ar-700.woff2); font-weight: 700; unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F; }
+  @font-face { font-family: Readex; src: url(fonts/readex-la-700.woff2); font-weight: 700; }
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  @page :first { margin: 0; }
+  :root { --ink: #1e242c; --muted: #4e5866; --line: #d8dee6; --accent: #2563eb; --soft: #eef3fc; --charcoal: #0e1014; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Plex, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.75; }
+  h1, h2, h3 { font-family: Readex, Plex, sans-serif; font-weight: 700; line-height: 1.35; color: var(--charcoal); }
+  h2 { font-size: 15pt; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 14px 0 4px; break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ol, ul { margin: 0 0 8px; padding-inline-start: 20px; }
+  li { margin-bottom: 2px; }
+  .ltr { direction: ltr; unicode-bidi: isolate; font-family: Plex, sans-serif; }
+  code { direction: ltr; unicode-bidi: isolate-override; background: #f2f4f7; padding: 0 4px; border-radius: 3px; font-size: 9.5pt; }
+  section { break-before: page; }
+  section.keep { break-before: auto; margin-top: 18px; }
+  .cover { width: 210mm; height: 296mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: var(--charcoal); color: #e6e9ee; margin: 0; padding: 20mm; overflow: hidden; }
+  .cover img { width: 150px; margin-bottom: 18px; }
+  .cover h1 { color: #e6e9ee; font-size: 30pt; margin: 0; letter-spacing: 0.06em; direction: ltr; }
+  .cover h1 b { color: #5b9bff; }
+  .cover .sub { direction: ltr; letter-spacing: 0.35em; color: #a9b1bc; font-size: 11pt; margin: 4px 0 18px; }
+  .cover .t { font-size: 20pt; font-family: Readex, Plex, sans-serif; font-weight: 700; margin: 10px 0 6px; }
+  .cover .slogan { direction: ltr; color: #5b9bff; font-size: 13pt; margin-bottom: 26px; }
+  .cover .meta { color: #a9b1bc; font-size: 10.5pt; line-height: 1.9; }
+  .cover .meta .ltr { color: #e6e9ee; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; background: #fbfcfe; break-inside: avoid; }
+  .box.note { background: var(--soft); border-color: #c7d7f5; }
+  .box.warn { background: #fdf6ea; border-color: #f0d9b0; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.8pt; break-inside: auto; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; text-align: start; vertical-align: top; }
+  th { background: #f2f4f7; font-weight: 600; }
+  tr { break-inside: avoid; }
+  .check li { list-style: none; position: relative; padding-inline-start: 4px; }
+  .check li::before { content: ''; position: absolute; inset-inline-start: -18px; top: 6px; width: 11px; height: 11px; border: 1.5px solid var(--muted); border-radius: 2px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .foot { color: var(--muted); font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <img src="ibrahi8m-mark.svg" alt="" />
+  <h1>IBRAHI<b>8</b>M</h1>
+  <div class="sub">EDU STUDIO</div>
+  <div class="t">دليل التشغيل وقائمة فحص يوم العرض</div>
+  <div class="slogan">Create. Teach. Inspire.</div>
+  <div class="meta">
+    استوديو عربي لتصميم المحتوى التعليمي الرقمي، يعمل دون إنترنت<br />
+    الإصدار <span class="ltr">1.0.0</span> · أكتوبر 2026<br />
+    الرابط: <span class="ltr">https://ibrahi8m.github.io/edu-studio/</span><br />
+    المستودع: <span class="ltr">https://github.com/ibrahi8m/edu-studio</span>
+  </div>
+</div>
+
+<section>
+  <h2>1. التثبيت</h2>
+  <h3>الكمبيوتر (Windows) — يعمل دون إنترنت من أول تشغيل</h3>
+  <ol>
+    <li>شغّل <code>IBRAHI8M-EDU-STUDIO-Setup-1.0.0.exe</code>. لا يحتاج صلاحيات مدير.</li>
+    <li>إن ظهرت رسالة «تم حماية جهاز الكمبيوتر الخاص بك»: «معلومات إضافية» ← «تشغيل على أي حال» (الملف غير موقّع رقميًا).</li>
+    <li>اختر مكان التثبيت أو اترك الافتراضي. يُنشأ اختصار على سطح المكتب وفي قائمة «ابدأ».</li>
+  </ol>
+  <p><b>بديل دون تثبيت:</b> فك ضغط <code>IBRAHI8M-EDU-STUDIO-1.0.0-windows.zip</code> وشغّل <code>IBRAHI8M EDU STUDIO.exe</code>.</p>
+  <div class="box note"><b>البيانات:</b> في <code>%APPDATA%\IBRAHI8M EDU STUDIO</code>، وتستخدمه النسختان المثبّتة والمحمولة. إلغاء التثبيت أو التحديث لا يحذفها.</div>
+
+  <h3>الجوال (Android أو iPhone)</h3>
+  <ol>
+    <li>افتح الرابط <span class="ltr">https://ibrahi8m.github.io/edu-studio/</span> (في Safari على iPhone).</li>
+    <li>انتظر في لوحة التحكم «جاهز للعمل دون إنترنت».</li>
+    <li>Android: القائمة ⋮ ← «تثبيت التطبيق». iPhone: زر المشاركة ← «إضافة إلى الشاشة الرئيسية».</li>
+    <li>تحقق: فعّل وضع الطيران، وافتح التطبيق من أيقونته، وأنشئ مشروعًا.</li>
+  </ol>
+  <div class="box warn"><b>تنبيه:</b> حذف أيقونة التطبيق أو مسح بيانات المتصفح على الجوال يحذف المشاريع. على iPhone قد تُحذف البيانات بعد أسابيع دون فتح التطبيق. خذ نسخة احتياطية بانتظام.</div>
+
+  <section class="keep">
+  <h2>2. أول خطوات</h2>
+  <table>
+    <tr><th>المهمة</th><th>الطريق في التطبيق</th></tr>
+    <tr><td>تجربة كل شيء دون إعداد</td><td>«الإعدادات» ← «المحتوى التجريبي» ← «إضافة المشروع التجريبي»، أو استيراد <code>demo.ibm</code></td></tr>
+    <tr><td>مشروع ودرس</td><td>«المشاريع والدروس» ← «مشروع جديد» ← «درس جديد» ← فتح المحرر</td></tr>
+    <tr><td>الأهداف والمواءمة</td><td>محرر الدرس ← «الأهداف والتخطيط» (بنك بلوم وفاحص الصياغة) ← «المحتوى» ← «المواءمة»</td></tr>
+    <tr><td>اختبار</td><td>«منشئ الاختبارات» ← «اختبار جديد» (6 أنواع أسئلة، وتغذية لكل خيار)</td></tr>
+    <tr><td>تصميم</td><td>«استوديو التصميم»: بطاقات، وملخص بصري، وخريطة مفاهيم، وتصدير PNG</td></tr>
+    <tr><td>الطالب</td><td>«وضع الطالب»: يكتب اسمه، ويتنقل في الدرس، ويحل الاختبار</td></tr>
+    <tr><td>النتائج</td><td>«النتائج والتحليلات»: لكل اختبار وسؤال وهدف وطالب</td></tr>
+    <tr><td>بطاقة القرار التربوي</td><td>محرر الدرس ← «معاينة الطالب» ← «ملاحظات المعلم»</td></tr>
+  </table>
+  </section>
+</section>
+
+<section>
+  <h2>3. النسخ الاحتياطي واستعادة البيانات</h2>
+  <p><b>متى:</b> أسبوعيًا (يذكّرك التطبيق بعد 7 أيام)، وقبل أي تحديث، وقبل تغيير الجهاز، وقبل يوم العرض.</p>
+  <div class="two">
+    <div class="box">
+      <h3 style="margin-top:0">أخذ نسخة</h3>
+      <ol>
+        <li>«الاستيراد والتصدير» ← «إنشاء نسخة احتياطية».</li>
+        <li>احفظ الملف <code>.ibm</code>.</li>
+        <li>انسخه خارج الجهاز: USB أو البريد أو السحابة.</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3 style="margin-top:0">الاستعادة</h3>
+      <ol>
+        <li>«الاستيراد والتصدير» ← «اختيار ملف .ibm».</li>
+        <li>راجع المعاينة. الافتراضي «دمج»: يضيف الناقص ولا يحذف شيئًا.</li>
+        <li>«استيراد». إن فشل أي جزء لا يتغير شيء.</li>
+      </ol>
+    </div>
+  </div>
+  <p>«استبدال كل البيانات» يمسح الجهاز ويضع النسخة مكانه، بعد إقرار وتأكيد، مع عرض حفظ نسخة من الجهاز قبله. لنقل مشروع واحد: «تصدير مشروع» ثم استيراده على الجهاز الآخر.</p>
+
+  <section class="keep">
+  <h2>4. حلول سريعة</h2>
+  <table>
+    <tr><th>المشكلة</th><th>الحل</th></tr>
+    <tr><td>Windows يمنع التشغيل</td><td>«معلومات إضافية» ← «تشغيل على أي حال»</td></tr>
+    <tr><td>الجوال لا يعمل دون إنترنت</td><td>افتح الرابط مع الإنترنت وانتظر «جاهز للعمل دون إنترنت»، ثم ثبّته من الأيقونة</td></tr>
+    <tr><td>«يتوفر إصدار أحدث»</td><td>«تحديث الآن»؛ البيانات تبقى. يمكن تأجيله بـ×</td></tr>
+    <tr><td>جهاز الإسقاط باهت</td><td>«الإعدادات» ← السمة «فاتح»، وحجم الخط «كبير»</td></tr>
+    <tr><td>حذف بالخطأ</td><td>زر «تراجع» في الإشعار، أو استيراد آخر نسخة احتياطية (دمج)</td></tr>
+    <tr><td>المشروع التجريبي تغيّر</td><td>«الإعدادات» ← «المحتوى التجريبي» ← «إعادته كما كان»</td></tr>
+    <tr><td>ملف .ibm مرفوض</td><td>الرسالة تذكر السبب: تالف، أو ليس من التطبيق، أو من إصدار أحدث (حدّث التطبيق أولًا)</td></tr>
+  </table>
+  </section>
+</section>
+
+<section>
+  <h2>5. قائمة فحص يوم العرض</h2>
+  <h3>اليوم السابق</h3>
+  <ul class="check">
+    <li>ثبّت ملف التثبيت على جهاز العرض وشغّله مرة.</li>
+    <li>أكمل بياناتك في «الإعدادات» (الاسم الكامل، الجامعة، أستاذ المساق).</li>
+    <li>أضف المشروع التجريبي، وخذ نسخة احتياطية.</li>
+    <li>انسخ إلى ذاكرة USB: ملف التثبيت، والنسخة الاحتياطية، و<code>demo.ibm</code>.</li>
+    <li>ثبّت نسخة الويب على جوالك وانتظر «جاهز للعمل دون إنترنت».</li>
+    <li><b>بروفة كاملة في وضع الطيران</b> بالسيناريو أدناه.</li>
+  </ul>
+  <h3>قبل العرض بنصف ساعة</h3>
+  <ul class="check">
+    <li>الشاحن موصول، والإشعارات مطفأة.</li>
+    <li><b>وضع الطيران مفعّل</b>، والتطبيق مفتوح من اختصاره.</li>
+    <li>لوحة التحكم تعرض «جاهز للعمل دون إنترنت» أو «نسخة سطح المكتب».</li>
+  </ul>
+  <h3>سيناريو العرض (نحو 12 دقيقة)</h3>
+  <table>
+    <tr><th>#</th><th>اعرض</th></tr>
+    <tr><td>1</td><td>شاشة البداية ولوحة التحكم في وضع الطيران</td></tr>
+    <tr><td>2</td><td>«عن صاحب المشروع»: الفكرة والأساس التربوي</td></tr>
+    <tr><td>3</td><td>المشروع التجريبي ← درس «التصيّد الاحتيالي» ← «معاينة الطالب» ← «ملاحظات المعلم» (بطاقة القرار التربوي)</td></tr>
+    <tr><td>4</td><td>«المواءمة»: كل هدف مغطى، ثم هدف جديد فارغ يظهر «غير مغطى»</td></tr>
+    <tr><td>5</td><td>مشروع ودرس جديدان: هدف من بنك بلوم، وصورة، ثم حذفهما</td></tr>
+    <tr><td>6</td><td>استوديو التصميم: الخريطة التجريبية، سحب مفهوم، تصدير PNG</td></tr>
+    <tr><td>7</td><td>اختبار «كشف التصيّد»: الأنواع الستة والتغذية الراجعة</td></tr>
+    <tr><td>8</td><td>وضع الطالب باسم جديد: حل الاختبار وتسليمه</td></tr>
+    <tr><td>9</td><td>النتائج: الأسئلة الأصعب، الأهداف، بلوم، إجابة تنتظر المراجعة</td></tr>
+    <tr><td>10</td><td>تصدير المشروع التجريبي، حذفه، استيراده: يعود كما كان</td></tr>
+    <tr><td>11</td><td>السمة وحجم الخط، ثم إغلاق التطبيق وفتحه: الإعداد باقٍ</td></tr>
+  </table>
+  <div class="box warn"><b>صراحةً:</b> اختُبر التطبيق آليًا على Chromium بخمسة مقاسات وعلى نسخة سطح المكتب (Linux)، وجُرّب ملف التثبيت تحت Wine (محاكي Windows): ثبّت التطبيق وأنشأ الاختصارات، لكن الواجهة لم تعمل تحته. لم يُختبر على جهاز Windows حقيقي ولا جوال حقيقي؛ لذلك البروفة على جهاز العرض نفسه ضرورية.</div>
+  <p class="foot">IBRAHI8M EDU STUDIO 1.0.0 · ماجستير المناهج وطرق التدريس · التفاصيل الكاملة في INSTALL.md وTEST-REPORT.md</p>
+</section>
+
+</body>
+</html>

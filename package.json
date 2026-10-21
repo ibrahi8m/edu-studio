@@ -13,7 +13,8 @@
     "brand": "node scripts/build-brand.mjs",
     "desktop": "npm run build && electron .",
     "test:desktop": "playwright test -c playwright.desktop.config.ts",
-    "dist:desktop": "npm run build && electron-builder --linux dir --win dir"
+    "dist:desktop": "npm run build && electron-builder --linux dir --win dir",
+    "dist:installer": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {},
   "devDependencies": {
@@ -57,7 +58,10 @@
     ],
     "win": {
       "signAndEditExecutable": false,
-      "icon": "public/icon-512.png"
+      "icon": "public/icon-512.png",
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
       "icon": "public/icon-512.png",
@@ -65,7 +69,29 @@
     },
     "extraMetadata": {
       "main": "electron/main.cjs"
-    }
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "IBRAHI8M EDU STUDIO",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "ar_SA",
+        "en_US"
+      ],
+      "language": "1025",
+      "artifactName": "IBRAHI8M-EDU-STUDIO-Setup-${version}.${ext}"
+    },
+    "publish": null
   },
-  "author": "Ibrahim"
+  "author": "Ibrahim",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ibrahi8m/edu-studio.git"
+  },
+  "homepage": "https://ibrahi8m.github.io/edu-studio/"
 }

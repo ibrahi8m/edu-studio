@@ -2,9 +2,13 @@
 
 **Create. Teach. Inspire.** — استوديو عربي لتصميم المحتوى التعليمي الرقمي، يعمل دون إنترنت.
 
-الحالة الحالية: **المرحلة 7 — الهوية والمحتوى التجريبي** (الإصدار 0.8.0)، فوق المراحل 0 إلى 6.
+الحالة الحالية: **الإصدار 1.0.0 — المرحلة 8: التغليف والتسليم**، آخر مراحل الخطة التأسيسية (0 إلى 8).
 
-- طريقة التشغيل والحفظ على الكمبيوتر والجوال: [`INSTALL.md`](INSTALL.md)
+- **التطبيق على الويب والجوال:** https://ibrahi8m.github.io/edu-studio/ (يُفتح مرة مع الإنترنت، ثم يُثبَّت ويعمل دونه)
+- **ملف التثبيت لـWindows والحزم:** ضمن الملفات المسلّمة (`IBRAHI8M-EDU-STUDIO-Setup-1.0.0.exe`)، ولا تُرفع إلى المستودع لحجمها
+- طريقة التشغيل والحفظ والنسخ الاحتياطي: [`INSTALL.md`](INSTALL.md)
+- قائمة فحص يوم العرض: [`docs/DEMO-DAY.md`](docs/DEMO-DAY.md)
+- سجل التغييرات: [`CHANGELOG.md`](CHANGELOG.md)
 - ما اختُبر وما لم يُختبر: [`TEST-REPORT.md`](TEST-REPORT.md)
 - صيغة ملف `.ibm`: [`docs/FILE-FORMAT.md`](docs/FILE-FORMAT.md)
 
@@ -32,6 +36,9 @@ xvfb-run -a npm run test:desktop   # اختبارات تطبيق سطح المك
 node scripts/build-legacy.mjs      # يبني إصدارًا سابقًا من Git لاختبار الترقية (يستدعيه الاختبار تلقائيًا)
 npm run desktop      # تشغيل تطبيق سطح المكتب
 npm run dist:desktop # حزم Windows وLinux في release/
+npm run dist:installer # ملف التثبيت لـWindows (NSIS؛ على Linux يحتاج Wine)
+node scripts/build-guide.mjs   # دليل التشغيل PDF من docs/guide/guide.html
+scripts/publish-pages.sh       # نشر dist/ المختبَر إلى فرع gh-pages (GitHub Pages)
 ```
 
 ## تثبيت PWA على الجوال

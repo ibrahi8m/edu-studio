@@ -43,6 +43,8 @@ test.describe('المكتبة المحلية', () => {
     await lessonWithObjectives(page);
     await page.goto('./#/library');
     await expect(page.getByTestId('page-library')).toBeVisible();
+    // count() does not wait: wait for the list first (the 7 built-in templates are always there)
+    await expect(page.getByTestId('library-item').nth(6)).toBeVisible();
     expect(await page.getByTestId('library-item').count()).toBeGreaterThanOrEqual(7);
     expect(await serious(page)).toEqual([]);
     await fits(page, 'library');
