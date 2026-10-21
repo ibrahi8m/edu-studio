@@ -109,6 +109,9 @@ test('content kinds: university content with its own fields, units, draft → hi
     ['التقويم', 'الموضوع الثاني'],
   ]) {
     await page.getByTestId('new-lesson').first().click();
+    // Like a person: type once the dialog has opened and put the cursor in the title (typing within
+    // ~10 ms of the click could be lost on the first opening; see TEST-REPORT 1.1.0, known issues).
+    await expect(page.getByTestId('lesson-title')).toBeFocused();
     await page.getByTestId('lesson-unit').fill(u);
     await page.getByTestId('lesson-title').fill(t);
     await page.getByTestId('lesson-save').click();
@@ -293,6 +296,9 @@ test('trainee teacher profile: own fields, assigned programs only', async ({ pag
     await d.getByTestId('project-save').click();
     await expect(page.getByTestId('project-heading')).toHaveText(title);
     await page.getByTestId('new-lesson').first().click();
+    // Like a person: type once the dialog has opened and put the cursor in the title (typing within
+    // ~10 ms of the click could be lost on the first opening; see TEST-REPORT 1.1.0, known issues).
+    await expect(page.getByTestId('lesson-title')).toBeFocused();
     await page.getByTestId('lesson-unit').fill('المحور الأول');
     await page.getByTestId('lesson-title').fill(`جلسة: ${title}`);
     await page.getByTestId('lesson-save').click();
