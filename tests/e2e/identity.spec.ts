@@ -235,7 +235,7 @@ test.describe('Phase 7 — identity and demo content', () => {
         await page.waitForTimeout(500); // longest entrance (staggered cards) is 120 + 240 ms: colours are final after it
         for (const v of await serious(page)) problems.push(`${theme} ${name}: ${v}`);
         await fits(page, `${theme} ${name}`);
-        if (theme === 'داكن' && ['dashboard', 'project', 'preview', 'quiz-results', 'about'].includes(name))
+        if (theme === 'ليلي' && ['dashboard', 'project', 'preview', 'quiz-results', 'about'].includes(name))
           await page.screenshot({ path: `docs/screenshots/${testInfo.project.name}/p7-${name}.png` });
       }
     }

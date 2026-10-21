@@ -259,7 +259,7 @@ test.describe('Phase 1 — projects and lessons', () => {
     await page.keyboard.press('Escape');
     await expect(dlg).toBeHidden();
 
-    for (const theme of ['داكن', 'فاتح']) {
+    for (const theme of ['ليلي', 'نهاري']) { // 1.2.0 labels (were داكن/فاتح)
       await page.goto('./#/settings');
       await page.getByRole('radio', { name: theme }).click();
       for (const url of ['./#/projects', './#/projects?tab=lessons', './']) {
