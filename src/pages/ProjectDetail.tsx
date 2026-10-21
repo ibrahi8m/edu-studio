@@ -239,6 +239,7 @@ export function ProjectDetail() {
       <ProjectDesigns projectId={project.id} lessons={lessons} />
 
       <ProjectFormDialog
+        key={editing ? 'edit' : 'closed'}
         open={editing}
         initial={project}
         subjects={distinctSubjects(allProjects ?? [])}
@@ -291,6 +292,8 @@ export function ProjectDetail() {
       />
 
       <LessonFormDialog
+        // remount on every opening so the form starts from the right values before the first keystroke
+        key={lessonDialog.open ? (lessonDialog.lesson?.id ?? 'new') : 'closed'}
         open={lessonDialog.open}
         initial={lessonDialog.lesson}
         projectTitle={project.title}

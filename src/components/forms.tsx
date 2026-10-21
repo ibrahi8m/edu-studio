@@ -72,13 +72,17 @@ export function ProjectFormDialog({
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
+  // Reset when the dialog opens again; on first mount the state already starts from `initial`
+  // (callers remount the dialog per opening), so typing right away is never overwritten.
+  const wasOpen = useRef(open);
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       setV(blankProject(initial));
       setErrors({});
       setSaving(false);
-      window.setTimeout(() => titleRef.current?.focus(), 30);
     }
+    if (open) window.setTimeout(() => titleRef.current?.focus(), 30);
+    wasOpen.current = open;
   }, [open, initial]);
 
   const set = <K extends keyof typeof v>(k: K, val: (typeof v)[K]) => setV((p) => ({ ...p, [k]: val }));
@@ -308,13 +312,17 @@ export function LessonFormDialog({
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
+  // Reset when the dialog opens again; on first mount the state already starts from `initial`
+  // (callers remount the dialog per opening), so typing right away is never overwritten.
+  const wasOpen = useRef(open);
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       setV(blankLesson(initial));
       setErrors({});
       setSaving(false);
-      window.setTimeout(() => titleRef.current?.focus(), 30);
     }
+    if (open) window.setTimeout(() => titleRef.current?.focus(), 30);
+    wasOpen.current = open;
   }, [open, initial]);
 
   const set = <K extends keyof typeof v>(k: K, val: (typeof v)[K]) => setV((p) => ({ ...p, [k]: val }));

@@ -271,6 +271,7 @@ export function ProjectsPage() {
       )}
 
       <ProjectFormDialog
+        key={creating ? 'new' : 'closed'}
         open={creating}
         subjects={subjects}
         onClose={() => setCreating(false)}
