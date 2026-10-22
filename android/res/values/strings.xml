@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IBRAHI8M EDU STUDIO</string>
+    <string name="saved">تم حفظ الملف</string>
+    <string name="save_failed">تعذّر حفظ الملف</string>
+</resources>

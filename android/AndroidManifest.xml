@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IBRAHI8M EDU STUDIO — Android app (1.4.0). A WebView shell around the same web app, with all files inside the APK.
+     The app works fully offline and its code sends nothing anywhere. INTERNET is declared only because some
+     Android WebView versions refuse to load any https page (even one served from inside the app) without it. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="app.ibrahi8m.edustudio">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:hardwareAccelerated="true"
+        android:theme="@style/AppTheme">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
