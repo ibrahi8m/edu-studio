@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 /**
  * Runtime status: service-worker readiness, pending update, connectivity.
@@ -8,10 +8,16 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 declare global {
   interface Window {
     ibrahi8mDesktop?: { platform: string; version: string };
+    /** 1.4.0: the Android app (WebView) exposes this bridge; the files are inside the APK. */
+    ibrahi8mAndroid?: {
+      save(name: string, mime: string, base64: string): void;
+      version(): string;
+    };
   }
 }
 
-export type OfflineState = 'desktop' | 'ready' | 'installing' | 'unsupported' | 'dev';
+export type OfflineState =
+  "desktop" | "android" | "ready" | "installing" | "unsupported" | "dev";
 
 interface RuntimeSnapshot {
   offline: OfflineState;
@@ -20,12 +26,14 @@ interface RuntimeSnapshot {
 
 let snapshot: RuntimeSnapshot = {
   offline: window.ibrahi8mDesktop
-    ? 'desktop'
-    : import.meta.env.DEV
-      ? 'dev'
-      : 'serviceWorker' in navigator
-        ? 'installing'
-        : 'unsupported',
+    ? "desktop"
+    : window.ibrahi8mAndroid
+      ? "android"
+      : import.meta.env.DEV
+        ? "dev"
+        : "serviceWorker" in navigator
+          ? "installing"
+          : "unsupported",
   needRefresh: false,
 };
 const listeners = new Set<() => void>();
@@ -37,27 +45,30 @@ function set(patch: Partial<RuntimeSnapshot>) {
 }
 
 export async function initServiceWorker() {
-  if (snapshot.offline !== 'installing') return;
+  if (snapshot.offline !== "installing") return;
   try {
-    const { registerSW } = await import('virtual:pwa-register');
+    const { registerSW } = await import("virtual:pwa-register");
     applyUpdate = registerSW({
       immediate: true,
       onOfflineReady() {
-        set({ offline: 'ready' });
+        set({ offline: "ready" });
       },
       onNeedRefresh() {
         set({ needRefresh: true });
       },
       onRegisterError() {
-        set({ offline: 'unsupported' });
+        set({ offline: "unsupported" });
       },
     });
     // Already installed on a previous visit: the page is controlled from the start.
     const reg = await navigator.serviceWorker.ready;
-    if (reg.active && navigator.serviceWorker.controller) set({ offline: 'ready' });
-    navigator.serviceWorker.addEventListener('controllerchange', () => set({ offline: 'ready' }));
+    if (reg.active && navigator.serviceWorker.controller)
+      set({ offline: "ready" });
+    navigator.serviceWorker.addEventListener("controllerchange", () =>
+      set({ offline: "ready" }),
+    );
   } catch {
-    set({ offline: 'unsupported' });
+    set({ offline: "unsupported" });
   }
 }
 
@@ -67,7 +78,11 @@ export async function applyPendingUpdate() {
   // cancelled (another navigation at the same moment, a slow phone), the page would stay
   // on the old version while the new one controls it: reload once more, a second later.
   // When the first reload goes through, this page is gone and the timer never fires.
-  navigator.serviceWorker?.addEventListener('controllerchange', () => window.setTimeout(() => window.location.reload(), 1000), { once: true });
+  navigator.serviceWorker?.addEventListener(
+    "controllerchange",
+    () => window.setTimeout(() => window.location.reload(), 1000),
+    { once: true },
+  );
   await applyUpdate(true);
 }
 
@@ -90,20 +105,24 @@ export function useOnline(): boolean {
   useEffect(() => {
     const on = () => setOnline(true);
     const off = () => setOnline(false);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
     return () => {
-      window.removeEventListener('online', on);
-      window.removeEventListener('offline', off);
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
     };
   }, []);
   return online;
 }
 
-export const OFFLINE_LABEL: Record<OfflineState, { text: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }> = {
-  desktop: { text: 'نسخة سطح المكتب: الملفات على الجهاز', tone: 'success' },
-  ready: { text: 'جاهز للعمل دون إنترنت', tone: 'success' },
-  installing: { text: 'جارٍ تجهيز العمل دون إنترنت…', tone: 'warning' },
-  unsupported: { text: 'المتصفح لا يدعم العمل دون إنترنت', tone: 'danger' },
-  dev: { text: 'وضع التطوير (دون Service Worker)', tone: 'neutral' },
+export const OFFLINE_LABEL: Record<
+  OfflineState,
+  { text: string; tone: "success" | "warning" | "danger" | "neutral" }
+> = {
+  desktop: { text: "نسخة سطح المكتب: الملفات على الجهاز", tone: "success" },
+  android: { text: "تطبيق Android: الملفات داخل التطبيق", tone: "success" },
+  ready: { text: "جاهز للعمل دون إنترنت", tone: "success" },
+  installing: { text: "جارٍ تجهيز العمل دون إنترنت…", tone: "warning" },
+  unsupported: { text: "المتصفح لا يدعم العمل دون إنترنت", tone: "danger" },
+  dev: { text: "وضع التطوير (دون Service Worker)", tone: "neutral" },
 };

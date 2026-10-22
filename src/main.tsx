@@ -13,8 +13,10 @@ import './styles/v12.css';
 import { App } from './app/App';
 import { paintMirroredTheme } from './app/SettingsContext';
 import { initServiceWorker } from './app/runtime';
+import { installAndroidBridge } from './app/androidBridge';
 
 paintMirroredTheme();
+installAndroidBridge();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
