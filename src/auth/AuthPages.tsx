@@ -260,7 +260,7 @@ export function RecoverPage() {
     try {
       if (mode === 'cloud') {
         await cloud.cloudRecover(a);
-        setDone('إن كان البريد مسجّلًا، فستصلك رسالة فيها رابط لتعيين كلمة مرور جديدة.');
+        setDone('إن كان البريد مسجّلًا، فستصلك رسالة. افتح الرابط مباشرة منها: سيفتح نسخة الويب على صفحة «كلمة مرور جديدة». لا تطلب رابطًا ثانيًا قبل ساعة.');
       } else {
         const nextCode = await local.recoverOwner(c, a, b);
         setDone(`تم تعيين كلمة المرور. رمز الاستعادة الجديد (احفظه، القديم لم يعد يعمل): ${nextCode}`);
@@ -301,6 +301,71 @@ export function RecoverPage() {
             <KeyRound size={18} aria-hidden="true" /> {mode === 'cloud' ? 'أرسل رابط الاستعادة' : 'تعيين كلمة المرور'}
           </button>
           <Link to="/login">رجوع</Link>
+        </form>
+      )}
+    </AuthFrame>
+  );
+}
+
+/* ───────── 1.5.2: new password from a Supabase recovery link ───────── */
+
+export function ResetPasswordPage() {
+  const [pending] = useState(() => cloud.pendingRecovery());
+  const [password, setPassword] = useState('');
+  const [again, setAgain] = useState('');
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const weak = local.checkPassword(password);
+    if (weak) return setError(weak);
+    if (password !== again) return setError('كلمتا المرور غير متطابقتين.');
+    setBusy(true);
+    try {
+      await cloud.cloudSetNewPassword(password);
+      setMode('cloud');
+      setDone(true);
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <AuthFrame title="كلمة مرور جديدة" testId="page-reset-password">
+      {done ? (
+        <>
+          <p role="status" data-testid="reset-done">
+            تم تعيين كلمة المرور الجديدة لحسابك السحابي. ادخل بها الآن من أي نسخة (الويب أو Windows أو الهاتف). دورك وبياناتك كما هي.
+          </p>
+          <Link to="/login" className="btn btn-primary" data-testid="reset-to-login">
+            إلى تسجيل الدخول
+          </Link>
+        </>
+      ) : !pending?.token ? (
+        <>
+          <p className="auth-error" role="alert" data-testid="reset-invalid">
+            <ShieldAlert size={16} aria-hidden="true" />{' '}
+            {pending?.error === 'expired'
+              ? 'انتهت صلاحية رابط الاستعادة أو استُخدم من قبل (بعض برامج البريد تفتح الروابط تلقائيًا للفحص).'
+              : 'لا يوجد رابط استعادة صالح في هذه الصفحة.'}{' '}
+            اطلب رابطًا جديدًا مرة واحدة، وافتحه مباشرة من رسالة البريد.
+          </p>
+          <Link to="/recover" className="btn btn-primary">
+            طلب رابط جديد
+          </Link>
+        </>
+      ) : (
+        <form onSubmit={(e) => void submit(e)} noValidate className="auth-form">
+          <p className="muted">اختر كلمة مرور جديدة لحسابك السحابي. لن يتغير دورك ولا بياناتك.</p>
+          <TextField label="كلمة المرور الجديدة" value={password} onChange={setPassword} type="password" autoComplete="new-password" dir="ltr" testId="reset-password" hint="8 أحرف على الأقل، فيها حروف وأرقام." />
+          <TextField label="أعد كتابة كلمة المرور" value={again} onChange={setAgain} type="password" autoComplete="new-password" dir="ltr" testId="reset-password2" />
+          <ErrorBox text={error} />
+          <button type="submit" className="btn btn-primary btn-lg" disabled={busy} data-testid="reset-submit">
+            <KeyRound size={18} aria-hidden="true" /> {busy ? 'جارٍ الحفظ…' : 'حفظ كلمة المرور'}
+          </button>
         </form>
       )}
     </AuthFrame>

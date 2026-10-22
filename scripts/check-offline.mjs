@@ -23,6 +23,8 @@ export const NON_FETCHED = [
   /^https:\/\/tinyurl\.com\/y2uuvskb$/, // Dexie "IndexedDB API missing" message
   /^http:\/\/bit\.ly\/2kdckMn$/, // Dexie "PrematureCommit" message
   /^https:\/\/bit\.ly\/wb-precache$/, // Workbox console.warn text
+  // 1.5.2: the app's own web address, sent to Supabase as the return address of the recovery e-mail (never fetched)
+  /^https:\/\/ibrahi8m\.github\.io\/edu-studio\/$/,
 ];
 
 // 1.5.0: the only online service the app may call — the owner's Supabase project, used ONLY when someone

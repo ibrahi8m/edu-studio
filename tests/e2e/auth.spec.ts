@@ -291,6 +291,65 @@ test.describe('cloud accounts (Supabase) — against a MOCKED server', () => {
     await page.getByTestId('recover-email').fill('teacher@example.com');
     await page.getByTestId('recover-submit').click();
     await expect(page.getByTestId('recover-done')).toBeVisible();
-    expect(calls).toEqual(expect.arrayContaining(['POST /auth/v1/token?grant_type=password', 'GET /rest/v1/profiles?id=eq.u-1&select=*', 'POST /auth/v1/signup', 'POST /auth/v1/recover', 'POST /auth/v1/logout']));
+    expect(calls).toEqual(expect.arrayContaining(['POST /auth/v1/token?grant_type=password', 'GET /rest/v1/profiles?id=eq.u-1&select=*', 'POST /auth/v1/signup', 'POST /auth/v1/recover?redirect_to=https%3A%2F%2Fibrahi8m.github.io%2Fedu-studio%2F', 'POST /auth/v1/logout']));
+  });
+  test('1.5.2: the e-mail limit (429) is explained; a recovery link opens «كلمة مرور جديدة», sets the password, and hides the token', async ({ page }, info) => {
+    test.skip(!['desktop-1440', 'phone-iphone-se'].includes(info.project.name), 'desktop and the smallest phone');
+    const calls: string[] = [];
+    let newPassword = '';
+    await page.route(`${BASE}/**`, async (route) => {
+      const req = route.request();
+      const u = new URL(req.url());
+      calls.push(`${req.method()} ${u.pathname}${u.search}`);
+      if (u.pathname === '/auth/v1/recover')
+        return route.fulfill({ status: 429, json: { code: 429, error_code: 'over_email_send_rate_limit', msg: 'email rate limit exceeded' } });
+      if (u.pathname === '/auth/v1/user' && req.method() === 'PUT') {
+        expect(req.headers()['authorization']).toBe('Bearer recovery-token-123');
+        newPassword = JSON.parse(req.postData() ?? '{}').password;
+        return route.fulfill({ json: { id: 'u-1', email: 'owner@example.com' } });
+      }
+      if (u.pathname === '/auth/v1/logout') return route.fulfill({ status: 204, body: '' });
+      return route.fulfill({ status: 404, json: {} });
+    });
+    await disableSplash(page);
+    await page.goto('./#/login');
+    await page.getByTestId('mode-cloud').click();
+    await page.goto('./#/recover');
+    await page.getByTestId('recover-email').fill('owner@example.com');
+    await page.getByTestId('recover-submit').click();
+    await expect(page.getByTestId('auth-error')).toContainText('رسالتان في الساعة');
+    await expect(page.getByTestId('auth-error')).toContainText('لا تكرر الطلب');
+
+    // the link from the e-mail (Supabase appends the one-time token after #)
+    await page.goto('./#access_token=recovery-token-123&expires_in=3600&refresh_token=r&token_type=bearer&type=recovery');
+    await expect(page.getByTestId('page-reset-password')).toBeVisible();
+    expect(page.url()).toContain('#/reset-password');
+    expect(page.url()).not.toContain('recovery-token-123'); // removed from the address bar
+    await page.getByTestId('reset-password').fill('short');
+    await page.getByTestId('reset-password2').fill('short');
+    await page.getByTestId('reset-submit').click();
+    await expect(page.getByTestId('auth-error')).toBeVisible();
+    await page.getByTestId('reset-password').fill('New-cloud-pass-7');
+    await page.getByTestId('reset-password2').fill('New-cloud-pass-8');
+    await page.getByTestId('reset-submit').click();
+    await expect(page.getByTestId('auth-error')).toContainText('غير متطابقتين');
+    await page.getByTestId('reset-password2').fill('New-cloud-pass-7');
+    await page.getByTestId('reset-submit').click();
+    await expect(page.getByTestId('reset-done')).toBeVisible();
+    expect(newPassword).toBe('New-cloud-pass-7');
+    expect(calls).toContain('PUT /auth/v1/user');
+    expect(calls).toContain('POST /auth/v1/logout?scope=local'); // only the one-time recovery session is ended
+    expect(calls.some((c) => c.includes('/rest/v1/profiles') && !c.startsWith('GET'))).toBe(false); // role/data untouched
+    await page.getByTestId('reset-to-login').click();
+    await expect(page.getByTestId('page-login')).toBeVisible();
+
+    // an expired / already-opened link
+    await page.goto('./#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
+    await expect(page.getByTestId('reset-invalid')).toContainText('انتهت صلاحية');
+    // opening the page directly, without a link
+    await page.evaluate(() => sessionStorage.clear());
+    await page.goto('./#/reset-password');
+    await page.reload();
+    await expect(page.getByTestId('reset-invalid')).toContainText('لا يوجد رابط');
   });
 });

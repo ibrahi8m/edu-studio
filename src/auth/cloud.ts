@@ -63,6 +63,11 @@ async function call<T>(path: string, init: RequestInit & { token?: string } = {}
     const msg = String(body.error_description ?? body.msg ?? body.message ?? body.error ?? res.statusText);
     if (res.status === 400 && /invalid login credentials/i.test(msg)) throw new CloudError('البريد الإلكتروني أو كلمة المرور غير صحيحة.', 400);
     if (/email not confirmed/i.test(msg)) throw new CloudError('لم يُؤكَّد البريد الإلكتروني بعد. افتح رسالة التأكيد في بريدك.', res.status);
+    if (res.status === 429 && /email rate limit/i.test(msg))
+      throw new CloudError('وصل Supabase إلى حدّ إرسال الرسائل (خدمة البريد المدمجة: رسالتان في الساعة للمشروع كله). انتظر حتى ساعة ثم اطلب مرة واحدة، ولا تكرر الطلب.', 429);
+    if (res.status === 429) throw new CloudError('طلبات كثيرة في وقت قصير. انتظر دقيقة ثم حاول مرة واحدة.', 429);
+    if (/should be different/i.test(msg)) throw new CloudError('كلمة المرور الجديدة يجب أن تختلف عن القديمة.', res.status);
+    if (/weak|at least/i.test(msg) && res.status === 422) throw new CloudError('كلمة المرور ضعيفة: 8 أحرف على الأقل، فيها حروف وأرقام.', 422);
     if (res.status === 401 || res.status === 403) throw new CloudError('لا تملك صلاحية هذه العملية، أو انتهت الجلسة.', res.status);
     throw new CloudError(`خطأ من الخادم (${res.status}): ${msg}`, res.status);
   }
@@ -114,8 +119,58 @@ export async function cloudSignUp(email: string, password: string, displayName: 
   return r.access_token ? 'ready' : 'confirm';
 }
 
+/**
+ * 1.5.2 — password recovery that can actually be finished. The e-mail link goes to the web app (it must be listed in
+ * Supabase → Authentication → URL Configuration → Redirect URLs; it is the Site URL). The web app reads the one-time
+ * recovery token from the link (captureRecoveryLink, called before the router starts) and opens «كلمة مرور جديدة».
+ * Works from any version: the desktop and phone apps send the same link, which opens in the browser.
+ */
+export const RESET_REDIRECT = 'https://ibrahi8m.github.io/edu-studio/';
+const RECOVERY_KEY = 'ibrahi8m.cloud-recovery.v1';
+
 export async function cloudRecover(email: string): Promise<void> {
-  await call('/auth/v1/recover', { method: 'POST', body: JSON.stringify({ email: email.trim() }) });
+  await call(`/auth/v1/recover?redirect_to=${encodeURIComponent(RESET_REDIRECT)}`, { method: 'POST', body: JSON.stringify({ email: email.trim() }) });
+}
+
+/** Turns «…/#access_token=…&type=recovery» (or «#error=…») into the «#/reset-password» page; the token stays in this tab only. */
+export function captureRecoveryLink(loc: { hash: string } = window.location): boolean {
+  const h = loc.hash.replace(/^#/, '');
+  if (!/(^|&)(access_token|error_code|error)=/.test(h) || h.startsWith('/')) return false;
+  const p = new URLSearchParams(h);
+  let value: { token?: string; error?: string };
+  if (p.get('access_token') && p.get('type') === 'recovery') value = { token: p.get('access_token')! };
+  else if (p.get('error_code') || p.get('error')) value = { error: p.get('error_code') === 'otp_expired' ? 'expired' : 'invalid' };
+  else return false;
+  try {
+    sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(value));
+  } catch {
+    /* storage blocked: the page will say the link is invalid */
+  }
+  // remove the token from the address bar and history
+  history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/reset-password`);
+  return true;
+}
+
+export function pendingRecovery(): { token?: string; error?: string } | null {
+  try {
+    const raw = sessionStorage.getItem(RECOVERY_KEY);
+    return raw ? (JSON.parse(raw) as { token?: string; error?: string }) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Sets the new password with the one-time recovery session, then ends that session; the user signs in normally. */
+export async function cloudSetNewPassword(password: string): Promise<void> {
+  const token = pendingRecovery()?.token;
+  if (!token) throw new CloudError('رابط الاستعادة غير صالح أو استُخدم من قبل. اطلب رابطًا جديدًا بعد ساعة.');
+  await call('/auth/v1/user', { method: 'PUT', token, body: JSON.stringify({ password }) });
+  try {
+    sessionStorage.removeItem(RECOVERY_KEY);
+  } catch {
+    /* ignore */
+  }
+  await call('/auth/v1/logout?scope=local', { method: 'POST', token }).catch(() => undefined);
 }
 
 /** The signed-in cloud user, or null when signed out or the session has expired and cannot be refreshed. */
