@@ -1,0 +1,8 @@
+5c3dd721f3fd068615a5ccb5e314e4f0adc996673b0e13b12a5310a7a72dec70  windows/IBRAHI8M-EDU-STUDIO-Portable-1.5.1.exe
+51e4e01bf18fe90341b3e68bfb96adf6857f7751fd0594a22845b3eb9fb96446  windows/IBRAHI8M-EDU-STUDIO-Setup-1.5.1.exe
+0bc0cb52d36c619c99a6efe9d6d81868fc809c3874c8886cc97a43202b4096cf  windows/setup-parts/Setup-1.5.1.part1
+c441d07dc227a3bffba163cae19ba50a763dadd7c660ec4dc60cd249a4998d7d  windows/setup-parts/Setup-1.5.1.part2
+30a67978a7413c6a7e6e563a346708c577d2b22ec3e123084059170ee37dcdfa  windows/setup-parts/Setup-1.5.1.part3
+0e2a503b355279262fba72ed398091e29284b0b1fea9605b56aadabe5b63665d  windows/setup-parts/Setup-1.5.1.part4
+074af33af1f1026dd4ec5f719a4ab0ffd85543e9b422e1a58ce2b9b11cb1a07b  windows/setup-parts/join.bat
+e1c1daa3c3157c4b6d7c5b4e71f927cbf4657f0e662829498a590d1f46fa9843  01_SOURCE_CODE.zip
