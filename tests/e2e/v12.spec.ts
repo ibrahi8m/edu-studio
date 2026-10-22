@@ -270,16 +270,17 @@ test('AI Design Studio: five essentials up front, the rest in «إعدادات �
 
   await page.getByTestId('ai-idea').fill('ملصق عن الأمن الرقمي');
   await page.getByTestId('ai-generate').click();
-  await expect(page.getByTestId('ai-logo-rules')).toContainText('original official IBRAHI8M brand logo');
-  await expect(page.getByTestId('ai-logo-rules')).toContainText('ibrahi8m-mark.svg');
-  await expect(page.getByTestId('ai-explanation')).toContainText('لا يضمن ظهوره مطابقًا للأصل');
+  await expect(page.getByTestId('ai-logo-rules')).toContainText("owner's original official IBRAHI8M brand logo");
+  await expect(page.getByTestId('ai-logo-rules')).toContainText('LOGO SPECIFICATION:'); // 1.4.0: described, not a file name
+  await expect(page.getByTestId('ai-logo-rules')).not.toContainText('.svg');
+  await expect(page.getByTestId('ai-explanation')).toContainText('لا يضمن أن ترسم أداة التوليد شعارًا معقّدًا مطابقًا');
   await expect(page.getByTestId('ai-output')).toHaveClass(/is-fresh/);
 
   await page.getByTestId('ai-advanced-toggle').click();
   await expect(page.getByTestId('ai-style')).toBeVisible();
   await page.getByTestId('ai-brand').selectOption('brand-ai-universe');
   await page.getByTestId('ai-generate').click();
-  await expect(page.getByTestId('ai-logo-rules')).toContainText('original official IBRAHI8M brand logo');
+  await expect(page.getByTestId('ai-logo-rules')).toContainText("owner's original official IBRAHI8M brand logo");
   // no way to switch the logo off
   expect(await page.getByTestId('ai-brand').locator('option').allTextContents()).not.toContain('بلا هوية ولا شعار');
   expect(await page.getByTestId('ai-logo-place').locator('option').allTextContents()).not.toContain('بلا شعار');

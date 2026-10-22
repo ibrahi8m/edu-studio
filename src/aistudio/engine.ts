@@ -16,6 +16,7 @@ import {
   TEXT_PLACEMENTS,
   type Opt,
 } from './catalog';
+import { IBRAHI8M_MARK, IDENTITIES, LOGO_SIZE_BY_TYPE, LOGO_SIZE_DEFAULT, markDescription, wordmarkDescription } from './brandSpec';
 import type { BrandKit, PromptInput, PromptMode, PromptOutput } from './types';
 
 /**
@@ -87,38 +88,81 @@ const OTHER_IDENTITY: Record<string, RegExp> = {
   'brand-ai-universe': /EDU\s*STUDIO|IBRAHI8M\s*EDU|الاستوديو التعليمي/i,
 };
 
-/* ───────── 1.3.0: the mandatory brand logo ───────── */
+/* ───────── 1.3.0 → 1.4.0: the mandatory brand logo, self-contained ───────── */
 
 export const LOGO_MARKER = 'MANDATORY BRAND LOGO:';
+export const SPEC_MARKER = 'LOGO SPECIFICATION:';
+export const IDENTITY_MARKER = 'BRAND IDENTITY';
 const LOGO_WORDS = /(شعار|لوغو|لوجو|\blogo\b)/i;
 
+export interface LogoContext {
+  /** Design type value (size guidance). Unknown or future types get the default size. */
+  type?: string;
+  /** Identity chosen in the studio; decides the lockup's second line. */
+  brandId?: string | null;
+}
+
+/** The lockup's second line: «EDU STUDIO» only for the educational identity (or no identity chosen). */
+function secondLine(brandId: string | null | undefined): string | null {
+  return !brandId || brandId === 'brand-edu-studio' ? 'EDU STUDIO' : null;
+}
+
 /**
- * The logo instructions that end EVERY prompt, whatever the design type, mode or identity.
- * Wording from the owner's instruction; only the position and the file name are filled in.
+ * The logo block that ends EVERY prompt, whatever the design type, mode or identity.
+ * 1.4.0: it is self-contained — the owner pastes it into ChatGPT, which has no project files —
+ * so it describes the logo (from brandSpec.ts) instead of naming a file.
  */
-export function mandatoryLogo(placement: string, userNotes: string[] = []): string {
+export function mandatoryLogo(placement: string, userNotes: string[] = [], ctx: LogoContext = {}): string {
   const at = LOGO_PLACEMENTS.find((p) => p.value === placement && p.value !== 'auto');
   const position = at
-    ? `Integrate it professionally in the ${at.en} of the composition, a clearly visible position, with sufficient spacing and contrast.`
-    : 'Integrate it professionally into a suitable, clearly visible position in the composition, with sufficient spacing and contrast.';
+    ? `Integrate it professionally in the ${at.en} of the composition, a clearly visible position.`
+    : 'Integrate it professionally into a suitable, clearly visible corner of the composition.';
+  const size = (ctx.type && LOGO_SIZE_BY_TYPE[ctx.type]) || LOGO_SIZE_DEFAULT;
   const notes = userNotes.length
-    ? ` Owner's note about the logo (apply it only where it does not alter the original logo artwork): ${userNotes.map((n) => `"${n}"`).join('; ')}.`
+    ? ` Owner's note about the logo (apply it only where it does not alter the logo itself): ${userNotes.map((n) => `"${n}"`).join('; ')}.`
     : '';
   return (
-    `${LOGO_MARKER} Include the user's original official ${OFFICIAL_LOGO.name} brand logo in the final design. ` +
+    `${LOGO_MARKER} Include the owner's original official ${OFFICIAL_LOGO.name} brand logo in the final design. ` +
     'The logo is a required element and must never be omitted. ' +
-    `Use the exact original logo asset provided with the project (${OFFICIAL_LOGO.file}). ` +
-    'Preserve its original artwork, lettering, colors, proportions, and details without alteration. ' +
-    'Do not redraw, regenerate, reinterpret, distort, crop, recolor, or replace the logo. ' +
-    `${position} Keep it unobstructed and readable.${notes} ` +
-    'If the image generation tool cannot reproduce the logo accurately, reserve a clean space and overlay the original logo asset onto the final image using an image compositing method.'
+    'No logo file is attached to this prompt: reproduce the logo exactly from the specification below. ' +
+    'Preserve its original lettering, colors, proportions, and details without alteration. ' +
+    'Do not redraw it in another style, reinterpret, distort, crop, recolor, simplify, or replace the logo, and do not add any other logo. ' +
+    `${position} Logo size: ${size}. Keep it unobstructed and readable, with sufficient spacing and contrast.${notes}\n` +
+    `${SPEC_MARKER} ${markDescription()} ${wordmarkDescription(secondLine(ctx.brandId))}\n` +
+    'If an exact match is not possible, keep that corner clean and uncluttered so the official logo can be placed over it afterwards.'
   );
 }
 
+/** The identity section (colours, type, tone, rules) of the identity chosen in the studio. */
+export function identitySection(brand: BrandKit | null): string {
+  if (!brand) return '';
+  if (brand.id === 'brand-ai-universe') {
+    const spec = IDENTITIES['brand-ai-universe'];
+    const own = [brand.colors && `colors: ${brand.colors}`, brand.fonts && `typography: ${brand.fonts}`, brand.tone && `tone: ${brand.tone}`, brand.rules && `rules: ${brand.rules}`].filter(Boolean).join('; ');
+    return (
+      `${IDENTITY_MARKER} — ${spec.name}: this design belongs to ${spec.name}, spelled ${spec.spelling}${own ? `; ${own}` : ''}. ` +
+      `This identity has no logo artwork of its own: do not invent an emblem for it. ` +
+      'Keep it separate from IBRAHI8M EDU STUDIO: do not write "EDU STUDIO" and do not use the educational studio palette.'
+    );
+  }
+  if (brand.id === 'brand-edu-studio') {
+    const c = IBRAHI8M_MARK.colors;
+    return (
+      `${IDENTITY_MARKER} — ${IDENTITIES['brand-edu-studio'].name}: palette black ${c.tile.hex}, graphite ${c.head.hex}, metallic silver ${c.silverLight.hex} → ${c.silverMid.hex} → ${c.silverDark.hex}, electric blue ${c.blue.hex} and ${c.blueLight.hex}; ` +
+      `typography feel: ${brand.fonts}; brand tone: ${brand.tone}; brand rules: ${brand.rules}. ` +
+      'Do not mix in elements, names or colors of IBRAHIM AI UNIVERSE or any other brand.'
+    );
+  }
+  const own = [brand.colors && `colors: ${brand.colors}`, brand.fonts && `typography feel: ${brand.fonts}`, brand.tone && `brand tone: ${brand.tone}`, brand.rules && `brand rules: ${brand.rules}`].filter(Boolean).join('; ');
+  return `${IDENTITY_MARKER} — ${brand.name}${own ? `: ${own}` : ''}. Keep this identity separate from other brands.`;
+}
+
 /** Puts the mandatory logo block back if an edited or older saved prompt lost it. Idempotent. */
-export function ensureLogo(prompt: string, placement = 'auto'): string {
-  if (prompt.includes(LOGO_MARKER)) return prompt;
-  return `${prompt.trimEnd()}\n\n${mandatoryLogo(placement)}`;
+export function ensureLogo(prompt: string, placement = 'auto', ctx: LogoContext = {}): string {
+  if (prompt.includes(LOGO_MARKER) && prompt.includes(SPEC_MARKER)) return prompt;
+  // A 1.3.0 block (file-based, no specification) is replaced by the self-contained one.
+  const base = prompt.includes(LOGO_MARKER) ? prompt.slice(0, prompt.indexOf(LOGO_MARKER)) : prompt;
+  return `${base.trimEnd()}\n\n${mandatoryLogo(placement, [], ctx)}`;
 }
 
 /** Splits the owner's own mentions of the logo out of free text (to merge, not repeat, them). */
@@ -183,7 +227,7 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   // covered by the block (removed from the subject above).
   const userLogo = logoMentions(input.required).notes;
   const ideaMentionsLogo = LOGO_WORDS.test(`${input.idea} ${input.subjectEn}`);
-  const logoRules = mandatoryLogo(input.logoPlacement || 'auto', userLogo);
+  const logoRules = mandatoryLogo(input.logoPlacement || 'auto', userLogo, { type: input.type, brandId: brand?.id ?? null });
 
   const parts: string[] = [];
   const article = /^[aeiou]/i.test(type.en) ? 'An' : 'A';
@@ -208,11 +252,6 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
     parts.push(detail.en);
   } else if (colorsEn) parts.push(`color palette: ${colorsEn}`);
 
-  if (useBrand) {
-    if (useBrand.tone) parts.push(`brand tone: ${useBrand.tone}`);
-    if (useBrand.fonts) parts.push(`typography feel: ${useBrand.fonts}`);
-    if (useBrand.rules) parts.push(`brand rules: ${useBrand.rules}`);
-  }
 
   if (texts.length) {
     const where = textAt?.en ? ` placed at the ${textAt.en}` : '';
@@ -239,7 +278,9 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   const negative = [BASE_NEGATIVE, type.negative, avoidEn, useBrand?.avoid, 'missing logo, altered, redrawn, recolored or distorted logo, invented logos, fake brand names'].filter(Boolean).join(', ');
 
   // The logo block is part of the prompt text itself (copied, downloaded and saved with it).
-  const promptEn = `${parts.map(clean).filter(Boolean).join(', ')}.\n\n${logoRules}`;
+  // 1.4.0: the identity section of the chosen identity (any mode), then the self-contained logo block last.
+  const identity = identitySection(brand);
+  const promptEn = `${parts.map(clean).filter(Boolean).join(', ')}.${identity ? `\n\n${identity}` : ''}\n\n${logoRules}`;
 
   const ar: string[] = [];
   ar.push(`يطلب هذا البرومبت ${type.ar} عن فكرتك${input.idea.trim() ? ` «${clean(input.idea)}»` : ''}، بمقاس ${ratio.ar} (${ratio.size}).`);
@@ -253,10 +294,11 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   if (useBrand) ar.push(`طُبّقت قواعد هوية «${useBrand.name}» المحفوظة (النبرة والخطوط والقواعد والممنوعات).`);
   ar.push(texts.length ? `النصوص المطلوبة على التصميم كُتبت بين علامتي تنصيص كما هي، مع طلب كتابتها حرفيًا${textAt?.value ? ` في ${textAt.ar}` : ''}. أدوات توليد الصور قد تخطئ في الحروف العربية: راجع النص في الصورة الناتجة، أو أضفه لاحقًا ببرنامج تصميم.` : textAt?.value ? `طُلبت مساحة فارغة في ${textAt.ar} لتضيف النص لاحقًا.` : 'طُلب تصميم بلا نص.');
   ar.push(
-    `الشعار (إلزامي): أُضيفت إلى نهاية البرومبت نفسه تعليمات شعار ${OFFICIAL_LOGO.name} الأصلي (${OFFICIAL_LOGO.file})${logoAt && logoAt.value !== 'auto' ? ` في ${logoAt.ar}` : ' في موضع مناسب واضح'}، دون إعادة رسم أو تغيير ألوانه ونسبه. هذه التعليمات تُضاف دائمًا ولا يمكن إلغاؤها.${userLogo.length ? ' ودُمجت ملاحظتك عن الشعار فيها بدل تكرارها.' : ideaMentionsLogo ? ' وذكرك للشعار في الفكرة تغطيه هذه التعليمات، فلم يُكرَّر.' : ''}${brand && brand.id !== 'brand-edu-studio' ? ` الهوية المختارة «${brand.name}» تحدد الألوان والقواعد فقط؛ الشعار الإلزامي هو شعار ${OFFICIAL_LOGO.name}.` : ''}`,
+    `الشعار (إلزامي): أُضيفت إلى نهاية البرومبت نفسه تعليمات شعار ${OFFICIAL_LOGO.name} الأصلي${logoAt && logoAt.value !== 'auto' ? ` في ${logoAt.ar}` : ' في موضع مناسب واضح'}، مع حجم مناسب لنوع التصميم، ومعها «مواصفات الشعار» كاملة بالإنجليزية: الرمز (الرقم 8 من حلقتين: رأس روبوت بعينين مضيئتين فوق حلقة دائرة كهربائية)، والاسم وطريقة كتابته، والألوان بأكوادها، والنِّسب. البرومبت مكتفٍ بذاته: لا يحتاج رفع ملف ولا يذكر مسارًا، فيُلصق في ChatGPT كما هو. هذه التعليمات تُضاف دائمًا ولا يمكن إلغاؤها.${userLogo.length ? ' ودُمجت ملاحظتك عن الشعار فيها بدل تكرارها.' : ideaMentionsLogo ? ' وذكرك للشعار في الفكرة تغطيه هذه التعليمات، فلم يُكرَّر.' : ''}`,
   );
+  if (brand) ar.push(brand.id === 'brand-ai-universe' ? `الهوية: قسم «BRAND IDENTITY» يحدد هوية «${brand.name}» واسمها، ويمنع خلطها بهوية الاستوديو التعليمي. لا يوجد في المشروع شعار خاص بها، فلم يُخترع لها شعار، والشعار الإلزامي هو شعار ${OFFICIAL_LOGO.name} دون سطر «EDU STUDIO».` : `الهوية: قسم «BRAND IDENTITY» يضيف ألوان «${brand.name}» بأكوادها ونبرتها وقواعدها، ويمنع خلطها بهوية أخرى.`);
   ar.push(
-    'تنبيه صريح: النص يطلب الشعار، لكنه وحده لا يضمن ظهوره مطابقًا للأصل؛ أدوات توليد الصور لا ترسم الشعارات بدقة من الوصف. أرفق ملف الشعار الأصلي إن كانت الأداة تقبل صورة مرجعية، وبعد التوليد استخدم «تركيب الشعار» في هذا الاستوديو ليُركَّب الملف الأصلي على صورتك بدقة.',
+    'تنبيه صريح: الوصف المفصّل يقرّب النتيجة، لكنه لا يضمن أن ترسم أداة التوليد شعارًا معقّدًا مطابقًا للأصل حرفيًا. للتطابق التام استخدم «تركيب الشعار» في هذا الاستوديو بعد التوليد، فيُركَّب الملف الأصلي على صورتك.',
   );
   ar.push('البرومبت السلبي (Negative prompt) يذكر ما يجب تجنبه، ويُلصق في خانته إن كانت الأداة تدعمها.');
   ar.push('هذا نص يُنسخ إلى أداة توليد صور خارجية تختارها أنت؛ التطبيق لا يولّد صورًا ولا يتصل بأي خدمة.');

@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { buildPrompt, ensureLogo, LOGO_MARKER, mandatoryLogo, promptAsText, resolveBrand, roughTranslate } from '../../src/aistudio/engine';
+import { buildPrompt, ensureLogo, IDENTITY_MARKER, LOGO_MARKER, mandatoryLogo, SPEC_MARKER, promptAsText, resolveBrand, roughTranslate } from '../../src/aistudio/engine';
+import { IBRAHI8M_MARK, IDENTITIES } from '../../src/aistudio/brandSpec';
 import { BUILTIN_BRANDS, DESIGN_TYPES, EMPTY_INPUT, RATIOS } from '../../src/aistudio/catalog';
 import { deleteBrand, deletePrompt, duplicatePrompt, listBrands, normalizeSavedPrompt, saveBrand, savePrompt } from '../../src/aistudio/store';
 import { EduDB, SCHEMA_VERSION } from '../../src/db/db';
@@ -61,7 +63,7 @@ describe('AI Design Studio engine', () => {
     expect(out.texts).toEqual(['الأمن الرقمي', 'احمِ بياناتك']);
   });
 
-  it('1.3.0 MANDATORY: every prompt — every design type (including ones added later), ratio, mode and identity — ends with the original logo instructions, inside the prompt text itself', () => {
+  it('1.3.0/1.4.0 MANDATORY + SELF-CONTAINED: every prompt — every design type (including ones added later), ratio, mode and identity — ends with the original logo instructions, inside the prompt text itself', () => {
     const brands = [null, resolveBrand('brand-edu-studio', [])!, resolveBrand('brand-ai-universe', [])!];
     // a design type added in the future gets it too, with no code change
     DESIGN_TYPES.push({ value: 'future-type', ar: 'نوع جديد', en: 'brand new kind of design', needs: 'x', ratio: '1:1', negative: '' });
@@ -73,12 +75,20 @@ describe('AI Design Studio engine', () => {
               const out = buildPrompt({ ...EMPTY_INPUT, idea: 'olive tree', type: t.value, logoPlacement: placement }, mode, brand, t.value.length);
               const where = `${t.value}/${mode}/${brand?.id}/${placement}`;
               expect(out.promptEn, where).toContain(LOGO_MARKER);
-              expect(out.promptEn, where).toContain("Include the user's original official IBRAHI8M brand logo in the final design.");
+              expect(out.promptEn, where).toContain("Include the owner's original official IBRAHI8M brand logo in the final design.");
               expect(out.promptEn, where).toContain('must never be omitted');
-              expect(out.promptEn, where).toContain('Use the exact original logo asset provided with the project (ibrahi8m-mark.svg).');
-              expect(out.promptEn, where).toContain('Do not redraw, regenerate, reinterpret, distort, crop, recolor, or replace the logo.');
-              expect(out.promptEn, where).toContain('overlay the original logo asset onto the final image using an image compositing method');
+              // 1.4.0 self-contained: the full specification is in the text, and nothing depends on a file
+              expect(out.promptEn, where).toContain(SPEC_MARKER);
+              for (const hex of ['#0E1014', '#171B22', '#06080B', '#F2F4F7', '#A9B1BC', '#5D6673', '#2F7BFF', '#5B9BFF', '#E3EEFF']) expect(out.promptEn, `${where} ${hex}`).toContain(hex);
+              expect(out.promptEn, where).toContain('I-B-R-A-H-I-8-M');
+              expect(out.promptEn, where).toContain('robot head');
+              expect(out.promptEn, where).toContain('circuit ring');
+              expect(out.promptEn, where).toMatch(/Logo size: (about \d+–\d+% of the|large and central)/);
+              expect(out.promptEn, where).not.toMatch(/\.svg|\.png|\/brand\/|provided with the project|attached file|upload/i);
+              expect(out.promptEn, where).toContain('No logo file is attached to this prompt');
+              expect(out.promptEn, where).toContain('Do not redraw it in another style, reinterpret, distort, crop, recolor, simplify, or replace the logo');
               expect(out.promptEn.split(LOGO_MARKER)).toHaveLength(2); // exactly once
+              expect(out.promptEn.split(SPEC_MARKER)).toHaveLength(2);
               expect(out.logoRules).toBe(out.promptEn.slice(out.promptEn.indexOf(LOGO_MARKER)));
               expect(out.negative).toContain('missing logo');
             }
@@ -98,7 +108,7 @@ describe('AI Design Studio engine', () => {
       expect(out.promptEn, idea).toContain('bottom-left corner');
     }
     const auto = buildPrompt({ ...EMPTY_INPUT, idea: 'x', logoPlacement: 'auto' }, 'pro', null);
-    expect(auto.promptEn).toContain('a suitable, clearly visible position in the composition');
+    expect(auto.promptEn).toContain('a suitable, clearly visible corner of the composition');
     const own = buildPrompt({ ...EMPTY_INPUT, idea: 'poster with my logo', required: 'الشعار كبير وواضح، شجرة زيتون' }, 'pro', null);
     expect(own.promptEn.match(/\blogo\b/gi)!.length).toBeGreaterThan(3);
     expect(own.promptEn).not.toContain('with my logo');
@@ -117,7 +127,67 @@ describe('AI Design Studio engine', () => {
     expect(fixed).toContain(LOGO_MARKER);
     expect(fixed).toContain('top-right corner');
     expect(ensureLogo(fixed)).toBe(fixed);
-    expect(mandatoryLogo('auto')).toContain('suitable, clearly visible position');
+    expect(mandatoryLogo('auto')).toContain('suitable, clearly visible corner');
+    // a 1.3.0 block (it named a file) is replaced by the self-contained one
+    const v13 = `${old}\n\nMANDATORY BRAND LOGO: Use the exact original logo asset provided with the project (ibrahi8m-mark.svg).`;
+    const up = ensureLogo(v13, 'auto');
+    expect(up).not.toContain('ibrahi8m-mark.svg');
+    expect(up).toContain(SPEC_MARKER);
+    expect(up.split(LOGO_MARKER)).toHaveLength(2);
+    expect(up.startsWith(old)).toBe(true);
+  });
+
+  it('1.4.0 identity tests: educational post, infographic, ad, creative design and the other identity — the right identity section, no brand mixing', () => {
+    const edu = resolveBrand('brand-edu-studio', [])!;
+    const uni = resolveBrand('brand-ai-universe', [])!;
+    const cases: [string, string, string, typeof edu][] = [
+      ['منشور تعليمي عن الأمن الرقمي', 'social', 'flat', edu],
+      ['إنفوجرافيك عن دورة الماء', 'infographic', '', edu],
+      ['إعلان عن دورة برمجة', 'commercial', '', edu],
+      ['تصميم إبداعي لروبوت يرسم', 'poster', 'surreal', edu],
+      ['لوحة فنية لمجرة', 'poster', 'surreal', uni],
+    ];
+    for (const [idea, type, style, brand] of cases)
+      for (const mode of ['quick', 'pro', 'brand'] as const) {
+        const out = buildPrompt({ ...EMPTY_INPUT, idea, type, style }, mode, brand);
+        const where = `${idea}/${mode}`;
+        const identity = out.promptEn.slice(out.promptEn.indexOf(IDENTITY_MARKER), out.promptEn.indexOf(LOGO_MARKER));
+        expect(identity, where).toContain(`${IDENTITY_MARKER} — ${brand.name}`);
+        expect(out.promptEn.split(IDENTITY_MARKER)).toHaveLength(2);
+        expect(out.promptEn.indexOf(IDENTITY_MARKER)).toBeLessThan(out.promptEn.indexOf(LOGO_MARKER)); // logo block stays last
+        if (brand === edu) {
+          expect(identity).toContain('#2F7BFF');
+          expect(out.logoRules).toContain('second line "EDU STUDIO"');
+          expect(identity).not.toMatch(/belongs to IBRAHIM AI UNIVERSE/);
+        } else {
+          expect(identity).toContain('has no logo artwork of its own: do not invent');
+          expect(identity).not.toContain('#2F7BFF'); // no educational palette
+          expect(out.logoRules).toContain('with no second line');
+          expect(out.logoRules).not.toContain('"EDU STUDIO"');
+        }
+      }
+    // no identity chosen: still the logo and its full specification, no identity section
+    const none = buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, 'pro', null);
+    expect(none.promptEn).not.toContain(IDENTITY_MARKER);
+    expect(none.promptEn).toContain(SPEC_MARKER);
+  });
+
+  it('1.4.0: the specification matches the real logo file (every colour and measurement comes from ibrahi8m-mark.svg)', () => {
+    const svg = readFileSync(new URL('../../public/brand/ibrahi8m-mark.svg', import.meta.url), 'utf8');
+    for (const c of Object.values(IBRAHI8M_MARK.colors)) expect(svg.toUpperCase(), c.hex).toContain(`"${c.hex.toUpperCase()}"`);
+    const num = (re: RegExp) => Number(svg.match(re)![1]);
+    const pct = (n: number) => Math.round((n / 512) * 100);
+    expect(pct(num(/<rect width="512" height="512" rx="(\d+)"/))).toBe(IBRAHI8M_MARK.geometry.tileCornerRadiusPct);
+    expect(pct(2 * 100 + 24)).toBe(IBRAHI8M_MARK.geometry.upperLoopOuterDiameterPct);
+    expect(svg).toContain('cy="168" r="100"');
+    expect(svg).toContain('stroke-width="24"');
+    expect(svg).toContain('cy="350" r="90"');
+    expect(pct(2 * 90 + 26)).toBe(IBRAHI8M_MARK.geometry.lowerLoopOuterDiameterPct);
+    expect(pct(168 + 6)).toBe(IBRAHI8M_MARK.geometry.upperCentreYPct);
+    expect(pct(350 + 6)).toBe(IBRAHI8M_MARK.geometry.lowerCentreYPct);
+    expect(Math.round((156 / 224) * 100)).toBe(IBRAHI8M_MARK.geometry.visorWidthOfHeadPct);
+    expect(svg).toContain('width="156" height="74" rx="37"');
+    expect(IDENTITIES['brand-ai-universe'].hasLogoArtwork).toBe(false);
   });
 
   it('quick mode is shorter than professional; brand mode adds the saved identity rules', () => {

@@ -172,7 +172,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
     setBrandId(loaded.brandId ?? BUILTIN_BRANDS[0].id);
     setOut(loaded.output);
     // prompts saved before 1.3.0 get the mandatory logo block back when opened
-    setPrompt(ensureLogo(loaded.editedPrompt || loaded.output.promptEn, loaded.input.logoPlacement));
+    setPrompt(ensureLogo(loaded.editedPrompt || loaded.output.promptEn, loaded.input.logoPlacement, { type: loaded.input.type, brandId: loaded.brandId }));
     setTitle(loaded.title);
     setSavedId(loaded.id);
     setVariant(0);
@@ -200,7 +200,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
 
   const edited = !!out && prompt !== out.promptEn;
   /** what leaves the studio: the prompt as shown, with the mandatory logo block guaranteed */
-  const finalPrompt = () => ensureLogo(prompt, input.logoPlacement);
+  const finalPrompt = () => ensureLogo(prompt, input.logoPlacement, { type: input.type, brandId: brandId || null });
   const save = async (asNew = false) => {
     if (!out) return;
     try {
@@ -279,7 +279,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
         <div className="ai-logo-note" data-testid="ai-logo-note">
           <img src={`${import.meta.env.BASE_URL}brand/${OFFICIAL_LOGO.file}`} alt="" className="ai-logo-thumb" />
           <span>
-            <strong>الشعار إلزامي:</strong> كل برومبت ينتهي تلقائيًا بتعليمات شعار <bdi>{OFFICIAL_LOGO.name}</bdi> الأصلي ({LOGO_PLACEMENTS.find((x) => x.value === input.logoPlacement)?.ar ?? 'موضع مناسب واضح'})، ولا يمكن إلغاؤها. ملف الشعار:{' '}
+            <strong>الشعار إلزامي:</strong> كل برومبت ينتهي تلقائيًا بتعليمات شعار <bdi>{OFFICIAL_LOGO.name}</bdi> الأصلي ومواصفاته الكاملة (الرمز والاسم والألوان والنِّسب)، فيُلصق في ChatGPT دون رفع ملف ({LOGO_PLACEMENTS.find((x) => x.value === input.logoPlacement)?.ar ?? 'موضع مناسب واضح'})، ولا يمكن إلغاؤها. ملف الشعار:{' '}
             <a href={`${import.meta.env.BASE_URL}brand/${OFFICIAL_LOGO.file}`} download={OFFICIAL_LOGO.file} data-testid="ai-logo-download">
               SVG
             </a>{' '}
@@ -529,7 +529,7 @@ function PromptLibrary({ prompts, onOpen }: { prompts: SavedPrompt[] | undefined
       ) : (
         <ul className="ai-lib-list">
           {shown.map((p) => {
-            const text = ensureLogo(p.editedPrompt || p.output.promptEn, p.input.logoPlacement);
+            const text = ensureLogo(p.editedPrompt || p.output.promptEn, p.input.logoPlacement, { type: p.input.type, brandId: p.brandId });
             return (
               <li key={p.id} className="ai-lib-item" data-testid="ai-lib-item">
                 <div className="ai-lib-main">

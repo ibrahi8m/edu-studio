@@ -6,13 +6,17 @@ import { disableSplash, isPhone } from './quiz-helpers';
 /** 1.3.0 — the owner's original logo is a mandatory part of every prompt, and can be composited exactly. */
 
 const MARK = 'MANDATORY BRAND LOGO:';
+// 1.4.0: the block is self-contained (pasted into ChatGPT): it carries the full specification, not a file name
 const CORE = [
-  "Include the user's original official IBRAHI8M brand logo in the final design.",
+  "Include the owner's original official IBRAHI8M brand logo in the final design.",
   'The logo is a required element and must never be omitted.',
-  'Use the exact original logo asset provided with the project (ibrahi8m-mark.svg).',
-  'Do not redraw, regenerate, reinterpret, distort, crop, recolor, or replace the logo.',
-  'Keep it unobstructed and readable.',
-  'overlay the original logo asset onto the final image using an image compositing method.',
+  'No logo file is attached to this prompt: reproduce the logo exactly from the specification below.',
+  'Do not redraw it in another style, reinterpret, distort, crop, recolor, simplify, or replace the logo',
+  'Keep it unobstructed and readable',
+  'LOGO SPECIFICATION:',
+  'I-B-R-A-H-I-8-M',
+  '#2F7BFF',
+  '#0E1014',
 ];
 const FX = (f: string) => fileURLToPath(new URL(`../fixtures/${f}`, import.meta.url));
 const heavy = (name: string) => ['desktop-1440', 'phone-pixel-7'].includes(name);
@@ -20,6 +24,7 @@ const hasLogo = (t: string) => {
   expect(t).toContain(MARK);
   for (const c of CORE) expect(t).toContain(c);
   expect(t.split(MARK)).toHaveLength(2);
+  expect(t).not.toMatch(/\.svg|\.png|provided with the project/);
 };
 const clip = (page: Page) => page.evaluate(() => navigator.clipboard.readText());
 

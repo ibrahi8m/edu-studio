@@ -2,7 +2,7 @@ import type { BrandKit, DetailLevel, PromptInput } from './types';
 
 /**
  * 1.3.0 — the user's original, approved logo: the «الثمانية الروبوت» mark chosen in phase 7
- * (brand-src/ibrahi8m-mark.svg, served at /brand/). Every prompt asks for this file, unaltered.
+ * (brand-src/ibrahi8m-mark.svg, served at /brand/). Every prompt describes it in full (src/aistudio/brandSpec.ts); the files are for «تركيب الشعار» and download.
  */
 export const OFFICIAL_LOGO = {
   name: 'IBRAHI8M',

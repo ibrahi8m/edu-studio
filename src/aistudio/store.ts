@@ -75,7 +75,7 @@ export async function duplicatePrompt(database: EduDB, id: string): Promise<Save
   const now = Date.now();
   // a copy of a prompt saved before 1.3.0 gets the mandatory logo block too
   const text = cur.editedPrompt || cur.output.promptEn;
-  const withLogo = ensureLogo(text, cur.input.logoPlacement);
+  const withLogo = ensureLogo(text, cur.input.logoPlacement, { type: cur.input.type, brandId: cur.brandId });
   const copy = { ...cur, id: newId(), title: `${cur.title} (نسخة)`.slice(0, 160), editedPrompt: withLogo !== cur.output.promptEn ? withLogo : cur.editedPrompt, createdAt: now, updatedAt: now };
   await database.prompts.add(copy);
   return copy;
