@@ -86,7 +86,10 @@
       "language": "1025",
       "artifactName": "IBRAHI8M-EDU-STUDIO-Setup-${version}.${ext}"
     },
-    "publish": null
+    "publish": null,
+    "portable": {
+      "artifactName": "IBRAHI8M-EDU-STUDIO-Portable-${version}.${ext}"
+    }
   },
   "author": "Ibrahim",
   "repository": {
