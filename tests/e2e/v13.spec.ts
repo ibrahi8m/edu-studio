@@ -73,7 +73,9 @@ test('the three examples: the English prompt box itself ends with the logo instr
   expect(await clip(page)).toContain('Soft light.');
   await page.getByTestId('ai-title').fill('معدّل بلا شعار');
   await page.getByTestId('ai-save').click();
-  hasLogo(await box.inputValue()); // the saved text is put back in the box
+  // saving is asynchronous (IndexedDB); the saved text is then put back in the box
+  await expect(box).toHaveValue(/MANDATORY BRAND LOGO:/);
+  hasLogo(await box.inputValue());
 
   // Library: every saved prompt, its copy and its duplicate carry the block
   await page.getByTestId('ai-tab-library').click();
