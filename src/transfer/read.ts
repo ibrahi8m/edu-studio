@@ -52,6 +52,8 @@ const ProjectSchema = z.object({
   kind: z.enum(['school', 'university', 'training']).optional(),
   published: z.boolean().optional(),
   details: z.record(z.string().max(5000)).optional(),
+  // 1.5.0+, optional: the account that created it (kept so an export → import round trip is identical)
+  ownerId: z.string().max(200).optional(),
 });
 
 const LessonSchema = z.object({
