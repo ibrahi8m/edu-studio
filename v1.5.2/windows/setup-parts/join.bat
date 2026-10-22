@@ -1,0 +1,5 @@
+@echo off
+cd /d "%~dp0"
+copy /b Setup-1.5.2.part1+Setup-1.5.2.part2+Setup-1.5.2.part3+Setup-1.5.2.part4 IBRAHI8M-EDU-STUDIO-Setup-1.5.2.exe
+echo Done
+pause
