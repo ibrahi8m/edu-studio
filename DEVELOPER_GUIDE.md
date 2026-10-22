@@ -1,4 +1,4 @@
-# دليل المطوّر — IBRAHI8M EDU STUDIO 1.4.0
+# دليل المطوّر — IBRAHI8M EDU STUDIO 1.5.0
 
 ## التقنيات
 
@@ -44,6 +44,25 @@ scripts/publish-pages.sh    # نشر dist/ على GitHub Pages
 1. استبدل ملفات `public/brand/`.
 2. حدّث `src/aistudio/brandSpec.ts`: الألوان والقياسات والوصف.
 3. شغّل `npm test`. الاختبار «specification matches the real logo file» يفشل إذا اختلف المرجع عن ملف SVG.
+
+## الحسابات والصلاحيات (1.5.0)
+
+| الملف | الدور |
+| --- | --- |
+| `src/auth/types.ts` | الأدوار، و`canAccess(role, path)` لقواعد المسارات، و`homeFor` |
+| `src/auth/local.ts` | الحسابات المحلية: PBKDF2-SHA-256 (210 ألف تكرار)، والجلسة، والقفل بعد 5 محاولات، ورمز الاستعادة، وعمليات الأدمن. كل عملية تتحقق من الدور |
+| `src/auth/cloud.ts` | Supabase عبر REST: الرابط والمفتاح المنشور فقط |
+| `src/auth/session.ts` | الحالة الموحّدة: `useAuth`، `signIn`، `signOut`، `revalidate` |
+| `src/auth/access.ts` | من يرى أي محتوى ومن يعدّله (`ownerId`). تستدعيه دوال الحفظ في `db/projects.ts` و`db/quizzes.ts` و`db/lessonDocs.ts` و`db/designs.ts` |
+| `src/auth/AuthPages.tsx`، `UsersPages.tsx` | الدخول، وأول تشغيل، والاستعادة، والتسجيل السحابي، والحارس `RequireAuth`، و«حسابي»، و«المستخدمون» |
+| `supabase/schema.sql` | جدول `profiles` وقواعد RLS والمشغّلات |
+
+**الاختبارات:**
+- `tests/e2e/auth-setup.ts` ينشئ حساب أدمن اختباريًا ويبدأ به كل اختبار، وكلمة مروره داخل ملف الاختبار فقط.
+- `tests/e2e/auth.spec.ts` يبدأ دون أي حساب.
+- اختبار Supabase يستخدم خادمًا وهميًا (`page.route`).
+
+**CSP:** `connect-src` يسمح بنطاق مشروع Supabase وحده، والسكربت `scripts/check-offline.mjs` يسمح به وحده كذلك.
 
 ## مفاتيح التوقيع
 

@@ -31,8 +31,8 @@ npx cap open ios          # يفتح المشروع في Xcode
 
 ## الإصدار
 
-- **رقم الإصدار:** `MARKETING_VERSION = 1.4.0`.
-- **رقم البناء:** `CURRENT_PROJECT_VERSION = 10400`.
+- **رقم الإصدار:** `MARKETING_VERSION = 1.5.0`.
+- **رقم البناء:** `CURRENT_PROJECT_VERSION = 10500`.
 - **معرّف التطبيق:** `app.ibrahi8m.edustudio`.
 
 ## حدود معروفة على iOS

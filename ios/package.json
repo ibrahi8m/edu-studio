@@ -1,7 +1,7 @@
 {
   "name": "ibrahi8m-edu-studio-ios",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "iOS shell (Capacitor) for IBRAHI8M EDU STUDIO. Build on macOS with Xcode; see README.md.",
   "scripts": {
     "sync": "cap sync ios"
