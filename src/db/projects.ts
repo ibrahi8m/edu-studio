@@ -5,7 +5,7 @@ import type { Design } from '../studio/types';
 import type { Submission } from '../learner/types';
 import type { ContentKind, EduDB, ItemStatus, Lesson, Project, ProjectColor } from './db';
 import { cleanDetails, CONTENT_KINDS, KIND_SPECS, kindOf } from './contentKinds';
-import { GRADES, LIMITS, STATUSES } from './catalog';
+import { GRADES, KIND_STAGES, LIMITS, STATUSES } from './catalog';
 import { newId } from './ids';
 import { matchesQuery, normalizeArabic } from './search';
 
@@ -66,7 +66,7 @@ export function validateProject(input: ProjectInput): FieldErrors {
   if (!title) e.title = 'العنوان مطلوب.';
   else if (title.length > LIMITS.title) e.title = `العنوان أطول من ${LIMITS.title} حرفًا.`;
   if ((input.subject ?? '').trim().length > LIMITS.subject) e.subject = `اسم المادة أطول من ${LIMITS.subject} حرفًا.`;
-  if (input.grade && !GRADES.includes(input.grade)) e.grade = 'اختر المرحلة من القائمة.';
+  if (input.grade && !GRADES.includes(input.grade) && !KIND_STAGES.includes(input.grade)) e.grade = 'اختر المرحلة من القائمة.';
   if (input.kind && !CONTENT_KINDS.includes(input.kind)) e.status = 'نوع محتوى غير معروف.';
   if ((input.description ?? '').length > LIMITS.description) e.description = `الوصف أطول من ${LIMITS.description} حرف.`;
   if (input.status && !STATUSES.includes(input.status)) e.status = 'حالة غير معروفة.';

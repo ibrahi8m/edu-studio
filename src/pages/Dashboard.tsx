@@ -64,7 +64,7 @@ export function Dashboard() {
           {!displayName(settings) && (
             <p className="hero-sub">
               <Link to="/me" data-testid="hero-add-name">
-                اكتب اسمك في «صفحتي»
+                اكتب اسمك في «صاحب المشروع»
               </Link>{' '}
               ليظهر هنا.
             </p>

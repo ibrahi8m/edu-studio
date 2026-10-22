@@ -158,7 +158,7 @@ export function SettingsPage() {
             ) : (
               'لم تكتب اسمك بعد. '
             )}
-            الاسم والصفة والسيرة الذاتية في <Link to="/me" data-testid="settings-to-me">صفحتي</Link>. معلومات المشروع الأكاديمية ثابتة في صفحة <Link to="/about">عن المشروع</Link>.
+            الاسم والصفة والسيرة الذاتية في <Link to="/me" data-testid="settings-to-me">صاحب المشروع</Link>. معلومات المشروع الأكاديمية ثابتة في صفحة <Link to="/about">عن المشروع</Link>.
           </p>
         </Card>
 
@@ -207,7 +207,7 @@ export function SettingsPage() {
         <ConfirmDialog
           open={confirmReset}
           title="إعادة الإعدادات الافتراضية؟"
-          message="تعود السمة وحجم الخط والخلفية والحركة والصوت وشاشة البداية إلى قيمها الأولى. اسمك وسيرتك الذاتية في «صفحتي»، والمحتوى والنتائج، لا تتغير."
+          message="تعود السمة وحجم الخط والخلفية والحركة والصوت وشاشة البداية إلى قيمها الأولى. اسمك وسيرتك الذاتية في «صاحب المشروع»، والمحتوى والنتائج، لا تتغير."
           confirmLabel="نعم، أعِدها"
           testId="confirm-settings-reset"
           onClose={() => setConfirmReset(false)}

@@ -30,10 +30,15 @@ export const GRADES: string[] = [
   'الصف العاشر',
   'الصف الحادي عشر',
   'الصف الثاني عشر',
-  'التعليم الجامعي',
-  'تدريب المعلمين',
   'أخرى',
 ];
+
+/**
+ * 1.5.0: university and teacher training are kinds of content, not school grades. They are no longer in
+ * the grade list; these values stay valid because university/training content stores them as its stage
+ * (and older projects may still hold them). Nothing stored is changed.
+ */
+export const KIND_STAGES: string[] = ['التعليم الجامعي', 'تدريب المعلمين'];
 
 /** Suggestions only — the subject field accepts any text. */
 export const SUBJECT_SUGGESTIONS: string[] = [
@@ -52,7 +57,6 @@ export const SUBJECT_SUGGESTIONS: string[] = [
   'الحاسوب',
   'التربية الفنية',
   'التربية الرياضية',
-  'المناهج وطرق التدريس',
 ];
 
 export const PROJECT_COLORS: { value: ProjectColor; label: string }[] = [

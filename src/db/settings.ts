@@ -8,7 +8,7 @@ export type MotionLevel = 'full' | 'calm' | 'static' | 'off';
 export type BackgroundKind = 'particles' | 'gradient' | 'grid' | 'waves';
 export type MusicTrack = 'tech' | 'ambient' | 'focus' | 'space';
 
-/** 1.1.0: the CV shown in «صفحتي». Seeded with the owner's data; every field is editable. */
+/** The CV shown in «صاحب المشروع» (was «صفحتي» before 1.5.0). Seeded with the owner's data; editable by the admin. */
 export interface CvData {
   name: string;
   title: string;
@@ -33,8 +33,8 @@ export const DEFAULT_CV: CvData = {
   title: 'إعلامي | مصمم وسائط متعددة | صانع محتوى رقمي | منسق مشاريع',
   residence: 'خان يونس – قطاع غزة، فلسطين',
   birthYear: '2002',
-  phone: NOT_SET,
-  email: NOT_SET,
+  phone: '0592780728',
+  email: 'ibrahimyasf@gmail.com',
   summary:
     'إعلامي ومصمم وسائط متعددة وصانع محتوى رقمي، أمتلك خبرة في إنتاج المواد الإعلامية والتصميم والمونتاج وإعداد المحتوى الرقمي، إلى جانب المشاركة في تنسيق المشاريع والأعمال المؤسسية. أسعى إلى توظيف مهاراتي الإبداعية والتقنية والتنظيمية في تطوير محتوى احترافي يخدم الأهداف التعليمية والإعلامية والمؤسسية.',
   education: ['ماجستير المناهج وطرق التدريس – الجامعة الإسلامية، كلية التربية', 'بكالوريوس الوسائط المتعددة – الكلية الجامعية للعلوم والتكنولوجيا'],
@@ -53,10 +53,24 @@ export const DEFAULT_CV: CvData = {
   ],
   languages: [
     { name: 'العربية', level: 'اللغة الأم' },
-    { name: 'الإنجليزية', level: '' },
+    { name: 'الإنجليزية', level: 'جيد' },
   ],
-  references: 'متاحة عند الطلب',
+  // 1.5.0: the «المراجع» section is no longer shown (owner's request); the field stays for older files.
+  references: '',
 };
+
+const unset = (v: string) => !v.trim() || v.trim() === NOT_SET;
+/** Fills the owner's phone, e-mail and English level where a saved CV still has them unset. */
+export function withOwnerContact(cv: CvData): CvData {
+  const languages = cv.languages.map((l) => (l.name.trim() === 'الإنجليزية' && !l.level.trim() ? { ...l, level: 'جيد' } : l));
+  if (!languages.some((l) => l.name.trim() === 'الإنجليزية')) languages.push({ name: 'الإنجليزية', level: 'جيد' });
+  return {
+    ...cv,
+    phone: unset(cv.phone) ? DEFAULT_CV.phone : cv.phone,
+    email: unset(cv.email) ? DEFAULT_CV.email : cv.email,
+    languages: languages.slice(0, 12),
+  };
+}
 
 const isStr = (v: unknown, n: number) => typeof v === 'string' && v.length <= n;
 const isList = (v: unknown, items: number, n: number) => Array.isArray(v) && v.length <= items && v.every((x) => isStr(x, n));
@@ -170,6 +184,8 @@ export function loadSettingsFromRows(rows: { key: string; value: unknown }[]): S
       (out as unknown as Record<string, unknown>)[row.key] = row.value;
     }
   }
+  // 1.5.0: the owner's contact data and English level fill only what was still unset; nothing typed is replaced.
+  out.cv = withOwnerContact(out.cv);
   // Before 1.2.0 «تقليل الحركة» was a single switch: it becomes «إيقاف كل الحركة».
   if (out.motion === 'reduce' && !rows.some((r) => r.key === 'motionLevel')) out.motionLevel = 'off';
   return out;

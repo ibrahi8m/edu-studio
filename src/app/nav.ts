@@ -40,7 +40,7 @@ export const NAV: NavItem[] = [
   { path: '/results', label: 'النتائج والتحليلات', short: 'النتائج', icon: BarChart3, group: 'delivery', phase: 4, mobilePrimary: true },
   { path: '/library', label: 'المكتبة المحلية', short: 'المكتبة', icon: Library, group: 'management', phase: 6 },
   { path: '/backup', label: 'الاستيراد والتصدير', short: 'النسخ', icon: DatabaseBackup, group: 'management', phase: 6 },
-  { path: '/me', label: 'صفحتي', short: 'صفحتي', icon: IdCard, group: 'management', phase: 9 },
+  { path: '/me', label: 'صاحب المشروع', short: 'صاحب المشروع', icon: IdCard, group: 'management', phase: 9 },
   { path: '/settings', label: 'الإعدادات', short: 'الإعدادات', icon: Settings, group: 'management', phase: 0 },
   { path: '/about', label: 'عن المشروع', short: 'عن المشروع', icon: UserRound, group: 'management', phase: 0 },
 ];

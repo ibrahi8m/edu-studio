@@ -10,6 +10,8 @@ export interface KindField {
   label: string;
   multiline?: boolean;
   options?: string[];
+  /** Options no longer offered but still accepted, so values saved earlier are never dropped. */
+  legacyOptions?: string[];
   placeholder?: string;
   max: number;
 }
@@ -22,6 +24,10 @@ export interface KindSpec {
   /** Label of the project's `title` and `subject` for this kind. */
   titleLabel: string;
   subjectLabel: string;
+  /** 1.5.0: hint for the subject/course/topic field (free text for university and training). */
+  subjectPlaceholder: string;
+  /** Whether the school subject list is suggested for the subject field (school content only). */
+  schoolSubjects: boolean;
   /** Whether the grade (school stage) list is shown. */
   usesGrade: boolean;
   /** Grade stored for kinds that do not show the list, so older filters keep working. */
@@ -39,11 +45,14 @@ export const KIND_SPECS: Record<ContentKind, KindSpec> = {
     hint: 'دروس لصف ومادة وفصل دراسي',
     titleLabel: 'عنوان المحتوى',
     subjectLabel: 'المادة',
+    subjectPlaceholder: 'اختر أو اكتب',
+    schoolSubjects: true,
     usesGrade: true,
     unitLabel: 'الوحدة',
     lessonLabel: 'الدرس',
     fields: [
-      { key: 'semester', label: 'الفصل الدراسي', options: ['الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي', 'العام كاملًا'], max: 40 },
+      // 1.5.0: «العام كاملًا» removed at the owner's request; a value saved earlier is kept.
+      { key: 'semester', label: 'الفصل الدراسي', options: ['الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي'], legacyOptions: ['العام كاملًا'], max: 40 },
       { key: 'objectives', label: 'الأهداف العامة', multiline: true, placeholder: 'هدف في كل سطر', max: 3000 },
     ],
   },
@@ -54,6 +63,8 @@ export const KIND_SPECS: Record<ContentKind, KindSpec> = {
     hint: 'مساق جامعي بموضوعات ومراجع',
     titleLabel: 'عنوان المحتوى',
     subjectLabel: 'اسم المساق',
+    subjectPlaceholder: 'اكتب اسم المساق، مثل: مناهج البحث التربوي، تصميم التعليم، الإحصاء المتقدم',
+    schoolSubjects: false,
     usesGrade: false,
     fixedGrade: 'التعليم الجامعي',
     unitLabel: 'الوحدة أو الموضوع',
@@ -73,6 +84,8 @@ export const KIND_SPECS: Record<ContentKind, KindSpec> = {
     hint: 'برنامج تدريبي بمحاور وأنشطة وتقييم',
     titleLabel: 'عنوان البرنامج',
     subjectLabel: 'موضوع التدريب',
+    subjectPlaceholder: 'اكتب موضوع التدريب، مثل: التعلم النشط، التقويم البديل، دمج التكنولوجيا في التعليم',
+    schoolSubjects: false,
     usesGrade: false,
     fixedGrade: 'تدريب المعلمين',
     unitLabel: 'المحور',
@@ -101,7 +114,7 @@ export function cleanDetails(kind: ContentKind, raw: Record<string, unknown> | u
     if (typeof v !== 'string') continue;
     const t = v.trim().slice(0, f.max);
     if (!t) continue;
-    if (f.options && !f.options.includes(t)) continue;
+    if (f.options && !f.options.includes(t) && !f.legacyOptions?.includes(t)) continue;
     out[f.key] = t;
   }
   return out;

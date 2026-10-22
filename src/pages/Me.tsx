@@ -9,7 +9,7 @@ import { Card, PageHeader } from '../components/ui';
 import { DEFAULT_CV, displayName, NOT_SET, type CvData, type Settings } from '../db/settings';
 
 /**
- * 1.1.0 — «صفحتي»: the user's profile (name in the greeting) and the CV.
+ * «صاحب المشروع» (1.5.0; «صفحتي» before): the owner (admin) of the project — contact data and CV.
  * Everything is stored in the local settings table; nothing is published or sent anywhere.
  */
 export function MePage() {
@@ -18,7 +18,7 @@ export function MePage() {
   return (
     <div className="page" data-testid="page-me">
       <div className="no-print">
-        <PageHeader title="صفحتي" subtitle="ملفك الشخصي وسيرتك الذاتية. تُحفظ على هذا الجهاز فقط، ولا تُنشر في أي مكان." />
+        <PageHeader title="صاحب المشروع" subtitle="إبراهيم سمير محمود الخطيب: صاحب المشروع ومديره. البيانات والسيرة الذاتية محفوظة على هذا الجهاز، ولا تُنشر في أي مكان." />
         <Card title="الملف الشخصي" icon={UserRound} testId="profile-card">
           <div className="profile-head">
             <UserAvatar name={name} size="lg" />
@@ -249,12 +249,7 @@ function CvSheet({ cv }: { cv: CvData }) {
           </ul>
         </section>
       )}
-      {cv.references && (
-        <section className="cv-sec">
-          <h2>المراجع</h2>
-          <p>{cv.references}</p>
-        </section>
-      )}
+      {/* 1.5.0: no «المراجع» section (owner's request); the stored value is kept untouched. */}
     </article>
   );
 }
@@ -328,7 +323,6 @@ function CvEditor({ cv, onChange }: { cv: CvData; onChange: (cv: CvData) => void
           <Plus size={16} aria-hidden="true" /> لغة أخرى
         </button>
       </fieldset>
-      {text('references', 'المراجع')}
     </div>
   );
 }

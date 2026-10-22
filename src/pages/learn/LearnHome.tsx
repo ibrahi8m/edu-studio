@@ -252,7 +252,7 @@ function ProfileDialog({ open, name, profile, onClose }: { open: boolean; name: 
               </label>
               <select id={`${uid}-g`} className="input" value={v.grade} onChange={(e) => set('grade', e.target.value)} data-testid="profile-grade">
                 <option value="">غير محدد</option>
-                {GRADES.filter((g) => g !== 'التعليم الجامعي' && g !== 'تدريب المعلمين').map((g) => (
+                {GRADES.map((g) => (
                   <option key={g} value={g}>
                     {g}
                   </option>

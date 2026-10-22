@@ -38,11 +38,11 @@ function Sidebar() {
           </div>
         ))}
       </nav>
-      <NavLink to="/me" className="sidebar-owner" title="صفحتي" data-testid="user-card">
+      <NavLink to="/me" className="sidebar-owner" title="صاحب المشروع" data-testid="user-card">
         <UserAvatar name={displayName(settings)} />
         <span className="sidebar-owner-text">
           <strong data-testid="user-card-name">{displayName(settings) || 'أضف اسمك'}</strong>
-          <span>{settings.userRole || 'صفحتي'}</span>
+          <span>{settings.userRole || 'صاحب المشروع'}</span>
         </span>
       </NavLink>
     </aside>
@@ -79,7 +79,7 @@ function MobileTopBar() {
             <span className="sr-only">دون اتصال</span>
           </span>
         )}
-        <NavLink to="/me" className="mobile-avatar" aria-label={`صفحتي${displayName(settings) ? `: ${displayName(settings)}` : ''}`}>
+        <NavLink to="/me" className="mobile-avatar" aria-label={`صاحب المشروع${displayName(settings) ? `: ${displayName(settings)}` : ''}`}>
           <UserAvatar name={displayName(settings)} />
         </NavLink>
       </div>

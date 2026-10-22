@@ -87,9 +87,10 @@ export function ProjectFormDialog({
 
   const set = <K extends keyof typeof v>(k: K, val: (typeof v)[K]) => setV((p) => ({ ...p, [k]: val }));
   const setDetail = (k: string, val: string) => setV((p) => ({ ...p, details: { ...(p.details ?? {}), [k]: val } }));
-  const suggestions = [...new Set([...subjects, ...SUBJECT_SUGGESTIONS])];
   const kind: ContentKind = v.kind ?? 'school';
   const spec = KIND_SPECS[kind];
+  // 1.5.0: the school subject list only for school content; a course name or a training topic is typed freely.
+  const suggestions = spec.schoolSubjects ? [...new Set([...subjects, ...SUBJECT_SUGGESTIONS])] : [];
 
   return (
     <Dialog
@@ -159,18 +160,20 @@ export function ProjectFormDialog({
             <input
               id={`${uid}-s`}
               className="input"
-              list={`${uid}-subjects`}
+              list={suggestions.length ? `${uid}-subjects` : undefined}
               value={v.subject}
               maxLength={LIMITS.subject}
-              placeholder="اختر أو اكتب"
+              placeholder={spec.subjectPlaceholder}
               onChange={(e) => set('subject', e.target.value)}
               data-testid="project-subject"
             />
-            <datalist id={`${uid}-subjects`}>
-              {suggestions.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
+            {suggestions.length > 0 && (
+              <datalist id={`${uid}-subjects`}>
+                {suggestions.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+            )}
           </Field>
           {spec.usesGrade && (
             <Field label="الصف" htmlFor={`${uid}-g`} error={errors.grade}>
@@ -193,7 +196,7 @@ export function ProjectFormDialog({
                 {f.options ? (
                   <select id={`${uid}-k-${f.key}`} className="input" value={v.details?.[f.key] ?? ''} onChange={(e) => setDetail(f.key, e.target.value)} data-testid={`detail-${f.key}`}>
                     <option value="">غير محدد</option>
-                    {f.options.map((o) => (
+                    {[...f.options, ...(f.legacyOptions ?? []).filter((o) => v.details?.[f.key] === o)].map((o) => (
                       <option key={o} value={o}>
                         {o}
                       </option>
