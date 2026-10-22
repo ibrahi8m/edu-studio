@@ -351,6 +351,7 @@ test('«صاحب المشروع»: renamed, the owner’s name, phone, e-mail an
   await expect(page.getByTestId('cv-editor')).not.toContainText('المراجع');
   await page.getByTestId('cv-in-phone').fill('0592 780 728');
   await page.getByTestId('cv-save').click();
+  await expect(page.getByTestId('toast').last()).toContainText('حُفظت السيرة الذاتية'); // the save is asynchronous
   await page.reload();
   await expect(page.getByTestId('owner-phone')).toHaveText('0592 780 728');
 });
