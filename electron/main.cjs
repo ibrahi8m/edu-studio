@@ -1,9 +1,11 @@
 // IBRAHI8M EDU STUDIO — desktop shell.
 // Serves the built app from disk through a private app:// scheme, so it works
-// offline from the very first launch. All network requests are blocked.
+// offline from the very first launch. All network requests are blocked, except (1.5.1) the owner's
+// Supabase project for «حساب سحابي» — exactly that one origin over https, nothing else.
 const { app, BrowserWindow, protocol, session, net } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { CLOUD_ORIGIN } = require('./cloud-origin.cjs');
 
 const DIST = path.join(__dirname, '..', 'dist');
 const ORIGIN = 'app://edu';
@@ -22,6 +24,15 @@ function serveFromDist(request) {
   const file = path.normalize(path.join(DIST, rel));
   if (!file.startsWith(DIST)) return new Response('forbidden', { status: 403 });
   return net.fetch(pathToFileURL(file).toString());
+}
+
+function isAllowed(url) {
+  if (/^(app:|data:|blob:|devtools:|chrome-extension:)/.test(url)) return true;
+  try {
+    return new URL(url).origin === CLOUD_ORIGIN; // 1.5.1: cloud accounts (was blocked → «تعذّر الاتصال بالخادم»)
+  } catch {
+    return false;
+  }
 }
 
 function createWindow() {
@@ -57,8 +68,7 @@ app.whenReady().then(() => {
   protocol.handle('app', serveFromDist);
   // Hard offline guarantee: cancel every request that is not part of the app.
   session.defaultSession.webRequest.onBeforeRequest((details, cb) => {
-    const ok = /^(app:|data:|blob:|devtools:|chrome-extension:)/.test(details.url);
-    cb({ cancel: !ok });
+    cb({ cancel: !isAllowed(details.url) });
   });
   // Exported pictures: a normal "Save as" dialog. Tests set a folder to save into without the dialog.
   session.defaultSession.on('will-download', (_e, item) => {

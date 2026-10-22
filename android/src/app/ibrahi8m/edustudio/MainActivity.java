@@ -34,7 +34,7 @@ import java.util.Map;
  * File pickers (<input type="file">) open Android's document picker.
  */
 public class MainActivity extends Activity {
-    static final String VERSION = "1.5.0";
+    static final String VERSION = "1.5.1";
     static final String HOST = "appassets.androidplatform.net";
     static final String START = "https://" + HOST + "/index.html";
     static final int REQ_PICK = 1;
