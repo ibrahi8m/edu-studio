@@ -9,9 +9,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 test -f "$ROOT/dist/index.html" && test -f "$ROOT/dist/sw.js" || { echo "dist/ is missing: run npm run build first"; exit 1; }
 VERSION="$(node -p "require('$ROOT/package.json').version")"
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+trap 'rm -rf "$WORK" "$WORK.prev"' EXIT
 cp -r "$ROOT/dist/." "$WORK/"
 touch "$WORK/.nojekyll" # serve every file as is
+# keep the download page (downloads/) that is published next to the app
+if git clone -q --depth 1 -b gh-pages "$REMOTE" "$WORK.prev" 2>/dev/null && [ -d "$WORK.prev/downloads" ]; then
+  cp -r "$WORK.prev/downloads" "$WORK/downloads"
+fi
+rm -rf "$WORK.prev"
 cd "$WORK"
 git init -q -b gh-pages
 git add -A

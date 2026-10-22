@@ -68,6 +68,8 @@ export default defineConfig({
         // Every file the app needs is precached at install time — nothing is fetched later.
         globPatterns: ['**/*.{js,css,html,woff2,webp,png,svg,ico,json,webmanifest}'],
         navigateFallback: 'index.html',
+        // 1.5.2: the download page (published next to the app) must open as itself, not as the app
+        navigateFallbackDenylist: [/\/downloads(\/|$)/],
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
