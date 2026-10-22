@@ -1,3 +1,4 @@
+import { assertAdmin } from '../auth/access';
 import type { EduDB, Lesson, Project } from '../db/db';
 import { newId } from '../db/ids';
 import { deleteProject } from '../db/projects';
@@ -201,6 +202,7 @@ const toSubmission = (s: SubmissionMeta, file: (id: string) => Uint8Array): Subm
  * nothing is changed. Only what the plan says is written.
  */
 export async function applyImport(database: EduDB, pkg: Package, plan: ImportPlan): Promise<ImportResult> {
+  assertAdmin(); // 1.6.0: importing replaces or adds content for everyone on this device
   const r: ImportResult = { added: 0, replaced: 0, copied: 0, skipped: 0, lessons: 0, quizzes: 0, designs: 0, assets: 0, attempts: 0, progress: 0, library: 0, settings: 0, submissions: 0, learners: 0, prompts: 0, brands: 0, projectIds: [] };
   const file = (id: string) => {
     const b = pkg.files.get(id);

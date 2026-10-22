@@ -298,6 +298,64 @@ test('1.6.0: «إنشاء حساب جديد» on this device — student only, v
   await expect(page).toHaveURL(/#\/learn/);
 });
 
+test('1.6.0: each portal is labelled; admin operations called DIRECTLY are refused for teacher and student; a student cannot act as another learner', async ({ page }, info) => {
+  test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'desktop and one phone');
+  const phone = info.project.name.startsWith('phone');
+  await setupOwner(page);
+  await expect(page.getByTestId(phone ? 'portal-badge-mobile' : 'portal-badge')).toHaveText('بوابة الإدارة');
+  await createUser(page, 'teacher', 'المعلم خالد', 'khaled', 'Teacher-pass-1');
+  await createUser(page, 'student', 'الطالبة ليان', 'layan', 'Student-pass-1');
+  // the admin's direct calls work
+  expect(await page.evaluate(async () => (await (window as any).__ibrahi8mTest.listAccounts()).length)).toBe(3);
+  await signOutFromAccount(page);
+
+  const tryAll = () =>
+    page.evaluate(async () => {
+      const t = (window as any).__ibrahi8mTest;
+      const out: Record<string, string> = {};
+      const run = async (k: string, f: () => unknown) => {
+        try {
+          await f();
+          out[k] = 'ALLOWED';
+        } catch (e) {
+          out[k] = (e as Error).message;
+        }
+      };
+      await run('exportBackup', () => t.exportBackup());
+      await run('saveOwnerName', () => t.saveOwnerName('اسم آخر'));
+      await run('resetSettings', () => t.resetSettings());
+      await run('setSelfSignup', () => t.setSelfSignup(false));
+      await run('listAccounts', () => t.listAccounts());
+      await run('attemptAsOther', () => t.startAttempt('any-quiz', 'طالب آخر'));
+      return out;
+    });
+
+  // ── teacher
+  await signIn(page, 'khaled', 'Teacher-pass-1');
+  await expect(page.getByTestId('page-dashboard')).toBeVisible();
+  await expect(page.getByTestId(phone ? 'portal-badge-mobile' : 'portal-badge')).toHaveText('بوابة المعلم');
+  const asTeacher = await tryAll();
+  for (const k of ['exportBackup', 'saveOwnerName', 'resetSettings', 'setSelfSignup', 'listAccounts']) expect(asTeacher[k], k).not.toBe('ALLOWED');
+  expect(asTeacher.exportBackup).toContain('الأدمن');
+  await signOutFromAccount(page);
+
+  // ── student
+  await signIn(page, 'layan', 'Student-pass-1');
+  await expect(page).toHaveURL(/#\/learn/);
+  await expect(page.getByTestId('portal-badge')).toHaveText('بوابة الطالب');
+  const asStudent = await tryAll();
+  for (const k of Object.keys(asStudent)) expect(asStudent[k], k).not.toBe('ALLOWED');
+  expect(asStudent.attemptAsOther).toContain('متعلم آخر');
+  await page.getByTestId('logout').click();
+
+  // nothing was changed by the refused calls: the owner still signs in, sign-up still on, owner name unchanged
+  await signIn(page, OWNER.user, OWNER.pass);
+  await expect(page.getByTestId('page-dashboard')).toBeVisible();
+  await page.goto('./#/users');
+  await expect(page.getByTestId('self-signup-checkbox')).toBeChecked();
+  await expect(page.getByTestId('user-row')).toHaveCount(3);
+});
+
 test.describe('cloud accounts (Supabase) — against a MOCKED server', () => {
   // The real project is not reachable from the test machine; these requests are answered by page.route
   // with the same shapes Supabase returns. They test the app's client logic, not the live server.

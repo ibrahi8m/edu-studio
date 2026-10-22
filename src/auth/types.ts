@@ -8,6 +8,13 @@ export const ROLE_LABEL: Record<Role, string> = {
   student: 'طالب',
 };
 
+/** 1.6.0: the portal each role works in (shown in the shell). */
+export const PORTAL_LABEL: Record<Role, string> = {
+  admin: 'بوابة الإدارة',
+  teacher: 'بوابة المعلم',
+  student: 'بوابة الطالب',
+};
+
 export type AuthMode = 'local' | 'cloud';
 
 /** The signed-in user, whatever the mode. */

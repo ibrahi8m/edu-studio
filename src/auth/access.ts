@@ -2,6 +2,7 @@ import type { Project } from '../db/db';
 import { getAuth } from './session';
 import { AuthError, hasAccounts } from './local';
 import type { CurrentUser } from './types';
+import { studentKey } from '../quiz/model';
 
 /**
  * 1.5.0 — who may see and change which content (one rule, used by the data hooks AND by every write
@@ -43,4 +44,27 @@ export function assertCanAuthor(): CurrentUser | null {
   if (!user) throw new AuthError('انتهت الجلسة. سجّل الدخول من جديد.', 'expired');
   if (user.role === 'student') throw new AuthError('حساب الطالب لا يملك صلاحية إنشاء المحتوى.', 'forbidden');
   return user;
+}
+
+/**
+ * 1.6.0 — learner-side writes (answers, attempts, submissions): a STUDENT may write only under their own learner
+ * profile, whatever name a page or a direct call passes. Teachers and admins may (previews, help on the same device).
+ */
+export function assertActsAs(learnerName: string) {
+  const user = getAuth().user;
+  if (!user && !enforced()) return;
+  if (!user) throw new AuthError('انتهت الجلسة. سجّل الدخول من جديد.', 'expired');
+  if (user.role !== 'student') return;
+  if (studentKey(learnerName) !== studentKey(user.learnerName || user.displayName)) throw new AuthError('لا يمكنك العمل باسم متعلم آخر.', 'forbidden');
+}
+
+/** 1.6.0 — grading, reviewing and deleting attempts: the admin, or the teacher who owns the content. */
+export const assertCanReview = assertCanEdit;
+
+/** 1.6.0 — device-wide administration (full backup, import, project files, reset, «صاحب المشروع» data): admin only. */
+export function assertAdmin() {
+  const user = getAuth().user;
+  if (!user && !enforced()) return;
+  if (!user) throw new AuthError('انتهت الجلسة. سجّل الدخول من جديد.', 'expired');
+  if (user.role !== 'admin') throw new AuthError('هذه العملية لصاحب المشروع (الأدمن) فقط.', 'forbidden');
 }

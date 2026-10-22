@@ -1,3 +1,4 @@
+import { assertActsAs, assertCanReview } from '../auth/access';
 import type { EduDB, Lesson } from '../db/db';
 import { newId } from '../db/ids';
 import { studentKey } from '../quiz/model';
@@ -70,6 +71,7 @@ export async function saveSubmission(
 ): Promise<Submission> {
   const key = studentKey(name);
   if (!key) throw new Error('اكتب اسم المتعلم أولًا.');
+  assertActsAs(name); // 1.6.0: a student hands in only under their own profile
   return database.transaction('rw', database.submissions, async () => {
     const id = submissionId(name, lesson.id, block.id);
     const now = Date.now();
@@ -103,6 +105,8 @@ export async function saveSubmission(
 
 /** Takes a submission back to draft so the learner can change it (not once it has been graded). */
 export async function withdrawSubmission(database: EduDB, id: string): Promise<void> {
+  const first = await database.submissions.get(id);
+  if (first) assertActsAs(first.studentName); // 1.6.0
   await database.transaction('rw', database.submissions, async () => {
     const cur = await database.submissions.get(id);
     if (!cur) return;
@@ -113,6 +117,8 @@ export async function withdrawSubmission(database: EduDB, id: string): Promise<v
 
 /** The teacher's evaluation. `score` null with empty feedback returns it to «تم التسليم». */
 export async function gradeSubmission(database: EduDB, id: string, score: number | null, feedback: string): Promise<Submission> {
+  const first = await database.submissions.get(id);
+  if (first) assertCanReview(await database.projects.get(first.projectId)); // 1.6.0: admin or the content's teacher
   return database.transaction('rw', database.submissions, async () => {
     const cur = await database.submissions.get(id);
     if (!cur) throw new Error('التسليم غير موجود.');

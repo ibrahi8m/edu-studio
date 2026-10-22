@@ -6,7 +6,7 @@ import { ThemeButton } from '../app/ThemeButton';
 import { SoundButton, useSfx } from '../audio/AudioControl';
 import { GROUP_LABEL, useNav, type NavGroup } from '../app/nav';
 import { useAuth } from '../auth/session';
-import { ROLE_LABEL } from '../auth/types';
+import { PORTAL_LABEL, ROLE_LABEL } from '../auth/types';
 import { applyPendingUpdate, dismissUpdate, useOnline, useRuntime } from '../app/runtime';
 import { useSettings } from '../app/SettingsContext';
 
@@ -19,6 +19,11 @@ function Sidebar() {
     <aside className="sidebar" aria-label="القائمة الرئيسية">
       <div className="sidebar-brand">
         <BrandLockup />
+        {user && (
+          <span className={`portal-badge is-${user.role}`} data-testid="portal-badge">
+            {PORTAL_LABEL[user.role]}
+          </span>
+        )}
         <div className="sidebar-tools" role="group" aria-label="المظهر والصوت">
           <ThemeButton />
           <SoundButton />
@@ -72,6 +77,11 @@ function MobileTopBar() {
   return (
     <header className="mobile-topbar">
       <BrandLockup compact />
+      {user && (
+        <span className={`portal-badge is-${user.role}`} data-testid="portal-badge-mobile">
+          {PORTAL_LABEL[user.role]}
+        </span>
+      )}
       <div className="mobile-topbar-end">
         <ThemeButton />
         <SoundButton />

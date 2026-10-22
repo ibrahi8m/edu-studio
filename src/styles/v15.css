@@ -31,3 +31,12 @@
 
 /* 1.6.0: «إنشاء حساب جديد» link on the sign-in card */
 .auth-card > .btn-ghost.btn-lg { inline-size: 100%; justify-content: center; }
+
+/* 1.6.0: which portal am I in (admin / teacher / student) */
+.portal-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.portal-badge.is-admin { border-color: var(--accent); color: var(--accent-strong); background: var(--accent-soft); }
+.portal-badge.is-teacher { border-color: var(--border-strong); color: var(--text); }
+.portal-badge.is-student { border-color: var(--accent); color: var(--accent-strong); }
+.sidebar-brand .portal-badge { align-self: flex-start; }
+.mobile-topbar .portal-badge { font-size: 0.72rem; padding: 2px 8px; }
+@media (max-width: 380px) { .mobile-topbar .portal-badge { display: none; } }

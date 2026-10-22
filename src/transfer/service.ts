@@ -1,3 +1,4 @@
+import { assertAdmin } from '../auth/access';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { MAX_FILE_BYTES, TransferError, type Manifest, type Package } from './format';
@@ -9,6 +10,7 @@ const LAST_BACKUP = 'lastBackupAt';
 export const BACKUP_REMINDER_DAYS = 7;
 
 export async function exportProjectFile(projectId: string, includeResults: boolean): Promise<{ blob: Blob; name: string; manifest: Manifest }> {
+  assertAdmin(); // 1.6.0
   const project = await db.projects.get(projectId);
   if (!project) throw new Error('المشروع غير موجود.');
   const { bytes, manifest } = await buildPackage(await collectProject(db, projectId, { includeResults }), 'project', { title: project.title, appVersion: __APP_VERSION__, includesResults: includeResults });
@@ -16,6 +18,7 @@ export async function exportProjectFile(projectId: string, includeResults: boole
 }
 
 export async function exportBackupFile(): Promise<{ blob: Blob; name: string; manifest: Manifest }> {
+  assertAdmin(); // 1.6.0
   const { bytes, manifest } = await buildPackage(await collectBackup(db), 'backup', { title: 'نسخة احتياطية كاملة', appVersion: __APP_VERSION__, includesResults: true });
   await db.meta.put({ key: LAST_BACKUP, value: Date.now() });
   return { blob: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/zip' }), name: packageFileName('IBRAHI8M نسخة احتياطية'), manifest };

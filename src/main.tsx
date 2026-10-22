@@ -17,6 +17,10 @@ import { initServiceWorker } from './app/runtime';
 import { installAndroidBridge } from './app/androidBridge';
 import { db } from './db/db';
 import { updateProject } from './db/projects';
+import { startAttempt } from './db/quizzes';
+import { exportBackupFile } from './transfer/service';
+import { resetSettings, saveSetting } from './db/settings';
+import { listAccounts, setSelfSignup } from './auth/local';
 import { captureRecoveryLink } from './auth/cloud';
 
 // 1.5.2: a Supabase password-recovery link opens «كلمة مرور جديدة» (before the router reads the address)
@@ -41,6 +45,13 @@ installAndroidBridge();
 // (not only a hidden button) is refused without the right account. They grant nothing by themselves.
 (window as unknown as { __ibrahi8mTest: unknown }).__ibrahi8mTest = {
   updateProject: (id: string, patch: Parameters<typeof updateProject>[2]) => updateProject(db, id, patch),
+  // 1.6.0: more protected operations, each refused by its own role check when called directly
+  startAttempt: (quizId: string, name: string) => startAttempt(db, quizId, name),
+  exportBackup: () => exportBackupFile(),
+  saveOwnerName: (name: string) => saveSetting(db, 'ownerFullName', name),
+  resetSettings: () => resetSettings(db),
+  setSelfSignup: (on: boolean) => setSelfSignup(on),
+  listAccounts: () => listAccounts(),
 };
 
 createRoot(document.getElementById('root')!).render(

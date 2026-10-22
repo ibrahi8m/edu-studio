@@ -1,3 +1,4 @@
+import { assertCanAuthor, assertCanEdit } from '../auth/access';
 import { builtinItems, cleanLibraryTags, isBuiltin, itemAssetIds, LIMITS, normalizeBlocks, normalizeLibraryItem } from '../library/model';
 import { LIBRARY_OWNER, type LibraryItem } from '../library/types';
 import { newBlock, normalizeDoc } from '../lesson/model';
@@ -53,6 +54,7 @@ const TABLES = (d: EduDB) => [d.library, d.assets, d.lessons, d.lessonDocs, d.pr
 /* ───────── saving to the library ───────── */
 
 export async function saveLessonToLibrary(database: EduDB, lessonId: string, m: ItemMeta): Promise<LibraryItem> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   const clean = meta(m);
   return database.transaction('rw', TABLES(database), async () => {
     const lesson = await database.lessons.get(lessonId);
@@ -75,6 +77,7 @@ export async function saveLessonToLibrary(database: EduDB, lessonId: string, m: 
 }
 
 export async function saveBlocksToLibrary(database: EduDB, lessonId: string, blockIds: string[], m: ItemMeta): Promise<LibraryItem> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   const clean = meta(m);
   return database.transaction('rw', TABLES(database), async () => {
     const doc = normalizeDoc(await database.lessonDocs.get(lessonId), lessonId);
@@ -89,6 +92,7 @@ export async function saveBlocksToLibrary(database: EduDB, lessonId: string, blo
 }
 
 export async function saveDesignToLibrary(database: EduDB, designId: string, m: ItemMeta): Promise<LibraryItem> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   const clean = meta(m);
   const d = normalizeDesign(await database.designs.get(designId));
   if (!d) throw new Error('التصميم غير موجود.');
@@ -99,6 +103,7 @@ export async function saveDesignToLibrary(database: EduDB, designId: string, m: 
 }
 
 export async function addMediaToLibrary(database: EduDB, file: NewAsset, m: ItemMeta): Promise<LibraryItem> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   const clean = meta(m);
   return database.transaction('rw', [database.library, database.assets], async () => {
     const now = Date.now();
@@ -112,6 +117,7 @@ export async function addMediaToLibrary(database: EduDB, file: NewAsset, m: Item
 
 /** Lesson media can be kept in the library too: the file is copied, the lesson is untouched. */
 export async function copyLessonMediaToLibrary(database: EduDB, assetId: string, m: ItemMeta): Promise<LibraryItem> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   const clean = meta(m);
   return database.transaction('rw', [database.library, database.assets], async () => {
     const map = await copyAssets(database, [assetId], LIBRARY_OWNER);
@@ -125,6 +131,7 @@ export async function copyLessonMediaToLibrary(database: EduDB, assetId: string,
 }
 
 export async function updateLibraryItem(database: EduDB, id: string, m: ItemMeta): Promise<void> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   if (isBuiltin(id)) throw new Error('القوالب المضمّنة لا تُعدَّل؛ استخدمها ثم احفظ نسختك.');
   const clean = meta(m);
   await database.library.update(id, { ...clean, updatedAt: Date.now() });
@@ -136,6 +143,7 @@ export interface LibrarySnapshot {
 }
 
 export async function deleteLibraryItem(database: EduDB, id: string): Promise<LibrarySnapshot> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   if (isBuiltin(id)) throw new Error('القوالب المضمّنة لا تُحذف.');
   return database.transaction('rw', [database.library, database.assets], async () => {
     const item = normalizeLibraryItem(await database.library.get(id));
@@ -149,6 +157,7 @@ export async function deleteLibraryItem(database: EduDB, id: string): Promise<Li
 }
 
 export async function restoreLibraryItem(database: EduDB, snap: LibrarySnapshot): Promise<void> {
+  assertCanAuthor(); // 1.6.0: the library is for teachers and the admin
   await database.transaction('rw', [database.library, database.assets], async () => {
     if (snap.assets.length) await database.assets.bulkPut(snap.assets);
     await database.library.put(snap.item);
@@ -176,6 +185,7 @@ async function appendBlocks(database: EduDB, lessonId: string, blocks: Block[]):
 
 /** A new lesson in a project, built from a lesson template (its media copied into the lesson). */
 export async function createLessonFromTemplate(database: EduDB, item: LibraryItem, projectId: string, title: string): Promise<Lesson> {
+  assertCanEdit(await database.projects.get(projectId)); // 1.6.0
   if (item.kind !== 'lesson') throw new Error('هذا العنصر ليس قالب درس.');
   if (!title.trim()) throw new ValidationError({ title: 'عنوان الدرس مطلوب.' });
   return database.transaction('rw', TABLES(database), async () => {
@@ -225,6 +235,8 @@ export async function insertItemIntoLesson(database: EduDB, item: LibraryItem, l
 
 /** Any stored file (from the library or another lesson) reused in a lesson: copied, then shown in a new block. */
 export async function insertAssetIntoLesson(database: EduDB, assetId: string, lessonId: string, title = ''): Promise<void> {
+  const lesson = await database.lessons.get(lessonId);
+  assertCanEdit(lesson ? await database.projects.get(lesson.projectId) : null); // 1.6.0
   await database.transaction('rw', TABLES(database), async () => {
     await appendBlocks(database, lessonId, [await mediaBlock(database, assetId, lessonId, title)]);
   });
@@ -241,6 +253,7 @@ async function mediaBlock(database: EduDB, assetId: string, lessonId: string, ti
 }
 
 export async function createDesignFromTemplate(database: EduDB, item: LibraryItem, projectId: string, lessonId: string | null, title: string): Promise<Design> {
+  assertCanEdit(await database.projects.get(projectId)); // 1.6.0
   if (item.kind !== 'design') throw new Error('هذا العنصر ليس قالب تصميم.');
   if (!title.trim()) throw new ValidationError({ title: 'عنوان التصميم مطلوب.' });
   return database.transaction('rw', [database.projects, database.lessons, database.designs], async () => {

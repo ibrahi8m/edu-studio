@@ -1,4 +1,4 @@
-import { assertCanEdit } from '../auth/access';
+import { assertActsAs, assertCanEdit, assertCanReview } from '../auth/access';
 import { objectiveStatement } from '../lesson/bloom';
 import { normalizeDoc } from '../lesson/model';
 import type { BloomLevel, Objective } from '../lesson/types';
@@ -151,6 +151,11 @@ export async function findOpenAttempt(database: EduDB, quizId: string, name: str
 export async function startAttempt(database: EduDB, quizId: string, name: string, opts: { preview?: boolean; now?: number } = {}): Promise<Attempt> {
   const preview = !!opts.preview;
   if (!name.trim()) throw new ValidationError({ title: 'اكتب اسم الطالب.' });
+  // 1.6.0: a real attempt only under the student's own profile; a test run only by who may edit the quiz
+  if (preview) {
+    const q = await database.quizzes.get(quizId);
+    if (q) assertCanEdit(await database.projects.get(q.projectId));
+  } else assertActsAs(name);
   return database.transaction('rw', [database.projects, database.quizzes, database.attempts], async () => {
     const quiz = normalizeQuiz(await database.quizzes.get(quizId));
     if (!quiz) throw new Error('الاختبار غير موجود.');
@@ -179,6 +184,8 @@ function keepLocked(stored: Attempt, answers: Record<string, Answer>): Record<st
 }
 
 export async function saveProgress(database: EduDB, attemptId: string, answers: Record<string, Answer>, flagged: string[]): Promise<void> {
+  const owner = await database.attempts.get(attemptId);
+  if (owner) assertActsAs(owner.studentName); // 1.6.0
   await database.transaction('rw', database.attempts, async () => {
     const a = await database.attempts.get(attemptId);
     if (!a || a.status !== 'in_progress') return;
@@ -193,6 +200,8 @@ export class CheckNotAllowedError extends Error {}
  * Checking the same question again returns the stored result without changing anything.
  */
 export async function checkAnswer(database: EduDB, attemptId: string, questionId: string, answer: Answer | undefined): Promise<{ attempt: Attempt; result: QuestionResult }> {
+  const owner = await database.attempts.get(attemptId);
+  if (owner) assertActsAs(owner.studentName); // 1.6.0
   return database.transaction('rw', database.attempts, async () => {
     const a = await database.attempts.get(attemptId);
     if (!a || a.status !== 'in_progress') throw new CheckNotAllowedError('المحاولة مغلقة.');
@@ -214,6 +223,8 @@ export async function submitAttempt(
   attemptId: string,
   opts: { answers?: Record<string, Answer>; timedOut?: boolean; now?: number } = {},
 ): Promise<Attempt> {
+  const owner = await database.attempts.get(attemptId);
+  if (owner) assertActsAs(owner.studentName); // 1.6.0
   return database.transaction('rw', database.attempts, async () => {
     const a = await database.attempts.get(attemptId);
     if (!a) throw new Error('المحاولة غير موجودة.');
@@ -228,6 +239,8 @@ export async function submitAttempt(
 
 /** Teacher decision on one answer (e.g. a short answer the grader was unsure about). */
 export async function reviewAnswer(database: EduDB, attemptId: string, questionId: string, earned: number): Promise<Attempt> {
+  const first = await database.attempts.get(attemptId);
+  if (first) assertCanReview(await database.projects.get(first.quiz.projectId)); // 1.6.0
   return database.transaction('rw', database.attempts, async () => {
     const a = await database.attempts.get(attemptId);
     if (!a || !a.result) throw new Error('المحاولة غير موجودة أو لم تُسلَّم.');
@@ -239,6 +252,8 @@ export async function reviewAnswer(database: EduDB, attemptId: string, questionI
 }
 
 export async function deleteAttempt(database: EduDB, id: string): Promise<Attempt> {
+  const first = await database.attempts.get(id);
+  if (first) assertCanReview(await database.projects.get(first.quiz.projectId)); // 1.6.0
   return database.transaction('rw', database.attempts, async () => {
     const a = await database.attempts.get(id);
     if (!a) throw new Error('المحاولة غير موجودة.');
@@ -248,5 +263,6 @@ export async function deleteAttempt(database: EduDB, id: string): Promise<Attemp
 }
 
 export async function restoreAttempt(database: EduDB, a: Attempt): Promise<void> {
+  assertCanReview(await database.projects.get(a.quiz.projectId)); // 1.6.0
   await database.attempts.put(a);
 }

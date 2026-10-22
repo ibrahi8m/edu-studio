@@ -1,3 +1,4 @@
+import { assertAdmin } from '../auth/access';
 import type { EduDB } from './db';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
@@ -199,6 +200,7 @@ export async function saveSetting<K extends keyof Settings>(
   if (!VALIDATORS[key](value)) {
     throw new Error(`قيمة غير صالحة للإعداد ${String(key)}`);
   }
+  if (PROFILE_KEYS.includes(key)) assertAdmin(); // 1.6.0: «صاحب المشروع» data is the admin's
   await database.settings.put({ key, value, updatedAt: Date.now() });
 }
 
@@ -207,6 +209,7 @@ export const PROFILE_KEYS: (keyof Settings)[] = ['userName', 'userRole', 'userOr
 
 /** Returns appearance and app settings to their defaults; the profile and the CV are kept. */
 export async function resetSettings(database: EduDB): Promise<void> {
+  assertAdmin(); // 1.6.0
   const keys = (await database.settings.toCollection().primaryKeys()) as string[];
   await database.settings.bulkDelete(keys.filter((k) => !PROFILE_KEYS.includes(k as keyof Settings)));
 }

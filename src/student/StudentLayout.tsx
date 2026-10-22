@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { signOut, useAuth } from '../auth/session';
+import { PORTAL_LABEL } from '../auth/types';
 import { HardDrive, LogOut, UserRound, Wifi, WifiOff } from 'lucide-react';
 import { BrandMark } from '../components/Brand';
 import { useOnline } from '../app/runtime';
@@ -24,6 +25,15 @@ export function StudentLayout() {
           <BrandMark size={28} />
           <span>بيئة المتعلم</span>
         </Link>
+        {student ? (
+          <span className="portal-badge is-student" data-testid="portal-badge">
+            {PORTAL_LABEL.student}
+          </span>
+        ) : (
+          <span className="portal-badge" data-testid="portal-badge">
+            معاينة
+          </span>
+        )}
         <span className="student-bar-end">
           <span
             className={`sync-chip ${online ? '' : 'is-offline'}`}
