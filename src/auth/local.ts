@@ -42,6 +42,8 @@ interface Store {
   accounts: LocalAccount[];
   /** Hash of the owner's one-time recovery code (shown once, at setup). */
   recovery?: { salt: string; hash: string; iterations: number };
+  /** 1.6.0: «إنشاء حساب جديد» on the sign-in screen (always a student). Allowed unless the admin turns it off. */
+  selfSignup?: boolean;
 }
 
 interface Session {
@@ -264,6 +266,54 @@ export async function createAccount(input: { username: string; displayName: stri
   again.accounts.push(acc);
   write(again);
   return acc;
+}
+
+/* ───────── 1.6.0: «إنشاء حساب جديد» on this device ───────── */
+
+/** Self sign-up is possible only after the owner exists (the first account is always the owner, at setup). */
+export function selfSignupAllowed(): boolean {
+  const s = read();
+  return s.accounts.length > 0 && s.selfSignup !== false;
+}
+export function setSelfSignup(allowed: boolean) {
+  requireRole('admin');
+  const s = read();
+  s.selfSignup = allowed;
+  write(s);
+}
+
+/**
+ * Creates an account on this device from the sign-in screen. It is ALWAYS a student (no role parameter on purpose);
+ * only an admin can promote it from «المستخدمون». The password is stored as a PBKDF2 hash. Does not sign in.
+ */
+export async function registerLocal(input: { username: string; password: string }): Promise<{ username: string; learnerName: string }> {
+  if (!read().accounts.length) throw new AuthError('لا يوجد صاحب مشروع على هذا الجهاز بعد: ابدأ بإنشاء حساب الأدمن.', 'forbidden');
+  if (!selfSignupAllowed()) throw new AuthError('إنشاء الحسابات من شاشة الدخول متوقف على هذا الجهاز. اطلب حسابًا من صاحب المشروع.', 'forbidden');
+  const e = checkUsername(input.username) ?? checkPassword(input.password);
+  if (e) throw new AuthError(e, 'weak');
+  const username = normalizeUsername(input.username);
+  if (read().accounts.some((x) => x.username === username)) throw new AuthError('اسم المستخدم مستخدم بالفعل. اختر اسمًا آخر.', 'exists');
+  const salt = randomB64(16);
+  const now = Date.now();
+  const displayName = input.username.trim().slice(0, 80);
+  const acc: LocalAccount = {
+    id: newId(),
+    username,
+    displayName,
+    role: 'student',
+    salt,
+    hash: await hashPassword(input.password, salt),
+    iterations: ITERATIONS,
+    nonce: randomB64(12),
+    learnerName: displayName,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const again = read(); // re-read after the slow hash: another tab may have added the same name
+  if (again.accounts.some((x) => x.username === username)) throw new AuthError('اسم المستخدم مستخدم بالفعل. اختر اسمًا آخر.', 'exists');
+  again.accounts.push(acc);
+  write(again);
+  return { username, learnerName: displayName };
 }
 
 function mutate(id: string, fn: (a: LocalAccount, all: LocalAccount[]) => void) {

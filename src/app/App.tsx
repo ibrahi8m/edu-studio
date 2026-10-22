@@ -32,7 +32,7 @@ import { ToastProvider } from "./Toasts";
 import { SettingsProvider, useSettings } from "./SettingsContext";
 import {
   LoginPage,
-  RecoverPage, ResetPasswordPage,
+  RecoverPage, ResetPasswordPage, LocalSignUpPage,
   RequireAuth,
   SetupPage,
   SignUpPage,
@@ -58,6 +58,7 @@ function Root() {
           <Route path="recover" element={<RecoverPage />} />
           <Route path="reset-password" element={<ResetPasswordPage />} />
           <Route path="signup" element={<SignUpPage />} />
+          <Route path="local-signup" element={<LocalSignUpPage />} />
           <Route
             element={
               <RequireAuth>

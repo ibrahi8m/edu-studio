@@ -7,6 +7,8 @@ import * as local from './local';
 import * as cloud from './cloud';
 import { refreshFromStorage, revalidate, setMode, signIn, useAuth } from './session';
 import { canAccess, homeFor, ROLE_LABEL } from './types';
+import { db } from '../db/db';
+import { getLearner, saveLearner } from '../learner/db';
 
 /* ───────── shared frame ───────── */
 
@@ -86,11 +88,12 @@ export function LoginPage() {
   const { user, mode, expired } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [login, setLogin] = useState('');
+  const [login, setLogin] = useState(() => params.get('user') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const next = params.get('next') || '';
+  const created = params.get('created') === '1';
   if (mode === 'local' && !local.hasAccounts()) return <Navigate to="/setup" replace />;
   if (user) return <Navigate to={next && canAccess(user.role, next) ? next : homeFor(user.role)} replace />;
 
@@ -116,6 +119,11 @@ export function LoginPage() {
           انتهت الجلسة. سجّل الدخول من جديد.
         </p>
       )}
+      {created && mode === 'local' && (
+        <p className="auth-note" role="status" data-testid="local-signup-done">
+          تم إنشاء حسابك على هذا الجهاز. ادخل الآن بكلمة المرور التي اخترتها.
+        </p>
+      )}
       <form onSubmit={(e) => void submit(e)} noValidate className="auth-form">
         <TextField label={mode === 'cloud' ? 'البريد الإلكتروني' : 'اسم المستخدم'} value={login} onChange={setLogin} autoComplete="username" dir="ltr" testId="login-user" type={mode === 'cloud' ? 'email' : 'text'} />
         <TextField label="كلمة المرور" value={password} onChange={setPassword} type="password" autoComplete="current-password" dir="ltr" testId="login-password" />
@@ -137,10 +145,15 @@ export function LoginPage() {
           </>
         )}
       </p>
+      {mode === 'local' && local.selfSignupAllowed() && (
+        <Link to="/local-signup" className="btn btn-ghost btn-lg" data-testid="to-local-signup">
+          <UserPlus size={18} aria-hidden="true" /> إنشاء حساب جديد
+        </Link>
+      )}
       <p className="muted auth-small">
         {mode === 'cloud'
           ? 'الحساب السحابي يحتاج الإنترنت لتسجيل الدخول. الصلاحيات محفوظة ومحمية على الخادم.'
-          : 'الحسابات المحلية محفوظة على هذا الجهاز فقط ويعمل الدخول دون إنترنت. الحسابات الجديدة ينشئها صاحب المشروع من «المستخدمون».'}
+          : 'الحسابات المحلية محفوظة على هذا الجهاز فقط، ويعمل الدخول بها دون إنترنت، ولا تُزامَن مع الحسابات السحابية.'}
       </p>
     </AuthFrame>
   );
@@ -301,6 +314,69 @@ export function RecoverPage() {
             <KeyRound size={18} aria-hidden="true" /> {mode === 'cloud' ? 'أرسل رابط الاستعادة' : 'تعيين كلمة المرور'}
           </button>
           <Link to="/login">رجوع</Link>
+        </form>
+      )}
+    </AuthFrame>
+  );
+}
+
+/* ───────── 1.6.0: «إنشاء حساب جديد» on this device (always a student) ───────── */
+
+export function LocalSignUpPage() {
+  const { mode } = useAuth();
+  const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [again, setAgain] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (mode !== 'local') return <Navigate to="/signup" replace />;
+  if (!local.hasAccounts()) return <Navigate to="/setup" replace />;
+  const allowed = local.selfSignupAllowed();
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!username.trim() || !password || !again) return setError('اكتب اسم المستخدم وكلمة المرور وتأكيدها.');
+    const bad = local.checkUsername(username) ?? local.checkPassword(password) ?? (password !== again ? 'كلمتا المرور غير متطابقتين.' : null);
+    if (bad) return setError(bad);
+    setBusy(true);
+    try {
+      const r = await local.registerLocal({ username, password });
+      // the learner profile that the student environment uses
+      if (!(await getLearner(db, r.learnerName))) await saveLearner(db, { name: r.learnerName, type: 'school' });
+      navigate(`/login?created=1&user=${encodeURIComponent(r.username)}`, { replace: true });
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <AuthFrame title="إنشاء حساب جديد على هذا الجهاز" testId="page-local-signup">
+      {!allowed ? (
+        <>
+          <p className="auth-error" role="alert" data-testid="local-signup-off">
+            <ShieldAlert size={16} aria-hidden="true" /> إنشاء الحسابات من شاشة الدخول متوقف على هذا الجهاز. اطلب حسابًا من صاحب المشروع.
+          </p>
+          <Link to="/login" className="btn btn-primary">
+            رجوع إلى تسجيل الدخول
+          </Link>
+        </>
+      ) : (
+        <form onSubmit={(e) => void submit(e)} noValidate className="auth-form">
+          <p className="muted" data-testid="local-signup-note">
+            الحساب يُحفظ على <strong>هذا الجهاز فقط</strong> ويعمل دون إنترنت. لا يُنشأ له حساب سحابي ولا تُزامَن بياناته. يبدأ الحساب «طالبًا»، وصاحب المشروع وحده يغيّر دوره.
+          </p>
+          <TextField label="اسم المستخدم" value={username} onChange={setUsername} autoComplete="username" dir="ltr" testId="local-signup-user" hint="3 أحرف على الأقل، دون مسافات." />
+          <TextField label="كلمة المرور" value={password} onChange={setPassword} type="password" autoComplete="new-password" dir="ltr" testId="local-signup-password" hint="8 أحرف على الأقل، فيها حروف وأرقام." />
+          <TextField label="تأكيد كلمة المرور" value={again} onChange={setAgain} type="password" autoComplete="new-password" dir="ltr" testId="local-signup-password2" />
+          <ErrorBox text={error} />
+          <button type="submit" className="btn btn-primary btn-lg" disabled={busy} data-testid="local-signup-submit">
+            <UserPlus size={18} aria-hidden="true" /> {busy ? 'جارٍ الإنشاء…' : 'إنشاء الحساب'}
+          </button>
+          <Link to="/login" data-testid="local-signup-back">
+            رجوع إلى تسجيل الدخول
+          </Link>
         </form>
       )}
     </AuthFrame>

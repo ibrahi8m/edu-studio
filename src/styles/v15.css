@@ -28,3 +28,6 @@
 .users-main span { overflow-wrap: anywhere; }
 .users-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .users-actions .input-sm { inline-size: auto; min-block-size: 36px; }
+
+/* 1.6.0: «إنشاء حساب جديد» link on the sign-in card */
+.auth-card > .btn-ghost.btn-lg { inline-size: 100%; justify-content: center; }

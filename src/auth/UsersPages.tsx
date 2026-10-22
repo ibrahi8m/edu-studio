@@ -185,6 +185,7 @@ export function UsersPage() {
         }
       />
       {mode === 'cloud' && <p className="muted">المستخدمون الجدد ينشئون حساباتهم من «إنشاء حساب» في شاشة الدخول، ويبدؤون «طلابًا». غيّر الدور من هنا.</p>}
+      {mode === 'local' && <SelfSignupToggle />}
       {error && (
         <p className="auth-error" role="alert">
           {error}
@@ -382,5 +383,30 @@ function ResetDialog({ row, onClose }: { row: Row; onClose: () => void }) {
         </p>
       )}
     </Dialog>
+  );
+}
+
+/** 1.6.0: the admin allows or stops «إنشاء حساب جديد» on this device's sign-in screen (new accounts are always students). */
+function SelfSignupToggle() {
+  const toast = useToast();
+  const [on, setOn] = useState(() => local.selfSignupAllowed());
+  return (
+    <label className="switch-row" data-testid="self-signup-toggle">
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(e) => {
+          try {
+            local.setSelfSignup(e.target.checked);
+            setOn(e.target.checked);
+            toast({ message: e.target.checked ? 'صار إنشاء حسابات الطلاب من شاشة الدخول متاحًا على هذا الجهاز.' : 'أُوقف إنشاء الحسابات من شاشة الدخول على هذا الجهاز.', sound: 'save' });
+          } catch (err) {
+            toast({ message: msg(err), tone: 'danger' });
+          }
+        }}
+        data-testid="self-signup-checkbox"
+      />
+      <span>السماح بـ«إنشاء حساب جديد» من شاشة الدخول على هذا الجهاز. الحساب الجديد يكون «طالبًا» دائمًا، وأنت تغيّر دوره من هنا.</span>
+    </label>
   );
 }

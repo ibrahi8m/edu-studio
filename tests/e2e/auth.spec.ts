@@ -238,6 +238,66 @@ test('the data layer refuses a teacher’s write to content that is not theirs (
   expect(result).toContain('لا تملك صلاحية');
 });
 
+test('1.6.0: «إنشاء حساب جديد» on this device — student only, validation, sign out/in, reload, offline; the admin can stop it', async ({ page, context }, info) => {
+  test.skip(!['desktop-1440', 'phone-iphone-se', 'phone-pixel-7'].includes(info.project.name), 'desktop and phones');
+  await setupOwner(page);
+  await signOutFromAccount(page);
+  await page.getByTestId('to-local-signup').click();
+  await expect(page.getByTestId('page-local-signup')).toBeVisible();
+  await expect(page.getByTestId('local-signup-note')).toContainText('هذا الجهاز فقط');
+  await page.getByTestId('local-signup-submit').click();
+  await expect(page.getByTestId('auth-error')).toContainText('اكتب اسم المستخدم');
+  await page.getByTestId('local-signup-user').fill('sara.student');
+  await page.getByTestId('local-signup-password').fill('Student-pass-1');
+  await page.getByTestId('local-signup-password2').fill('Student-pass-2');
+  await page.getByTestId('local-signup-submit').click();
+  await expect(page.getByTestId('auth-error')).toContainText('غير متطابقتين');
+  await page.getByTestId('local-signup-user').fill(OWNER.user.toUpperCase()); // same name, other case
+  await page.getByTestId('local-signup-password2').fill('Student-pass-1');
+  await page.getByTestId('local-signup-submit').click();
+  await expect(page.getByTestId('auth-error')).toContainText('مستخدم بالفعل');
+  await page.getByTestId('local-signup-user').fill('sara.student');
+  await page.getByTestId('local-signup-submit').click();
+  await expect(page.getByTestId('local-signup-done')).toBeVisible();
+  await expect(page.getByTestId('login-user')).toHaveValue('sara.student');
+  // the password is never stored as text
+  expect(await page.evaluate(() => localStorage.getItem('ibrahi8m.accounts.v1'))).not.toContain('Student-pass-1');
+  await page.getByTestId('login-password').fill('Student-pass-1');
+  await page.getByTestId('login-submit').click();
+  await expect(page).toHaveURL(/#\/learn/); // the student portal
+  await page.goto('./#/users');
+  await expect(page.getByTestId('page-forbidden')).toBeVisible();
+  await page.goto('./#/account');
+  await expect(page.getByTestId('account-role')).toHaveText('طالب');
+  await signOutFromAccount(page);
+  // restart: reload the app, sign in again
+  await page.reload();
+  await signIn(page, 'sara.student', 'Student-pass-1');
+  await expect(page).toHaveURL(/#\/learn/);
+  // offline: sign out and in with no network, and reload offline
+  await context.setOffline(true);
+  await signOutFromAccount(page);
+  await signIn(page, 'sara.student', 'Student-pass-1');
+  await expect(page).toHaveURL(/#\/learn/);
+  await page.reload();
+  await expect(page).toHaveURL(/#\/learn/);
+  await context.setOffline(false);
+  // the owner stops self sign-up; the student keeps working
+  await signOutFromAccount(page);
+  await signIn(page, OWNER.user, OWNER.pass);
+  await expect(page.getByTestId('page-dashboard')).toBeVisible();
+  await page.goto('./#/users');
+  await expect(page.getByTestId('user-row').filter({ hasText: 'sara.student' })).toContainText('طالب');
+  await page.getByTestId('self-signup-checkbox').uncheck();
+  await signOutFromAccount(page);
+  await expect(page.getByTestId('to-local-signup')).toHaveCount(0);
+  await page.goto('./#/local-signup');
+  await expect(page.getByTestId('local-signup-off')).toBeVisible();
+  await page.goto('./#/login');
+  await signIn(page, 'sara.student', 'Student-pass-1');
+  await expect(page).toHaveURL(/#\/learn/);
+});
+
 test.describe('cloud accounts (Supabase) — against a MOCKED server', () => {
   // The real project is not reachable from the test machine; these requests are answered by page.route
   // with the same shapes Supabase returns. They test the app's client logic, not the live server.
