@@ -82,10 +82,10 @@ export function markDescription(): string {
     `SYMBOL: a vertical figure "8" built from two stacked rings, centred on a square app-icon tile (1:1) with rounded corners (corner radius about ${G.tileCornerRadiusPct}% of the side), tile color ${C.tile.hex}, edged by a very thin metallic silver outline at low opacity.`,
     `Upper loop = a robot head: a circle about ${G.upperLoopOuterDiameterPct}% of the tile width, face ${C.head.hex}, framed by a thick metallic silver ring (gradient ${C.silverLight.hex} → ${C.silverMid.hex} → ${C.silverDark.hex}, light at top-left, dark at bottom-right).`,
     `Inside it, a horizontal rounded visor (a pill shape about ${G.visorWidthOfHeadPct}% of the head width) in ${C.visor.hex} with a thin ${C.blue.hex} outline, holding two round glowing eyes side by side: hot near-white centres ${C.eyeCore.hex} fading to ${C.blueLight.hex} and ${C.blue.hex}, with a soft blue glow.`,
-    `On top of the head, a short straight silver antenna ending in a small glowing blue ball.`,
+    `Just above the top of the head ring, a small glowing blue ball (the antenna tip; its stem is hidden behind the ring).`,
     `Lower loop = a circuit ring: a slightly smaller thick ring (about ${G.lowerLoopOuterDiameterPct}% of the tile width) in solid electric blue ${C.blue.hex}, directly below the head.`,
     `Two thin circuit traces in ${C.blueLight.hex} with rounded ends leave the ring: from its left side straight out to the left, then up, ending in a round node; from its right side straight out to the right, then down, ending in a round node (the two traces mirror each other diagonally).`,
-    `Where the two loops meet, a small glowing blue dot (the neck).`,
+    `Where the two loops meet, a small glowing blue ball sits on the bottom edge of the head ring, overlapping the top of the blue ring (the neck).`,
     `Upper loop centre at about ${G.upperCentreYPct}% and lower loop centre at about ${G.lowerCentreYPct}% of the tile height; flat vector style, crisp edges, no 3D extrusion, no extra elements.`,
   ].join(' ');
 }

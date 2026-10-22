@@ -1,0 +1,6 @@
+{
+  "appId": "app.ibrahi8m.edustudio",
+  "appName": "IBRAHI8M EDU STUDIO",
+  "webDir": "../dist",
+  "ios": { "contentInset": "never", "backgroundColor": "#0E1014" }
+}
