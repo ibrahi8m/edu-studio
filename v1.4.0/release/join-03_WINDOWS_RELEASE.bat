@@ -1,0 +1,5 @@
+@echo off
+cd /d "%~dp0"
+copy /b 03_WINDOWS_RELEASE.zip.001+03_WINDOWS_RELEASE.zip.002+03_WINDOWS_RELEASE.zip.003 03_WINDOWS_RELEASE.zip
+echo Done: 03_WINDOWS_RELEASE.zip
+pause

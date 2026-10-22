@@ -1,0 +1,228 @@
+IBRAHI8M EDU STUDIO 1.4.0 — FILE MANIFEST (22 Oct 2026)
+Folder: IBRAHI8M_EDU_STUDIO_v1.4.0_RELEASE
+
+== Release folder ==
+     2125080  01_SOURCE_CODE.zip
+     1037410  02_WEB_RELEASE.zip
+   191672817  03_WINDOWS_RELEASE.zip
+     1173429  04_ANDROID_RELEASE.zip
+     1540310  05_IOS_SOURCE.zip
+   104245508  06_ORIGINAL_BACKUP.zip
+      253925  07_DOCUMENTATION.zip
+   302076752  08_COMPLETE_RELEASE_BUNDLE.zip
+        5086  BUILD_REPORT.md
+       15345  CHANGELOG.md
+        3542  INSTALLATION_GUIDE.md
+        2304  PLATFORM_STATUS.md
+           6  VERSION.txt
+
+== Contents ==
+-- 01_SOURCE_CODE.zip
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/.gitignore
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/BACKUP_NOTES.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/BUILD_REPORT.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/CHANGELOG.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/DEVELOPER_GUIDE.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/INSTALL.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/INSTALLATION_GUIDE.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/PLATFORM_STATUS.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/README.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/TEST-REPORT.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/VERSION.txt
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/.gitignore
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/AndroidManifest.xml
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/build-apk.sh
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/res/mipmap-hdpi/ic_launcher.png
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/res/mipmap-mdpi/ic_launcher.png
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/res/mipmap-xhdpi/ic_launcher.png
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/res/mipmap-xxhdpi/ic_launcher.png
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/res/mipmap-xxxhdpi/ic_launcher.png
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/res/values/strings.xml
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/res/values/styles.xml
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/android/src/app/ibrahi8m/edustudio/MainActivity.java
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/demo/footprint.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/demo/password-strength.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/demo/phishing.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/directions/a-circuit-helmet.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/directions/b-eight-robot.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/directions/c-infinity-visor.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/ibrahi8m-glyph.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/ibrahi8m-mark.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/ibrahim-original.jpeg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/brand-src/old/robot-mark-v1.svg
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/APPEARANCE-SOUND-1.2.0.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/DEMO-DAY.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/FILE-FORMAT.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/NEW-FEATURES-1.1.0.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/demo.ibm
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/guide/guide.html
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/reports/MOBILE-TEST-REPORT-1.1.0.md
+   IBRAHI8M-EDU-STUDIO-1.4.0-source/docs/reports/MOBILE-TEST-REPORT-1.2.0.md
+   (264 files)
+-- 02_WEB_RELEASE.zip
+   sw.js
+   brand/ibrahi8m-mark-1024.png
+   brand/ibrahim-portrait.webp
+   brand/ibrahi8m-glyph.svg
+   brand/ibrahim-avatar.webp
+   brand/ibrahi8m-mark.svg
+   assets/readex-pro-arabic-700-normal-EXBdNfUG.woff2
+   assets/readex-pro-latin-700-normal-oqSerPEB.woff2
+   assets/index-SIj221cD.css
+   assets/readex-pro-arabic-500-normal-Bmdbfz0h.woff2
+   assets/workbox-window.prod.es5-BqEJf4Xk.js
+   assets/readex-pro-latin-600-normal-C3IhmgOg.woff2
+   assets/ibm-plex-sans-arabic-arabic-400-normal-CyU-ddYS.woff2
+   assets/ibm-plex-sans-arabic-latin-400-normal-Bo5KPYvw.woff2
+   assets/readex-pro-arabic-600-normal-BHxn1TEo.woff2
+   assets/ibm-plex-sans-arabic-arabic-600-normal-0pRdybE_.woff2
+   assets/ibm-plex-sans-arabic-latin-600-normal-KrqB56Mw.woff2
+   assets/virtual_pwa-register-DgQeMv12.js
+   assets/ibm-plex-sans-arabic-latin-700-normal-BzSf6GNr.woff2
+   assets/readex-pro-latin-500-normal-fMl4bkAY.woff2
+   assets/ibm-plex-sans-arabic-arabic-700-normal-DrtBj6UE.woff2
+   assets/ibm-plex-sans-arabic-arabic-500-normal-C4MQITzh.woff2
+   assets/index-BES-TCui.js
+   assets/ibm-plex-sans-arabic-latin-500-normal-Cd6jVIg7.woff2
+   favicon.svg
+   index.html
+   icon-maskable-512.png
+   demo/password-strength.png
+   demo/footprint.png
+   demo/phishing.png
+   icon-192.png
+   apple-touch-icon.png
+   workbox-2fbc6a65.js
+   manifest.webmanifest
+   icon-512.png
+   (35 files)
+-- 03_WINDOWS_RELEASE.zip
+   IBRAHI8M-EDU-STUDIO-Portable-1.4.0.exe
+   IBRAHI8M-EDU-STUDIO-Setup-1.4.0.exe
+   INSTALLATION_GUIDE.md
+   (3 files)
+-- 04_ANDROID_RELEASE.zip
+   source/src/app/ibrahi8m/edustudio/MainActivity.java
+   source/res/mipmap-hdpi/ic_launcher.png
+   source/res/values/strings.xml
+   source/res/values/styles.xml
+   source/res/mipmap-xxhdpi/ic_launcher.png
+   source/res/mipmap-xxxhdpi/ic_launcher.png
+   source/res/mipmap-xhdpi/ic_launcher.png
+   source/res/mipmap-mdpi/ic_launcher.png
+   source/.gitignore
+   source/AndroidManifest.xml
+   source/build-apk.sh
+   INSTALLATION_GUIDE.md
+   IBRAHI8M-EDU-STUDIO-1.4.0.apk
+   PLATFORM_STATUS.md
+   (14 files)
+-- 05_IOS_SOURCE.zip
+   README.md
+   .gitignore
+   package-lock.json
+   capacitor.config.json
+   package.json
+   ios/.gitignore
+   ios/App/App.xcodeproj/project.pbxproj
+   ios/App/App.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+   ios/App/App/Info.plist
+   ios/App/App/public/sw.js
+   ios/App/App/public/brand/ibrahi8m-mark-1024.png
+   ios/App/App/public/brand/ibrahim-portrait.webp
+   ios/App/App/public/brand/ibrahi8m-glyph.svg
+   ios/App/App/public/brand/ibrahim-avatar.webp
+   ios/App/App/public/brand/ibrahi8m-mark.svg
+   ios/App/App/public/assets/readex-pro-arabic-700-normal-EXBdNfUG.woff2
+   ios/App/App/public/assets/readex-pro-latin-700-normal-oqSerPEB.woff2
+   ios/App/App/public/assets/virtual_pwa-register-btZ0xW8A.js
+   ios/App/App/public/assets/index-SIj221cD.css
+   ios/App/App/public/assets/readex-pro-arabic-500-normal-Bmdbfz0h.woff2
+   ios/App/App/public/assets/workbox-window.prod.es5-BqEJf4Xk.js
+   ios/App/App/public/assets/index-BU_a_p-E.js
+   ios/App/App/public/assets/readex-pro-latin-600-normal-C3IhmgOg.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-arabic-400-normal-CyU-ddYS.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-latin-400-normal-Bo5KPYvw.woff2
+   ios/App/App/public/assets/readex-pro-arabic-600-normal-BHxn1TEo.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-arabic-600-normal-0pRdybE_.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-latin-600-normal-KrqB56Mw.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-latin-700-normal-BzSf6GNr.woff2
+   ios/App/App/public/assets/readex-pro-latin-500-normal-fMl4bkAY.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-arabic-700-normal-DrtBj6UE.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-arabic-500-normal-C4MQITzh.woff2
+   ios/App/App/public/assets/ibm-plex-sans-arabic-latin-500-normal-Cd6jVIg7.woff2
+   ios/App/App/public/favicon.svg
+   ios/App/App/public/index.html
+   ios/App/App/public/cordova.js
+   ios/App/App/public/icon-maskable-512.png
+   ios/App/App/public/demo/password-strength.png
+   ios/App/App/public/demo/footprint.png
+   ios/App/App/public/demo/phishing.png
+   (64 files)
+-- 06_ORIGINAL_BACKUP.zip
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/.gitignore
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/CHANGELOG.md
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/INSTALL.md
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/README.md
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/TEST-REPORT.md
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/demo/footprint.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/demo/password-strength.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/demo/phishing.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/directions/a-circuit-helmet.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/directions/b-eight-robot.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/directions/c-infinity-visor.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/ibrahi8m-glyph.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/ibrahi8m-mark.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/ibrahim-original.jpeg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/brand-src/old/robot-mark-v1.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/apple-touch-icon.png
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-arabic-400-normal-CyU-ddYS.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-arabic-500-normal-C4MQITzh.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-arabic-600-normal-0pRdybE_.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-arabic-700-normal-DrtBj6UE.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-latin-400-normal-Bo5KPYvw.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-latin-500-normal-Cd6jVIg7.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-latin-600-normal-KrqB56Mw.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/ibm-plex-sans-arabic-latin-700-normal-BzSf6GNr.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/index-CEv-uBYt.js
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/index-SIj221cD.css
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/readex-pro-arabic-500-normal-Bmdbfz0h.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/readex-pro-arabic-600-normal-BHxn1TEo.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/readex-pro-arabic-700-normal-EXBdNfUG.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/readex-pro-latin-500-normal-fMl4bkAY.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/readex-pro-latin-600-normal-C3IhmgOg.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/readex-pro-latin-700-normal-oqSerPEB.woff2
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/virtual_pwa-register-k8bZ7sH_.js
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/assets/workbox-window.prod.es5-BqEJf4Xk.js
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/brand/ibrahi8m-glyph.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/brand/ibrahi8m-mark-1024.png
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/brand/ibrahi8m-mark.svg
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/brand/ibrahim-avatar.webp
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/brand/ibrahim-portrait.webp
+   IBRAHI8M-EDU-STUDIO-1.3.0-original/dist/demo/footprint.png
+   (533 files)
+-- 07_DOCUMENTATION.zip
+   MOBILE-TEST-REPORT-1.3.0.md
+   FILE-FORMAT.md
+   INSTALL.md
+   INSTALLATION_GUIDE.md
+   README.md
+   TEST-REPORT-1.3.0.md
+   BACKUP_NOTES.md
+   DEVELOPER_GUIDE.md
+   DEMO-DAY.md
+   USER_GUIDE-1.4.0.pdf
+   VERSION.txt
+   CHANGELOG.md
+   PLATFORM_STATUS.md
+   BUILD_REPORT.md
+   (14 files)
+
+== Notes ==
+01_SOURCE_CODE.zip: tracked source of commit 5034973; dist/ (in 02) and docs/screenshots (images, in the GitHub repo) are left out.
+03_WINDOWS_RELEASE.zip: Setup-1.4.0.exe (installer, NSIS) + Portable-1.4.0.exe + INSTALLATION_GUIDE.md. Not code-signed.
+04_ANDROID_RELEASE.zip: IBRAHI8M-EDU-STUDIO-1.4.0.apk (test-key signed, not run on a device) + its source. No AAB.
+05_IOS_SOURCE.zip: Xcode project source (Capacitor 6). No IPA: needs macOS/Xcode.
+06_ORIGINAL_BACKUP.zip: full source of 1.3.0 (commit bf22665) before this work.
+08_COMPLETE_RELEASE_BUNDLE.zip: 01-07 + documents, stored without recompression.
+Files above 95 MB are also given as numbered parts (.001, .002 …) with a join-*.bat that rebuilds them (copy /b); WinRAR/7-Zip also open the .001 directly.
