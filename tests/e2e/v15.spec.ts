@@ -246,7 +246,12 @@ test.describe('content fields 1.5.0', () => {
     expect(subjects).toContain('الرياضيات');
     expect(subjects).not.toContain('المناهج وطرق التدريس');
     const sem = await d.getByTestId('detail-semester').locator('option').allTextContents();
-    expect(sem).toEqual(['غير محدد', 'الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي']); // «العام كاملًا» removed
+    // 1.6.0: no «غير محدد» semester and no «أخرى» grade; a new item starts on the first option of each list
+    expect(sem).toEqual(['الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي']); // «العام كاملًا» removed in 1.5.0
+    expect(grades).not.toContain('أخرى');
+    expect(grades).not.toContain('غير محدد');
+    await expect(d.getByTestId('project-grade')).toHaveValue('رياض الأطفال');
+    await expect(d.getByTestId('detail-semester')).toHaveValue('الفصل الأول');
     await d.getByTestId('project-title').fill('وحدة الكسور');
     await d.getByTestId('project-subject').fill('الرياضيات');
     await d.getByTestId('project-grade').selectOption('الصف السابع');
@@ -263,6 +268,7 @@ test.describe('content fields 1.5.0', () => {
     await expect(d.getByTestId('project-subject')).toHaveAttribute('placeholder', /اسم المساق/);
     await d.getByTestId('project-title').fill('مساق متقدم');
     await d.getByTestId('project-subject').fill('مناهج البحث في تكنولوجيا التعليم (دكتوراه)');
+    expect(await d.getByTestId('detail-degree').locator('option').allTextContents()).toEqual(['بكالوريوس', 'ماجستير', 'دكتوراه']); // 1.6.0: no «غير محدد»
     await d.getByTestId('detail-degree').selectOption('دكتوراه');
     await d.getByTestId('project-save').click();
     await expect(page.getByTestId('page-project')).toBeVisible();
@@ -329,6 +335,61 @@ test.describe('content fields 1.5.0', () => {
     });
     expect(kept.details.semester).toBe('العام كاملًا');
     expect(kept.subject).toBe('المناهج وطرق التدريس');
+  });
+  test('1.6.0: content saved with «أخرى» and no semester is shown safely and kept; choosing a real value works; sending «أخرى» directly is refused', async ({ page }, info) => {
+    test.skip(!['desktop-1440', 'phone-iphone-se'].includes(info.project.name), 'desktop and the smallest phone');
+    await disableSplash(page);
+    await page.goto('./#/projects');
+    const read = () =>
+      page.evaluate(async () => {
+        const open = indexedDB.open('ibrahi8m-edu');
+        const db: IDBDatabase = await new Promise((ok) => (open.onsuccess = () => ok(open.result)));
+        const r = db.transaction('projects').objectStore('projects').get('old-other');
+        const v = await new Promise<{ grade: string; details: { semester?: string }; description: string }>((ok) => (r.onsuccess = () => ok(r.result)));
+        db.close();
+        return v;
+      });
+    await page.evaluate(async () => {
+      const open = indexedDB.open('ibrahi8m-edu');
+      const db: IDBDatabase = await new Promise((ok) => (open.onsuccess = () => ok(open.result)));
+      const tx = db.transaction('projects', 'readwrite');
+      tx.objectStore('projects').put({ id: 'old-other', title: 'محتوى «أخرى»', subject: 'العلوم', grade: 'أخرى', description: '', status: 'draft', tags: [], color: 'blue', kind: 'school', published: true, details: {}, createdAt: 1, updatedAt: 1 });
+      await new Promise((ok) => (tx.oncomplete = ok));
+      db.close();
+    });
+    // the list filter still finds it
+    await page.reload();
+    await page.goto('./#/projects?grade=%D8%A3%D8%AE%D8%B1%D9%89');
+    await expect(page.getByRole('link', { name: 'محتوى «أخرى»' }).first()).toBeVisible();
+    await page.goto('./#/projects/old-other');
+    await page.getByTestId('edit-project').click();
+    const d = page.locator('dialog[open][data-testid=project-dialog]');
+    await expect(d.getByTestId('project-grade')).toHaveValue('أخرى');
+    await expect(d.getByTestId('grade-legacy')).toContainText('قيمة سابقة');
+    await expect(d.getByTestId('detail-semester-legacy')).toContainText('قيمة سابقة');
+    await d.getByTestId('project-description').fill('عُدّل دون تغيير الصف');
+    await d.getByTestId('project-save').click();
+    await expect(d).toHaveCount(0);
+    let v = await read();
+    expect([v.grade, v.details.semester, v.description]).toEqual(['أخرى', undefined, 'عُدّل دون تغيير الصف']);
+    // a direct write of «أخرى» on content that has a real grade is refused
+    await page.getByTestId('edit-project').click();
+    await d.getByTestId('project-grade').selectOption('الصف الخامس');
+    await d.getByTestId('detail-semester').selectOption('الفصل الثاني');
+    await d.getByTestId('project-save').click();
+    await expect(d).toHaveCount(0);
+    v = await read();
+    expect([v.grade, v.details.semester]).toEqual(['الصف الخامس', 'الفصل الثاني']);
+    const refused = await page.evaluate(async () => {
+      try {
+        await (window as any).__ibrahi8mTest.updateProject('old-other', { grade: 'أخرى' });
+        return 'ALLOWED';
+      } catch (e) {
+        return (e as Error).message;
+      }
+    });
+    expect(refused).toContain('اختر الصف');
+    expect((await read()).grade).toBe('الصف الخامس');
   });
 });
 

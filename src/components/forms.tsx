@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import type { ContentKind, ItemStatus, Lesson, Project, ProjectColor } from '../db/db';
 import { CONTENT_KINDS, KIND_SPECS, kindOf } from '../db/contentKinds';
 import { GRADES, LIMITS, PROJECT_COLORS, STATUSES, STATUS_LABEL, SUBJECT_SUGGESTIONS } from '../db/catalog';
+import { requiredDefaults } from '../db/contentKinds';
 import { validateLesson, validateProject, type FieldErrors, type LessonInput, type ProjectInput } from '../db/projects';
 import { Dialog } from './Dialog';
 
@@ -104,10 +105,10 @@ export function ProjectFormDialog({
         const fixed = CONTENT_KINDS.map((x) => KIND_SPECS[x].fixedGrade);
         const grade = KIND_SPECS[k].usesGrade ? (fixed.includes(v.grade) ? '' : v.grade) : KIND_SPECS[k].fixedGrade;
         const input: ProjectInput = { ...v, tags: v.tagsText, grade };
-        const e = validateProject(input);
+        const e = validateProject(input, initial); // 1.6.0: the same rule as the data layer (values saved earlier kept)
         setErrors(e);
         if (Object.keys(e).length) {
-          titleRef.current?.focus();
+          if (e.title) titleRef.current?.focus();
           return;
         }
         setSaving(true);
@@ -134,7 +135,15 @@ export function ProjectFormDialog({
           <div className="ck-options" role="radiogroup" aria-label="نوع المحتوى">
             {CONTENT_KINDS.map((k) => (
               <label key={k} className={`ck-option ${kind === k ? 'is-active' : ''}`} data-testid={`content-kind-${k}`}>
-                <input type="radio" name={`${uid}-kind`} value={k} checked={kind === k} onChange={() => set('kind', k)} />
+                <input type="radio" name={`${uid}-kind`} value={k} checked={kind === k} onChange={() =>
+                    setV((p) => ({
+                      ...p,
+                      kind: k,
+                      details: { ...requiredDefaults(k), ...Object.fromEntries(Object.entries(p.details ?? {}).filter(([key, val]) => !(key in requiredDefaults(k)) || KIND_SPECS[k].fields.find((f) => f.key === key)?.options?.includes(val as string) || (initial && kindOf(initial) === k && initial.details?.[key] === val))) },
+                      grade: k === 'school' && !GRADES.includes(p.grade ?? '') && !(initial && kindOf(initial) === 'school' && initial.grade === p.grade) ? GRADES[0] : p.grade,
+                    }))
+                  }
+                />
                 <strong>{KIND_SPECS[k].label}</strong>
                 <span>{KIND_SPECS[k].hint}</span>
               </label>
@@ -177,8 +186,12 @@ export function ProjectFormDialog({
           </Field>
           {spec.usesGrade && (
             <Field label="الصف" htmlFor={`${uid}-g`} error={errors.grade}>
-              <select id={`${uid}-g`} className="input" value={v.grade} onChange={(e) => set('grade', e.target.value)} data-testid="project-grade">
-                <option value="">غير محدد</option>
+              <select id={`${uid}-g`} className="input" value={v.grade} onChange={(e) => set('grade', e.target.value)} data-testid="project-grade" aria-invalid={!!errors.grade}>
+                {!GRADES.includes(v.grade ?? '') && (
+                  <option value={v.grade ?? ''} data-testid="grade-legacy">
+                    {(v.grade || 'غير محدد') + ' (قيمة سابقة — اختر صفًا)'}
+                  </option>
+                )}
                 {GRADES.map((g) => (
                   <option key={g} value={g}>
                     {g}
@@ -192,10 +205,15 @@ export function ProjectFormDialog({
           {spec.fields
             .filter((f) => !f.multiline)
             .map((f) => (
-              <Field key={f.key} label={f.label} htmlFor={`${uid}-k-${f.key}`}>
+              <Field key={f.key} label={f.label} htmlFor={`${uid}-k-${f.key}`} error={(errors as Record<string, string | undefined>)[f.key]}>
                 {f.options ? (
                   <select id={`${uid}-k-${f.key}`} className="input" value={v.details?.[f.key] ?? ''} onChange={(e) => setDetail(f.key, e.target.value)} data-testid={`detail-${f.key}`}>
-                    <option value="">غير محدد</option>
+                    {f.required && !f.options.includes(v.details?.[f.key] ?? '') && !(f.legacyOptions ?? []).includes(v.details?.[f.key] ?? '') && (
+                      <option value={v.details?.[f.key] ?? ''} data-testid={`detail-${f.key}-legacy`}>
+                        {(v.details?.[f.key] || 'غير محدد') + ' (قيمة سابقة — اختر من القائمة)'}
+                      </option>
+                    )}
+                    {!f.required && <option value="">غير محدد</option>}
                     {[...f.options, ...(f.legacyOptions ?? []).filter((o) => v.details?.[f.key] === o)].map((o) => (
                       <option key={o} value={o}>
                         {o}
@@ -273,7 +291,7 @@ function blankProject(p?: Project | null): ProjectInput & { tagsText: string } {
   return {
     title: p?.title ?? '',
     subject: p?.subject ?? '',
-    grade: p?.grade ?? '',
+    grade: p ? (p.grade ?? '') : GRADES[0], // 1.6.0: a new school item starts on the first grade (no «غير محدد»)
     description: p?.description ?? '',
     status: p?.status ?? 'draft',
     color: p?.color ?? 'blue',
@@ -281,7 +299,7 @@ function blankProject(p?: Project | null): ProjectInput & { tagsText: string } {
     tagsText: (p?.tags ?? []).join('، '),
     kind: p ? kindOf(p) : 'school',
     published: p ? p.published !== false : true,
-    details: { ...(p?.details ?? {}) },
+    details: p ? { ...(p.details ?? {}) } : requiredDefaults('school'),
   };
 }
 

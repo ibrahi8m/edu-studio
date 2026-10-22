@@ -12,6 +12,8 @@ export interface KindField {
   options?: string[];
   /** Options no longer offered but still accepted, so values saved earlier are never dropped. */
   legacyOptions?: string[];
+  /** 1.6.0: a value from `options` is required (no «غير محدد»); content saved earlier keeps its value until edited. */
+  required?: boolean;
   placeholder?: string;
   max: number;
 }
@@ -52,7 +54,7 @@ export const KIND_SPECS: Record<ContentKind, KindSpec> = {
     lessonLabel: 'الدرس',
     fields: [
       // 1.5.0: «العام كاملًا» removed at the owner's request; a value saved earlier is kept.
-      { key: 'semester', label: 'الفصل الدراسي', options: ['الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي'], legacyOptions: ['العام كاملًا'], max: 40 },
+      { key: 'semester', label: 'الفصل الدراسي', options: ['الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي'], legacyOptions: ['العام كاملًا'], required: true, max: 40 },
       { key: 'objectives', label: 'الأهداف العامة', multiline: true, placeholder: 'هدف في كل سطر', max: 3000 },
     ],
   },
@@ -71,7 +73,7 @@ export const KIND_SPECS: Record<ContentKind, KindSpec> = {
     lessonLabel: 'المحاضرة أو الموضوع',
     fields: [
       { key: 'specialization', label: 'التخصص', max: 120 },
-      { key: 'degree', label: 'الدرجة العلمية', options: ['بكالوريوس', 'ماجستير', 'دكتوراه'], max: 20 },
+      { key: 'degree', label: 'الدرجة العلمية', options: ['بكالوريوس', 'ماجستير', 'دكتوراه'], required: true, max: 20 },
       { key: 'level', label: 'المستوى الأكاديمي', placeholder: 'مثل: السنة الثانية، أو الفصل الأول من البرنامج', max: 120 },
       { key: 'objectives', label: 'الأهداف', multiline: true, placeholder: 'هدف في كل سطر', max: 3000 },
       { key: 'references', label: 'المصادر والمراجع', multiline: true, placeholder: 'مرجع في كل سطر', max: 4000 },
@@ -134,4 +136,11 @@ export function audienceLine(p: Project): string {
   if (k === 'school') return [p.subject, p.grade, d.semester].filter(Boolean).join(' · ');
   if (k === 'university') return [p.subject, d.specialization, d.degree, d.level].filter(Boolean).join(' · ');
   return [p.subject, d.targetTeachers, d.duration].filter(Boolean).join(' · ');
+}
+
+/** 1.6.0: the starting value of each required list (the first option), used for new content and when the kind changes. */
+export function requiredDefaults(kind: ContentKind): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of KIND_SPECS[kind].fields) if (f.required && f.options) out[f.key] = f.options[0];
+  return out;
 }

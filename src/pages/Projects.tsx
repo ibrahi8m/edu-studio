@@ -6,7 +6,7 @@ import { errorMessage, useAllLessons, useAllProjects } from '../app/data';
 import { useToast } from '../app/Toasts';
 import { db, type ContentKind, type ItemStatus, type Project } from '../db/db';
 import { CONTENT_KINDS, KIND_SPECS } from '../db/contentKinds';
-import { GRADES, STATUSES, STATUS_LABEL } from '../db/catalog';
+import { GRADES, LEGACY_GRADES, STATUSES, STATUS_LABEL } from '../db/catalog';
 import { createProject, distinctSubjects, queryLessons, queryProjects, type ProjectSort } from '../db/projects';
 import { ProjectFormDialog } from '../components/forms';
 import { LessonRow, ProjectCard } from '../components/ProjectBits';
@@ -192,7 +192,7 @@ export function ProjectsPage() {
                     <span>الصف أو المرحلة</span>
                     <select className="input" value={grade} onChange={(e) => setParam('grade', e.target.value)} data-testid="filter-grade">
                       <option value="">كل المراحل</option>
-                      {GRADES.map((g) => (
+                      {[...GRADES, ...LEGACY_GRADES.filter((g) => projects?.some((p) => p.grade === g))].map((g) => (
                         <option key={g} value={g}>
                           {g}
                         </option>

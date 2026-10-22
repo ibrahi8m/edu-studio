@@ -1,7 +1,7 @@
 {
   "name": "ibrahi8m-edu-studio",
   "private": true,
-  "version": "1.5.2",
+  "version": "1.6.0",
   "description": "IBRAHI8M EDU STUDIO — Offline Arabic digital learning content studio",
   "type": "module",
   "scripts": {

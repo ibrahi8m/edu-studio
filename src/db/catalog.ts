@@ -30,8 +30,10 @@ export const GRADES: string[] = [
   'الصف العاشر',
   'الصف الحادي عشر',
   'الصف الثاني عشر',
-  'أخرى',
 ];
+
+/** 1.6.0: «أخرى» is no longer offered for school content. Content saved with it keeps it until it is edited. */
+export const LEGACY_GRADES: string[] = ['أخرى'];
 
 /**
  * 1.5.0: university and teacher training are kinds of content, not school grades. They are no longer in

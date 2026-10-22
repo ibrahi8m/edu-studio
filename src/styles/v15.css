@@ -40,3 +40,4 @@
 .sidebar-brand .portal-badge { align-self: flex-start; }
 .mobile-topbar .portal-badge { font-size: 0.72rem; padding: 2px 8px; }
 @media (max-width: 380px) { .mobile-topbar .portal-badge { display: none; } }
+@media (max-width: 480px) { .student-bar .portal-badge { display: none; } }

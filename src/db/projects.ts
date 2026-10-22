@@ -4,7 +4,7 @@ import type { LessonProgress } from '../student/types';
 import type { Design } from '../studio/types';
 import type { Submission } from '../learner/types';
 import type { ContentKind, EduDB, ItemStatus, Lesson, Project, ProjectColor } from './db';
-import { cleanDetails, CONTENT_KINDS, KIND_SPECS, kindOf } from './contentKinds';
+import { cleanDetails, CONTENT_KINDS, KIND_SPECS, kindOf, requiredDefaults } from './contentKinds';
 import { GRADES, KIND_STAGES, LIMITS, STATUSES } from './catalog';
 import { assertCanAuthor, assertCanEdit } from '../auth/access';
 import { newId } from './ids';
@@ -51,7 +51,7 @@ export interface LessonInput {
   unit?: string;
 }
 
-export type FieldErrors = Partial<Record<'title' | 'subject' | 'grade' | 'description' | 'summary' | 'duration' | 'status', string>>;
+export type FieldErrors = Partial<Record<'title' | 'subject' | 'grade' | 'description' | 'summary' | 'duration' | 'status' | 'semester' | 'degree', string>>;
 
 export class ValidationError extends Error {
   constructor(public fields: FieldErrors) {
@@ -61,13 +61,26 @@ export class ValidationError extends Error {
 
 const COLORS: ProjectColor[] = ['blue', 'silver', 'teal', 'violet', 'amber'];
 
-export function validateProject(input: ProjectInput): FieldErrors {
+/**
+ * 1.6.0: school content needs a grade and a semester from the lists, university content a degree.
+ * `previous` is the stored content when editing: a value saved before 1.6.0 («أخرى», «غير محدد», «العام كاملًا»)
+ * is kept as long as it is not changed, so nothing stored is lost or rewritten.
+ */
+export function validateProject(input: ProjectInput, previous?: Project | null): FieldErrors {
   const e: FieldErrors = {};
+  const kind = input.kind && CONTENT_KINDS.includes(input.kind) ? input.kind : 'school';
+  const unchanged = (now: string | undefined, before: string | undefined) => !!previous && kindOf(previous) === kind && (now ?? '') === (before ?? '');
+  if (kind === 'school' && !GRADES.includes(input.grade ?? '') && !unchanged(input.grade, previous?.grade)) e.grade = 'اختر الصف من القائمة.';
+  for (const f of KIND_SPECS[kind].fields) {
+    if (!f.required || !f.options) continue;
+    const v = (input.details?.[f.key] ?? '').trim();
+    if (!f.options.includes(v) && !unchanged(v, previous?.details?.[f.key])) (e as Record<string, string>)[f.key] = `اختر ${f.label} من القائمة.`;
+  }
   const title = (input.title ?? '').trim();
   if (!title) e.title = 'العنوان مطلوب.';
   else if (title.length > LIMITS.title) e.title = `العنوان أطول من ${LIMITS.title} حرفًا.`;
   if ((input.subject ?? '').trim().length > LIMITS.subject) e.subject = `اسم المادة أطول من ${LIMITS.subject} حرفًا.`;
-  if (input.grade && !GRADES.includes(input.grade) && !KIND_STAGES.includes(input.grade)) e.grade = 'اختر المرحلة من القائمة.';
+  if (kind !== 'school' && input.grade && !GRADES.includes(input.grade) && !KIND_STAGES.includes(input.grade) && !unchanged(input.grade, previous?.grade)) e.grade = 'اختر المرحلة من القائمة.';
   if (input.kind && !CONTENT_KINDS.includes(input.kind)) e.status = 'نوع محتوى غير معروف.';
   if ((input.description ?? '').length > LIMITS.description) e.description = `الوصف أطول من ${LIMITS.description} حرف.`;
   if (input.status && !STATUSES.includes(input.status)) e.status = 'حالة غير معروفة.';
@@ -117,8 +130,15 @@ export async function setPublished(database: EduDB, id: string, published: boole
   });
 }
 
+/** Absent (undefined) required values take the first option of their list; an explicit invalid value is still refused. */
+function withDefaults<T extends Partial<ProjectInput>>(input: T, kind: ContentKind): T {
+  const details = { ...requiredDefaults(kind), ...Object.fromEntries(Object.entries(input.details ?? {}).filter(([, v]) => v !== undefined)) };
+  return { ...input, details, ...(kind === 'school' && input.grade === undefined ? { grade: GRADES[0] } : {}) };
+}
+
 export async function createProject(database: EduDB, input: ProjectInput): Promise<Project> {
   const author = assertCanAuthor();
+  input = withDefaults(input, input.kind && CONTENT_KINDS.includes(input.kind) ? input.kind : 'school');
   assertValid(validateProject(input));
   const now = Date.now();
   const project: Project = {
@@ -144,8 +164,10 @@ export async function updateProject(database: EduDB, id: string, patch: Partial<
     const current = await database.projects.get(id);
     if (!current) throw new Error('المشروع غير موجود.');
     assertCanEdit(current);
-    const merged: ProjectInput = { ...current, ...patch, title: patch.title ?? current.title };
-    assertValid(validateProject(merged));
+    let merged: ProjectInput = { ...current, ...patch, title: patch.title ?? current.title };
+    const kind = merged.kind && CONTENT_KINDS.includes(merged.kind) ? merged.kind : kindOf(current);
+    if (kind !== kindOf(current)) merged = withDefaults({ ...merged, grade: kind === 'school' && !GRADES.includes(merged.grade ?? '') ? undefined : merged.grade }, kind);
+    assertValid(validateProject(merged, current));
     const next: Project = {
       ...current,
       title: merged.title.trim(),
