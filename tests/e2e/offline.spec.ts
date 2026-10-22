@@ -32,12 +32,11 @@ test.describe('Phase 0 — offline foundation', () => {
     await p1.goto('./#/settings');
     await p1.getByRole('radio', { name: 'نهاري' }).click();
     await p1.getByRole('radio', { name: 'كبير' }).click();
-    // 1.1.0: the user's name lives in «صفحتي» (the About page is fixed project information).
-    await p1.goto('./#/me');
-    const full = p1.getByTestId('profile-userName');
-    await full.fill('مستخدم — اختبار الحفظ');
-    await full.blur();
-    await expect(p1.getByText('تم الحفظ')).toBeVisible();
+    // 1.5.0: the name shown in the greeting is the signed-in account's («حسابي»)
+    await p1.goto('./#/account');
+    await p1.getByTestId('account-name').fill('مستخدم — اختبار الحفظ');
+    await p1.getByTestId('account-name-save').click();
+    await expect(p1.getByTestId('toast').last()).toContainText('حُفظ الاسم');
     await ctx1.close(); // the whole browser process exits
 
     // ── Session 2: new browser process, offline from the very first request ──
@@ -66,8 +65,8 @@ test.describe('Phase 0 — offline foundation', () => {
     expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--font-scale').trim())).toBe('1.15');
     await expect(page.getByTestId('hero-title')).toContainText('مستخدم — اختبار الحفظ');
-    await page.goto('./#/me');
-    await expect(page.getByTestId('me-name')).toHaveText('مستخدم — اختبار الحفظ');
+    await page.goto('./#/account');
+    await expect(page.getByTestId('account-name')).toHaveValue('مستخدم — اختبار الحفظ');
 
     // Every screen opens offline
     for (const r of ROUTES) {

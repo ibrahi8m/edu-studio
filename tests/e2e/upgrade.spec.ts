@@ -26,6 +26,7 @@ const LEGACY7 = resolve('.legacy/0.7.0');
 const LEGACY8FIX = resolve('.legacy/0.8.0-fix');
 const LEGACY10 = resolve('.legacy/1.0.0');
 const LEGACY11 = resolve('.legacy/1.1.0');
+const LEGACY14 = resolve('.legacy/1.4.0');
 const CURRENT = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version as string;
 const FIXTURE_IMAGE = resolve('tests/fixtures/energy-diagram.png');
 
@@ -95,6 +96,20 @@ async function skipSplash(page: Page) {
   if (await s.isVisible().catch(() => false)) await page.getByRole('button', { name: 'تخطي' }).click();
 }
 
+/** 1.5.0: the old name is no longer shown (the greeting uses the signed-in account) but it is kept in the data. */
+async function storedNames(page: import('@playwright/test').Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const open = indexedDB.open('ibrahi8m-edu');
+    const db: IDBDatabase = await new Promise((ok) => (open.onsuccess = () => ok(open.result)));
+    const rows: { key: string; value: unknown }[] = await new Promise((ok) => {
+      const r = db.transaction('settings').objectStore('settings').getAll();
+      r.onsuccess = () => ok(r.result);
+    });
+    db.close();
+    return rows.filter((r) => r.key === 'userName' || r.key === 'ownerFullName').map((r) => String(r.value));
+  });
+}
+
 test.describe('Upgrades keep every record', () => {
   test.describe.configure({ mode: 'serial', timeout: 180_000 });
 
@@ -107,6 +122,7 @@ test.describe('Upgrades keep every record', () => {
     // 02f8d6f = 0.7.0 with its package.json restored (e9092d1 shipped a stripped one)
     execSync('node scripts/build-legacy.mjs 02f8d6f 0.7.0', { cwd: ROOT, stdio: 'inherit' });
     execSync('node scripts/build-legacy.mjs 32211f7 0.8.0-fix', { cwd: ROOT, stdio: 'inherit' });
+    execSync('node scripts/build-legacy.mjs 5034973 1.4.0', { cwd: ROOT, stdio: 'inherit' });
   });
 
   test('projects, lessons and settings created in 0.2.0 survive the update and open in the current lesson editor', async ({}, info) => {
@@ -167,9 +183,8 @@ test.describe('Upgrades keep every record', () => {
 
       // Settings from 0.2.0
       await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
-      // 1.1.0: the full name written in 0.2.0's settings is kept and becomes the name in «صفحتي».
-      await page.goto(`${ORIGIN}#/me`);
-      await expect(page.getByTestId('me-name')).toHaveText('إبراهيم — بيانات الإصدار 0.2.0');
+      // the full name written in 0.2.0's settings is kept in the data
+      expect(await storedNames(page)).toContain('إبراهيم — بيانات الإصدار 0.2.0');
 
       // Projects and lessons from 0.2.0
       await page.goto(`${ORIGIN}#/projects`);
@@ -746,8 +761,7 @@ test.describe('Upgrades keep every record', () => {
       await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
       await expect(page.locator('.kv dd[dir=ltr]').first()).toContainText('v8');
       // the 1.0.0 owner name becomes the profile name; About shows the fixed project information
-      await page.goto(`${ORIGIN}#/me`);
-      await expect(page.getByTestId('me-name')).toHaveText('اسم من 1.0.0');
+      expect(await storedNames(page)).toContain('اسم من 1.0.0');
       await page.goto(`${ORIGIN}#/about`);
       await expect(page.getByTestId('about-name')).toHaveText('إبراهيم سمير الخطيب');
       // the old project is published school content
@@ -818,6 +832,71 @@ test.describe('Upgrades keep every record', () => {
       expect(await page.evaluate(() => (window as unknown as { ibrahi8mAudio: { getState: () => { transport: string } } }).ibrahi8mAudio.getState().transport)).toBe('stopped');
       await page.goto(`${ORIGIN}#/ai-studio?tab=library`);
       await expect(page.getByTestId('ai-lib-item')).toContainText('برومبت من 1.1.0');
+      await ctx2.close();
+    } finally {
+      stop(server);
+      await waitForPort(true);
+    }
+  });
+
+  test('1.4.0 → 1.5.0: content, a prompt and the owner data survive; the updated app asks for the owner account first, then everything belongs to the admin', async ({}, info) => {
+    test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'one computer and one phone size');
+    test.setTimeout(240_000);
+    const profile = newProfileDir();
+    let server: ChildProcess | undefined;
+    try {
+      server = await serve(LEGACY14);
+      const ctx1 = await launchProfile(profile, info, { signedIn: false });
+      const p1 = ctx1.pages()[0] ?? (await ctx1.newPage());
+      await p1.goto(ORIGIN);
+      await p1.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+      await p1.reload();
+      await expect.poll(() => p1.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+      await skipSplash(p1);
+      await p1.goto(`${ORIGIN}#/settings`);
+      await expect(p1.locator('.kv dd[dir=ltr]').nth(1)).toHaveText('1.4.0');
+      await p1.goto(`${ORIGIN}#/projects`);
+      await p1.getByTestId('new-project').click();
+      await p1.getByTestId('project-title').fill('محتوى من 1.4.0');
+      await p1.getByTestId('project-save').click();
+      await expect(p1.getByTestId('page-project')).toBeVisible();
+      await p1.goto(`${ORIGIN}#/ai-studio`);
+      await p1.getByTestId('ai-idea').fill('olive tree');
+      await p1.getByTestId('ai-generate').click();
+      await p1.getByTestId('ai-title').fill('برومبت من 1.4.0');
+      await p1.getByTestId('ai-save').click();
+      await expect(p1.getByTestId('toast').last()).toContainText('حُفظ');
+      await ctx1.close();
+      stop(server);
+      await waitForPort(true);
+
+      server = await serve(ROOT);
+      const ctx2 = await launchProfile(profile, info, { signedIn: false });
+      const page = ctx2.pages()[0] ?? (await ctx2.newPage());
+      await page.goto(ORIGIN);
+      await skipSplash(page);
+      await expect(page.getByText('يتوفر إصدار أحدث من التطبيق.')).toBeVisible({ timeout: 30_000 });
+      await applyUpdateAndWait(page);
+      await skipSplash(page);
+      // 1.5.0: no account yet on this device → the owner creates the admin account first
+      await page.goto(`${ORIGIN}#/projects`);
+      await expect(page.getByTestId('page-setup')).toBeVisible({ timeout: 15_000 });
+      await page.getByTestId('setup-user').fill('owner');
+      await page.getByTestId('setup-password').fill('Owner-pass-2026');
+      await page.getByTestId('setup-password2').fill('Owner-pass-2026');
+      await page.getByTestId('setup-submit').click();
+      await page.getByTestId('setup-continue').click();
+      await page.goto(`${ORIGIN}#/settings`);
+      await expect(page.locator('.kv dd[dir=ltr]').nth(1)).toHaveText(CURRENT, { timeout: 15_000 });
+      await page.goto(`${ORIGIN}#/projects`);
+      await expect(page.getByTestId('project-card').filter({ hasText: 'محتوى من 1.4.0' })).toHaveCount(1);
+      await page.goto(`${ORIGIN}#/ai-studio?tab=library`);
+      await expect(page.getByTestId('ai-lib-item')).toContainText('برومبت من 1.4.0');
+      // the old prompt now ends with the 1.5.0 execute line when copied/opened
+      await page.getByTestId('ai-lib-open').first().click();
+      await expect(page.getByTestId('ai-prompt')).toHaveValue(/EXECUTE IMMEDIATELY: Generate the final image now/);
+      await page.goto(`${ORIGIN}#/me`);
+      await expect(page.getByTestId('owner-phone')).toHaveText('0592780728');
       await ctx2.close();
     } finally {
       stop(server);

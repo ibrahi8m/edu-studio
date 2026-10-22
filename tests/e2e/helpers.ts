@@ -11,7 +11,7 @@ export function newProfileDir() {
   return mkdtempSync(join(tmpdir(), 'ibrahi8m-profile-'));
 }
 
-export async function launchProfile(dir: string, info: TestInfo): Promise<BrowserContext> {
+export async function launchProfile(dir: string, info: TestInfo, opts: { signedIn?: boolean } = {}): Promise<BrowserContext> {
   const u = info.project.use;
   const ctx = await chromium.launchPersistentContext(dir, {
     viewport: u.viewport ?? undefined,
@@ -23,6 +23,7 @@ export async function launchProfile(dir: string, info: TestInfo): Promise<Browse
     locale: 'ar',
   });
   // 1.5.0: a real profile starts signed in as the test admin, once (later restarts keep their own state)
+  if (opts.signedIn === false) return ctx; // a real first run: no account on this profile
   const seed = JSON.parse(readFileSync(STATE, 'utf8')).origins[0].localStorage as { name: string; value: string }[];
   await ctx.addInitScript((items: { name: string; value: string }[]) => {
     if (!localStorage.getItem('ibrahi8m.accounts.v1')) for (const it of items) localStorage.setItem(it.name, it.value);
