@@ -14,7 +14,7 @@ import { assignmentState } from '../../learner/rules';
 import { STATE_TONE } from '../../learner/AssignmentPanel';
 import { ASSIGNMENT_STATE_LABEL, CONTENT_FOR, LEARNER_TYPE_LABEL, type AssignmentState, type LearnerProfile, type LearnerType, type Submission } from '../../learner/types';
 import type { ActivityBlock } from '../../lesson/types';
-import { useKnownStudents, useStudent } from '../../student/identity';
+import { useIsStudentAccount, useKnownStudents, useStudent } from '../../student/identity';
 import { useLearnData, type LearnData, type MyLesson, type MyQuiz } from '../../student/data';
 import { QuizRow } from '../../student/QuizRow';
 import { lessonSections } from '../../student/sections';
@@ -116,6 +116,7 @@ function WhoAreYou({ onChoose }: { onChoose: (n: string) => void }) {
 const pctLabel = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}٪` : '—');
 
 function LearnerHome({ name, onSwitch }: { name: string; onSwitch: () => void }) {
+  const isStudentAccount = useIsStudentAccount();
   const data = useLearnData(name);
   const [editing, setEditing] = useState(false);
   const type: LearnerType = data?.profile?.type ?? 'school';
@@ -123,9 +124,11 @@ function LearnerHome({ name, onSwitch }: { name: string; onSwitch: () => void })
     <main className="take-wrap" data-testid="page-learn">
       <div className="learn-hello">
         <h1 className="take-h1">أهلًا {name}</h1>
-        <button type="button" className="link-btn" onClick={onSwitch} data-testid="switch-student">
+        {!isStudentAccount && (
+          <button type="button" className="link-btn" onClick={onSwitch} data-testid="switch-student">
           لست {name}؟ غيّر الاسم
         </button>
+        )}
       </div>
       {data && <ProfileCard name={name} profile={data.profile} available={data.available} onEdit={() => setEditing(true)} />}
       {data && <ProgressDashboard data={data} />}

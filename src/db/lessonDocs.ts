@@ -1,3 +1,4 @@
+import { assertCanEdit } from '../auth/access';
 import { emptyDoc, normalizeDoc, referencedAssetIds } from '../lesson/model';
 import type { Asset, AssetKind, LessonDoc } from '../lesson/types';
 import type { EduDB, ItemStatus, Lesson } from './db';
@@ -45,6 +46,7 @@ export async function saveLessonEditor(
   return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs], async () => {
     const lesson = await database.lessons.get(lessonId);
     if (!lesson) throw new Error('الدرس غير موجود؛ ربما حُذف.');
+    assertCanEdit(await database.projects.get(lesson.projectId));
     const stored = await database.lessonDocs.get(lessonId);
     const storedRev = stored?.rev ?? 0;
     if (!opts.force && storedRev !== baseRev) throw new ConflictError(storedRev);

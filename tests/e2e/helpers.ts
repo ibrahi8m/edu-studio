@@ -1,5 +1,6 @@
 import { chromium, expect, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { STATE } from './auth-setup';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -12,7 +13,7 @@ export function newProfileDir() {
 
 export async function launchProfile(dir: string, info: TestInfo): Promise<BrowserContext> {
   const u = info.project.use;
-  return chromium.launchPersistentContext(dir, {
+  const ctx = await chromium.launchPersistentContext(dir, {
     viewport: u.viewport ?? undefined,
     deviceScaleFactor: u.deviceScaleFactor,
     isMobile: u.isMobile,
@@ -21,6 +22,12 @@ export async function launchProfile(dir: string, info: TestInfo): Promise<Browse
     baseURL: u.baseURL,
     locale: 'ar',
   });
+  // 1.5.0: a real profile starts signed in as the test admin, once (later restarts keep their own state)
+  const seed = JSON.parse(readFileSync(STATE, 'utf8')).origins[0].localStorage as { name: string; value: string }[];
+  await ctx.addInitScript((items: { name: string; value: string }[]) => {
+    if (!localStorage.getItem('ibrahi8m.accounts.v1')) for (const it of items) localStorage.setItem(it.name, it.value);
+  }, seed);
+  return ctx;
 }
 
 /** First visit online: installs the service worker and its precache, then reloads under its control. */

@@ -1,3 +1,4 @@
+import { getAuth } from '../auth/session';
 import type { EduDB } from '../db/db';
 import { newId } from '../db/ids';
 import { BUILTIN_BRANDS, EMPTY_INPUT, LOGO_PLACEMENTS } from './catalog';
@@ -62,6 +63,7 @@ export async function savePrompt(
     input: p.input,
     output: p.output,
     editedPrompt: (p.editedPrompt ?? '').slice(0, 12000),
+    ownerId: cur?.ownerId ?? getAuth().user?.id,
     createdAt: cur?.createdAt ?? now,
     updatedAt: now,
   };

@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // Strict Content-Security-Policy, injected only into the production build
 // (the dev server needs inline scripts for hot reload).
-// connect-src 'self' means the app physically cannot call an external API.
+// connect-src: the app itself, plus (1.5.0) only the owner's Supabase project for optional cloud accounts.
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
@@ -12,7 +12,8 @@ const CSP = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "media-src 'self' blob:",
-  "connect-src 'self'",
+  // 1.5.0: + the owner's Supabase project, called only for «حساب سحابي» (cloud accounts)
+  "connect-src 'self' https://wqhyubqoxqlcefwqnpwq.supabase.co",
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",

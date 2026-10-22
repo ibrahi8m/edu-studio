@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import { CURRENT_PHASE, GROUP_LABEL, NAV, type NavGroup } from '../app/nav';
+import { CURRENT_PHASE, GROUP_LABEL, useNav, type NavGroup } from '../app/nav';
 import { PageHeader, PhaseBadge } from '../components/ui';
 
 const GROUPS: NavGroup[] = ['authoring', 'delivery', 'management'];
 
 export function More() {
+  const nav = useNav();
   return (
     <div className="page" data-testid="page-more">
       <PageHeader title="كل الوحدات" />
@@ -13,7 +14,7 @@ export function More() {
         <section key={g} className="more-group">
           <h2 className="section-title">{GROUP_LABEL[g]}</h2>
           <ul className="more-list">
-            {NAV.filter((n) => n.group === g).map((n) => {
+            {nav.filter((n) => n.group === g).map((n) => {
               const Icon = n.icon;
               return (
                 <li key={n.path}>

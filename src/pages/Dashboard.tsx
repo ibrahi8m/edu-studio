@@ -6,8 +6,7 @@ import { LessonRow, ProjectCard } from '../components/ProjectBits';
 import type { Project } from '../db/db';
 import { CURRENT_PHASE, NAV, PHASES } from '../app/nav';
 import { OFFLINE_LABEL, useOnline, useRuntime } from '../app/runtime';
-import { useSettings } from '../app/SettingsContext';
-import { displayName } from '../db/settings';
+import { useAuth } from '../auth/session';
 import { Portrait, Wordmark } from '../components/Brand';
 import { Card, PhaseBadge, Pill } from '../components/ui';
 import { formatBytes, getStorageInfo, type StorageInfo } from '../db/storage';
@@ -23,7 +22,7 @@ function greeting(): string {
 }
 
 export function Dashboard() {
-  const { settings } = useSettings();
+  const authUser = useAuth().user;
   const online = useOnline();
   const { offline } = useRuntime();
   const [storage, setStorage] = useState<StorageInfo | null>(null);
@@ -59,16 +58,8 @@ export function Dashboard() {
           <p className="hero-date">{today}</p>
           <h1 className="hero-title" data-testid="hero-title">
             {greeting()}
-            {displayName(settings) ? `، ${displayName(settings)}` : ''}
+            {authUser ? `، ${authUser.displayName}` : ''}
           </h1>
-          {!displayName(settings) && (
-            <p className="hero-sub">
-              <Link to="/me" data-testid="hero-add-name">
-                اكتب اسمك في «صاحب المشروع»
-              </Link>{' '}
-              ليظهر هنا.
-            </p>
-          )}
           <p className="hero-sub">
             مرحبًا بك في{' '}
             <span dir="ltr" className="ltr-run">

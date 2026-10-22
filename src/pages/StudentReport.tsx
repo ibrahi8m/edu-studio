@@ -1,3 +1,5 @@
+import { useAuth } from '../auth/session';
+import { canSeeProject } from '../auth/access';
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -19,14 +21,20 @@ import { Bar, BloomBars, levelFn, pct, when } from './Results';
 export function StudentReport() {
   const { studentKey: raw } = useParams();
   const key = raw ? decodeURIComponent(raw) : '';
+  const authUser = useAuth().user;
   const data = useLiveQuery(async () => {
-    const [attempts, quizzes, progress, lessons, projects] = await Promise.all([
+    const [allAttempts, quizzes, allProgress, lessons, allProjects] = await Promise.all([
       db.attempts.filter((a) => a.studentKey === key && !a.preview).toArray(),
       db.quizzes.toArray(),
       db.progress.where('studentKey').equals(key).toArray(),
       db.lessons.toArray(),
       db.projects.toArray(),
     ]);
+    // 1.5.0: a teacher sees this learner's work in their own content only
+    const projects = allProjects.filter((p) => canSeeProject(p, authUser));
+    const ok = new Set(projects.map((p) => p.id));
+    const attempts = allAttempts.filter((a) => ok.has(a.quiz.projectId));
+    const progress = allProgress.filter((p) => ok.has(p.projectId));
     const qs = new Map(quizzes.map(normalizeQuiz).filter((q): q is Quiz => !!q).map((q) => [q.id, q]));
     const projectIds = [...new Set([...attempts.map((a) => a.quiz.projectId), ...progress.map((p) => p.projectId)])];
     const refs = (await Promise.all(projectIds.map((pid) => objectivesFor(db, pid, null)))).flat();
@@ -41,7 +49,7 @@ export function StudentReport() {
       .filter((x): x is NonNullable<typeof x> => !!x)
       .sort((a, b) => b.p.updatedAt - a.p.updatedAt);
     return { attempts, qs, objMap, lessonRows };
-  }, [key]);
+  }, [key, authUser?.id, authUser?.role]);
 
   const rows = useMemo(() => (data ? studentQuizRows(data.attempts, (id) => data.qs.get(id)?.settings.scorePolicy ?? 'best').sort((a, b) => b.lastAt - a.lastAt) : []), [data]);
   const counted = rows.map((r) => r.counted!).filter(Boolean);

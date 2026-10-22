@@ -2,17 +2,19 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LayoutGrid, RefreshCw, UserRound, WifiOff, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { BrandLockup } from './Brand';
-import { displayName } from '../db/settings';
 import { ThemeButton } from '../app/ThemeButton';
 import { SoundButton, useSfx } from '../audio/AudioControl';
-import { GROUP_LABEL, NAV, type NavGroup } from '../app/nav';
+import { GROUP_LABEL, useNav, type NavGroup } from '../app/nav';
+import { useAuth } from '../auth/session';
+import { ROLE_LABEL } from '../auth/types';
 import { applyPendingUpdate, dismissUpdate, useOnline, useRuntime } from '../app/runtime';
 import { useSettings } from '../app/SettingsContext';
 
 const GROUPS: NavGroup[] = ['main', 'authoring', 'delivery', 'management'];
 
 function Sidebar() {
-  const { settings } = useSettings();
+  const nav = useNav();
+  const { user } = useAuth();
   return (
     <aside className="sidebar" aria-label="القائمة الرئيسية">
       <div className="sidebar-brand">
@@ -26,7 +28,7 @@ function Sidebar() {
         {GROUPS.map((g) => (
           <div key={g} className="nav-group">
             {GROUP_LABEL[g] && <div className="nav-group-label">{GROUP_LABEL[g]}</div>}
-            {NAV.filter((n) => n.group === g).map((n) => {
+            {nav.filter((n) => n.group === g).map((n) => {
               const Icon = n.icon;
               return (
                 <NavLink key={n.path} to={n.path} end={n.path === '/'} className="nav-link" title={n.label}>
@@ -38,11 +40,11 @@ function Sidebar() {
           </div>
         ))}
       </nav>
-      <NavLink to="/me" className="sidebar-owner" title="صاحب المشروع" data-testid="user-card">
-        <UserAvatar name={displayName(settings)} />
+      <NavLink to="/account" className="sidebar-owner" title="حسابي" data-testid="user-card">
+        <UserAvatar name={user?.displayName ?? ''} />
         <span className="sidebar-owner-text">
-          <strong data-testid="user-card-name">{displayName(settings) || 'أضف اسمك'}</strong>
-          <span>{settings.userRole || 'صاحب المشروع'}</span>
+          <strong data-testid="user-card-name">{user?.displayName ?? ''}</strong>
+          <span data-testid="user-card-role">{user ? ROLE_LABEL[user.role] : ''}</span>
         </span>
       </NavLink>
     </aside>
@@ -66,7 +68,7 @@ export function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 
 
 function MobileTopBar() {
   const online = useOnline();
-  const { settings } = useSettings();
+  const { user } = useAuth();
   return (
     <header className="mobile-topbar">
       <BrandLockup compact />
@@ -79,8 +81,8 @@ function MobileTopBar() {
             <span className="sr-only">دون اتصال</span>
           </span>
         )}
-        <NavLink to="/me" className="mobile-avatar" aria-label={`صاحب المشروع${displayName(settings) ? `: ${displayName(settings)}` : ''}`}>
-          <UserAvatar name={displayName(settings)} />
+        <NavLink to="/account" className="mobile-avatar" aria-label={`حسابي${user ? `: ${user.displayName}` : ''}`} data-testid="mobile-account">
+          <UserAvatar name={user?.displayName ?? ''} />
         </NavLink>
       </div>
     </header>
@@ -89,7 +91,7 @@ function MobileTopBar() {
 
 function BottomNav() {
   const { pathname } = useLocation();
-  const primary = NAV.filter((n) => n.mobilePrimary);
+  const primary = useNav().filter((n) => n.mobilePrimary);
   const inMore = !primary.some((n) => (n.path === '/' ? pathname === '/' : pathname.startsWith(n.path)));
   return (
     <nav className="bottom-nav" aria-label="التنقل السريع">

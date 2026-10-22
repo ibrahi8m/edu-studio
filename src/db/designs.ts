@@ -1,3 +1,4 @@
+import { assertCanEdit } from '../auth/access';
 import { newId } from './ids';
 import { newBlock, normalizeDoc } from '../lesson/model';
 import type { ImageBlock } from '../lesson/types';
@@ -13,7 +14,9 @@ export class DesignConflictError extends Error {
 }
 
 async function checkLinks(database: EduDB, projectId: string, lessonId: string | null) {
-  if (!(await database.projects.get(projectId))) throw new Error('المشروع غير موجود.');
+  const project = await database.projects.get(projectId);
+  if (!project) throw new Error('المشروع غير موجود.');
+  assertCanEdit(project); // 1.5.0
   if (lessonId) {
     const l = await database.lessons.get(lessonId);
     if (!l || l.projectId !== projectId) throw new Error('الدرس المختار لا ينتمي إلى هذا المشروع.');

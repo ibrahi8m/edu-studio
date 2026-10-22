@@ -1,3 +1,4 @@
+import { useAuth } from '../auth/session';
 import { useEffect, useId, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -115,7 +116,9 @@ export function AiStudioPage() {
     ) ?? "create";
   const setTab = (t: Tab) =>
     setParams(t === "create" ? {} : { tab: t }, { replace: true });
-  const prompts = useLiveQuery(() => db.prompts.toArray(), []);
+  const authUser = useAuth().user;
+  // 1.5.0: each account sees the prompts it saved; the admin sees all (older prompts belong to the admin)
+  const prompts = useLiveQuery(async () => (await db.prompts.toArray()).filter((p) => authUser?.role === 'admin' || (!!authUser && p.ownerId === authUser.id)), [authUser?.id, authUser?.role]);
   const brands = useLiveQuery(() => listBrands(db), []);
   const [loaded, setLoaded] = useState<SavedPrompt | null>(null);
 

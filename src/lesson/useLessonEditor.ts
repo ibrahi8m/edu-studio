@@ -1,3 +1,6 @@
+import { canEditProject } from '../auth/access';
+import { getAuth } from '../auth/session';
+import { hasAccounts } from '../auth/local';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { db, type Lesson, type Project } from '../db/db';
 import { ConflictError, deleteUnusedAssets, loadLessonDoc, saveLessonEditor, type LessonMeta } from '../db/lessonDocs';
@@ -47,6 +50,10 @@ export function useLessonEditor(lessonId: string | undefined) {
     const l = await db.lessons.get(lessonId);
     if (!l) {
       setStatus({ kind: 'missing' });
+      return;
+    }
+    if (!canEditProject(await db.projects.get(l.projectId), getAuth().user) && hasAccounts()) {
+      setStatus({ kind: 'missing' }); // 1.5.0: another teacher's lesson is not opened
       return;
     }
     // Media left behind by deleted blocks in earlier sessions.

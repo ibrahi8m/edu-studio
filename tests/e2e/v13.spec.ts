@@ -7,16 +7,18 @@ import { disableSplash, isPhone } from './quiz-helpers';
 
 const MARK = 'MANDATORY BRAND LOGO:';
 // 1.4.0: the block is self-contained (pasted into ChatGPT): it carries the full specification, not a file name
+// 1.5.0 wording: described, no file request, and the owner's EXECUTE IMMEDIATELY line last
 const CORE = [
-  "Include the owner's original official IBRAHI8M brand logo in the final design.",
+  'Draw the IBRAHI8M brand logo described below into the design yourself.',
   'The logo is a required element and must never be omitted.',
-  'No logo file is attached to this prompt: reproduce the logo exactly from the specification below.',
-  'Do not redraw it in another style, reinterpret, distort, crop, recolor, simplify, or replace the logo',
+  'do not ask for a logo file, an upload or any confirmation',
+  'do not restyle, distort, crop, recolor, or simplify it',
   'Keep it unobstructed and readable',
   'LOGO SPECIFICATION:',
   'I-B-R-A-H-I-8-M',
   '#2F7BFF',
   '#0E1014',
+  'EXECUTE IMMEDIATELY: Generate the final image now',
 ];
 const FX = (f: string) => fileURLToPath(new URL(`../fixtures/${f}`, import.meta.url));
 const heavy = (name: string) => ['desktop-1440', 'phone-pixel-7'].includes(name);

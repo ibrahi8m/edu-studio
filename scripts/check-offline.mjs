@@ -25,6 +25,10 @@ export const NON_FETCHED = [
   /^https:\/\/bit\.ly\/wb-precache$/, // Workbox console.warn text
 ];
 
+// 1.5.0: the only online service the app may call — the owner's Supabase project, used ONLY when someone
+// chooses «حساب سحابي» at sign-in. Everything else still works offline. Also allowed by the CSP (vite.config.ts).
+export const ALLOWED_SERVICES = [/^https:\/\/wqhyubqoxqlcefwqnpwq\.supabase\.co([/;]|$)/];
+
 const URL_RE = /https?:\/\/[^\s"'`)<>\\]+/g;
 
 function walk(dir) {
@@ -40,6 +44,7 @@ export function findExternalUrls(text) {
     const url = m[0];
     if (/^https?:\/\/(localhost|127\.0\.0\.1)/.test(url)) continue;
     if (NON_FETCHED.some((re) => re.test(url))) continue;
+    if (ALLOWED_SERVICES.some((re) => re.test(url))) continue;
     out.push(url);
   }
   return out;
@@ -61,5 +66,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     for (const p of problems) console.error('  ' + p);
     process.exit(1);
   }
-  console.log(`✓ offline check passed: ${files.length} files scanned, no external references.`);
+  console.log(`✓ offline check passed: ${files.length} files scanned, no external references (the optional cloud-account service is the only allowed one).`);
 }

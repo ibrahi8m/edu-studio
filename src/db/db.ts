@@ -56,6 +56,8 @@ export interface Project {
   published?: boolean;
   /** 1.1.0+: the fields specific to the kind (semester, degree, target teachers…). */
   details?: Record<string, string>;
+  /** 1.5.0+: the account that created it (teachers see and change only their own). Missing = the admin's. */
+  ownerId?: string;
 }
 
 export type ProjectColor = 'blue' | 'silver' | 'teal' | 'violet' | 'amber';

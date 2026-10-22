@@ -1,3 +1,5 @@
+import { useAuth } from '../auth/session';
+import { canSeeProject } from '../auth/access';
 import { DemoBadge } from '../demo/DemoUI';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -187,7 +189,11 @@ export function ObjectiveBars({ stats, map, testId }: { stats: ObjectiveStat[]; 
 
 export function QuizResults() {
   const { quizId } = useParams();
-  const quiz = useLiveQuery(async () => (quizId ? loadQuiz(db, quizId) : null), [quizId]);
+  const authUser = useAuth().user;
+  const quiz = useLiveQuery(async () => {
+    const q = quizId ? await loadQuiz(db, quizId) : null;
+    return q && canSeeProject(await db.projects.get(q.projectId), authUser) ? q : null; // 1.5.0
+  }, [quizId, authUser?.id, authUser?.role]);
   const attempts = useQuizAttempts(quizId);
   const objMap = useObjectiveMap(quiz?.projectId, quiz?.lessonId);
   const toast = useToast();
@@ -404,7 +410,11 @@ export function QuizResults() {
 
 export function AttemptDetail() {
   const { quizId, attemptId } = useParams();
-  const attempt = useLiveQuery(async () => (attemptId ? ((await db.attempts.get(attemptId)) ?? null) : null), [attemptId]);
+  const authUser = useAuth().user;
+  const attempt = useLiveQuery(async () => {
+    const a = attemptId ? ((await db.attempts.get(attemptId)) ?? null) : null;
+    return a && canSeeProject(await db.projects.get(a.quiz.projectId), authUser) ? a : null; // 1.5.0
+  }, [attemptId, authUser?.id, authUser?.role]);
   const objMap = useObjectiveMap(attempt?.quiz.projectId, attempt?.quiz.lessonId);
   const navigate = useNavigate();
   const toast = useToast();

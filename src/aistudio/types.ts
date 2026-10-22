@@ -42,6 +42,8 @@ export interface PromptOutput {
 }
 
 export interface SavedPrompt {
+  /** 1.5.0: the account that saved it (each account sees its own; the admin sees all). */
+  ownerId?: string;
   id: string;
   title: string;
   type: string;

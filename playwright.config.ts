@@ -9,11 +9,13 @@ const PORT = 4174;
 
 export default defineConfig({
   testDir: 'tests/e2e',
+  // 1.5.0: every test starts signed in as a test admin (see tests/e2e/auth-setup.ts)
+  globalSetup: './tests/e2e/auth-setup.ts',
   timeout: 90_000,
   fullyParallel: false,
   workers: 1,
   reporter: [['list'], ['json', { outputFile: 'test-results/e2e-results.json' }]],
-  use: { baseURL: `http://localhost:${PORT}/`, trace: 'retain-on-failure', actionTimeout: 15_000 },
+  use: { baseURL: `http://localhost:${PORT}/`, trace: 'retain-on-failure', actionTimeout: 15_000, storageState: 'tests/e2e/.auth/admin.json' },
   webServer: {
     command: `npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,

@@ -1,3 +1,4 @@
+import { hasRole, useAuth } from '../auth/session';
 import { useEffect, useId, useState } from 'react';
 import { Briefcase, FileUser, GraduationCap, Languages, Pencil, Plus, Printer, RotateCcw, Save, Trash2, UserRound, Wrench, X } from 'lucide-react';
 import { useSettings } from '../app/SettingsContext';
@@ -6,7 +7,7 @@ import { errorMessage } from '../app/data';
 import { UserAvatar } from '../components/AppShell';
 import { ConfirmDialog } from '../components/Dialog';
 import { Card, PageHeader } from '../components/ui';
-import { DEFAULT_CV, displayName, NOT_SET, type CvData, type Settings } from '../db/settings';
+import { DEFAULT_CV, NOT_SET, type CvData } from '../db/settings';
 
 /**
  * «صاحب المشروع» (1.5.0; «صفحتي» before): the owner (admin) of the project — contact data and CV.
@@ -14,70 +15,35 @@ import { DEFAULT_CV, displayName, NOT_SET, type CvData, type Settings } from '..
  */
 export function MePage() {
   const { settings } = useSettings();
-  const name = displayName(settings);
   return (
     <div className="page" data-testid="page-me">
       <div className="no-print">
         <PageHeader title="صاحب المشروع" subtitle="إبراهيم سمير محمود الخطيب: صاحب المشروع ومديره. البيانات والسيرة الذاتية محفوظة على هذا الجهاز، ولا تُنشر في أي مكان." />
-        <Card title="الملف الشخصي" icon={UserRound} testId="profile-card">
+        <Card title="بيانات صاحب المشروع" icon={UserRound} testId="owner-card">
           <div className="profile-head">
-            <UserAvatar name={name} size="lg" />
+            <UserAvatar name={settings.cv.name} size="lg" />
             <div>
-              <strong className="profile-name" data-testid="me-name">
-                {name || 'لم تكتب اسمك بعد'}
+              <strong className="profile-name" data-testid="owner-name">
+                {settings.cv.name}
               </strong>
-              <span className="muted">{[settings.userRole, settings.userOrganization].filter(Boolean).join(' · ') || 'يظهر اسمك في الترحيب وبطاقة المستخدم.'}</span>
+              <span className="muted">صاحب المشروع ومديره (حساب الأدمن)</span>
             </div>
           </div>
-          <div className="field-grid">
-            <ProfileField k="userName" label="الاسم (يظهر في الترحيب)" placeholder="اكتب اسمك" max={80} />
-            <ProfileField k="userRole" label="الصفة" placeholder="مثل: معلم، أو طالب ماجستير" max={80} />
-            <ProfileField k="userOrganization" label="المؤسسة" placeholder="مثل: اسم المدرسة أو الجامعة" max={160} />
-          </div>
+          <dl className="owner-dl" data-testid="owner-contact">
+            <dt>الهاتف</dt>
+            <dd dir="ltr" data-testid="owner-phone">
+              {settings.cv.phone}
+            </dd>
+            <dt>البريد الإلكتروني</dt>
+            <dd dir="ltr" data-testid="owner-email">
+              {settings.cv.email}
+            </dd>
+            <dt>اللغة الإنجليزية</dt>
+            <dd data-testid="owner-english">{settings.cv.languages.find((l) => l.name.trim() === 'الإنجليزية')?.level || '—'}</dd>
+          </dl>
         </Card>
       </div>
       <CvSection />
-    </div>
-  );
-}
-
-function ProfileField({ k, label, placeholder, max }: { k: 'userName' | 'userRole' | 'userOrganization'; label: string; placeholder: string; max: number }) {
-  const { settings, update } = useSettings();
-  const toast = useToast();
-  const id = useId();
-  const [value, setValue] = useState(settings[k]);
-  const [saved, setSaved] = useState(false);
-  // For data from before 1.1.0, the name field starts from the full name written in the old settings.
-  const current = k === 'userName' ? displayName(settings) : settings[k];
-  useEffect(() => setValue(current), [current]);
-  return (
-    <div className="field">
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      <input
-        id={id}
-        className="input"
-        value={value}
-        placeholder={placeholder}
-        maxLength={max}
-        data-testid={`profile-${k}`}
-        onChange={(e) => {
-          setValue(e.target.value);
-          setSaved(false);
-        }}
-        onBlur={async () => {
-          const v = value.trim();
-          if (v === settings[k]) return;
-          try {
-            await update(k, v as Settings[typeof k]);
-            setSaved(true);
-          } catch (e) {
-            toast({ message: `تعذّر الحفظ: ${errorMessage(e)}`, tone: 'danger' });
-          }
-        }}
-      />
-      {saved && <span className="field-hint ok">تم الحفظ</span>}
     </div>
   );
 }
@@ -95,7 +61,13 @@ const LISTS: { key: 'education' | 'experience' | 'courses' | 'techSkills' | 'pro
 const isUnset = (v: string) => !v.trim() || v.trim() === NOT_SET;
 
 function CvSection() {
-  const { settings, update } = useSettings();
+  const { settings, update: rawUpdate } = useSettings();
+  // 1.5.0: only the admin (the owner) edits this page; the check is repeated at save time
+  const isAdmin = useAuth().user?.role === 'admin';
+  const update: typeof rawUpdate = async (k, v) => {
+    if (!hasRole('admin')) throw new Error('تعديل صفحة صاحب المشروع متاح للأدمن فقط.');
+    return rawUpdate(k, v);
+  };
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<CvData>(settings.cv);
@@ -144,15 +116,19 @@ function CvSection() {
             </>
           ) : (
             <>
-              <button type="button" className="btn btn-sm" onClick={() => setEditing(true)} data-testid="cv-edit">
-                <Pencil size={16} aria-hidden="true" /> تعديل
-              </button>
+              {isAdmin && (
+                <button type="button" className="btn btn-sm" onClick={() => setEditing(true)} data-testid="cv-edit">
+                  <Pencil size={16} aria-hidden="true" /> تعديل
+                </button>
+              )}
               <button type="button" className="btn btn-sm" onClick={() => window.print()} data-testid="cv-print">
                 <Printer size={16} aria-hidden="true" /> طباعة أو حفظ PDF
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmReset(true)} data-testid="cv-reset">
-                <RotateCcw size={16} aria-hidden="true" /> البيانات الأصلية
-              </button>
+              {isAdmin && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmReset(true)} data-testid="cv-reset">
+                  <RotateCcw size={16} aria-hidden="true" /> البيانات الأصلية
+                </button>
+              )}
             </>
           )}
         </div>

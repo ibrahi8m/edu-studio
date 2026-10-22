@@ -1,3 +1,4 @@
+import { assertCanEdit } from '../auth/access';
 import { objectiveStatement } from '../lesson/bloom';
 import { normalizeDoc } from '../lesson/model';
 import type { BloomLevel, Objective } from '../lesson/types';
@@ -22,7 +23,9 @@ export class AttemptLimitError extends Error {
 /* ───────── quizzes ───────── */
 
 async function checkLinks(database: EduDB, projectId: string, lessonId: string | null) {
-  if (!(await database.projects.get(projectId))) throw new Error('المشروع غير موجود.');
+  const project = await database.projects.get(projectId);
+  if (!project) throw new Error('المشروع غير موجود.');
+  assertCanEdit(project); // 1.5.0: a teacher writes only in their own content
   if (lessonId) {
     const l = await database.lessons.get(lessonId);
     if (!l || l.projectId !== projectId) throw new Error('الدرس المختار لا ينتمي إلى هذا المشروع.');
@@ -70,9 +73,10 @@ export interface QuizSnapshot {
 }
 
 export async function deleteQuiz(database: EduDB, id: string): Promise<QuizSnapshot> {
-  return database.transaction('rw', [database.quizzes, database.attempts], async () => {
+  return database.transaction('rw', [database.projects, database.quizzes, database.attempts], async () => {
     const quiz = await database.quizzes.get(id);
     if (!quiz) throw new Error('الاختبار غير موجود.');
+    assertCanEdit(await database.projects.get(quiz.projectId));
     const attempts = await database.attempts.where('quizId').equals(id).toArray();
     await database.attempts.where('quizId').equals(id).delete();
     await database.quizzes.delete(id);
@@ -82,7 +86,9 @@ export async function deleteQuiz(database: EduDB, id: string): Promise<QuizSnaps
 
 export async function restoreQuiz(database: EduDB, snap: QuizSnapshot): Promise<void> {
   await database.transaction('rw', [database.projects, database.quizzes, database.attempts], async () => {
-    if (!(await database.projects.get(snap.quiz.projectId))) throw new Error('المشروع الأصلي لم يعد موجودًا.');
+    const project = await database.projects.get(snap.quiz.projectId);
+    if (!project) throw new Error('المشروع الأصلي لم يعد موجودًا.');
+    assertCanEdit(project);
     await database.quizzes.put(snap.quiz);
     if (snap.attempts.length) await database.attempts.bulkPut(snap.attempts);
   });
@@ -145,7 +151,7 @@ export async function findOpenAttempt(database: EduDB, quizId: string, name: str
 export async function startAttempt(database: EduDB, quizId: string, name: string, opts: { preview?: boolean; now?: number } = {}): Promise<Attempt> {
   const preview = !!opts.preview;
   if (!name.trim()) throw new ValidationError({ title: 'اكتب اسم الطالب.' });
-  return database.transaction('rw', [database.quizzes, database.attempts], async () => {
+  return database.transaction('rw', [database.projects, database.quizzes, database.attempts], async () => {
     const quiz = normalizeQuiz(await database.quizzes.get(quizId));
     if (!quiz) throw new Error('الاختبار غير موجود.');
     if (!preview) {

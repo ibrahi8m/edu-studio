@@ -1,3 +1,6 @@
+import { canEditProject } from '../auth/access';
+import { getAuth } from '../auth/session';
+import { hasAccounts } from '../auth/local';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { db, type Project } from '../db/db';
 import { ValidationError } from '../db/projects';
@@ -35,6 +38,10 @@ export function useQuizEditor(quizId: string | undefined) {
       return;
     }
     const p = await db.projects.get(q.projectId);
+    if (!canEditProject(p, getAuth().user) && hasAccounts()) {
+      setStatus({ kind: 'missing' }); // 1.5.0: another teacher's quiz is not opened
+      return;
+    }
     baseRev.current = q.rev;
     lastSavedAt.current = q.rev > 0 ? q.updatedAt : null;
     latest.current = q;

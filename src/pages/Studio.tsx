@@ -1,3 +1,5 @@
+import { useAuth } from '../auth/session';
+import { canSeeProject } from '../auth/access';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -20,7 +22,11 @@ export const KIND_ICON = { cards: SquareStack, summary: LayoutGrid, conceptmap: 
 const KINDS: DesignKind[] = ['conceptmap', 'summary', 'cards'];
 
 export function useAllDesigns(): Design[] | undefined {
-  return useLiveQuery(async () => (await db.designs.toArray()).map(normalizeDesign).filter((d): d is Design => !!d), []);
+  const user = useAuth().user;
+  return useLiveQuery(async () => {
+    const ok = new Set((await db.projects.toArray()).filter((p) => canSeeProject(p, user)).map((p) => p.id)); // 1.5.0
+    return (await db.designs.toArray()).map(normalizeDesign).filter((d): d is Design => !!d && ok.has(d.projectId));
+  }, [user?.id, user?.role]);
 }
 
 export function StudioPage() {

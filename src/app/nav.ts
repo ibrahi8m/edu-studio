@@ -12,8 +12,12 @@ import {
   Sparkles,
   UserRound,
   IdCard,
+  UsersRound,
+  KeyRound,
   type LucideIcon,
 } from 'lucide-react';
+import { useAuth } from '../auth/session';
+import { canAccess } from '../auth/types';
 
 export type NavGroup = 'main' | 'authoring' | 'delivery' | 'management';
 
@@ -43,7 +47,15 @@ export const NAV: NavItem[] = [
   { path: '/me', label: 'صاحب المشروع', short: 'صاحب المشروع', icon: IdCard, group: 'management', phase: 9 },
   { path: '/settings', label: 'الإعدادات', short: 'الإعدادات', icon: Settings, group: 'management', phase: 0 },
   { path: '/about', label: 'عن المشروع', short: 'عن المشروع', icon: UserRound, group: 'management', phase: 0 },
+  { path: '/users', label: 'المستخدمون والصلاحيات', short: 'المستخدمون', icon: UsersRound, group: 'management', phase: 9 },
+  { path: '/account', label: 'حسابي', short: 'حسابي', icon: KeyRound, group: 'management', phase: 9 },
 ];
+
+/** 1.5.0: the navigation a role may see (the route guard checks the same rule). */
+export function useNav(): NavItem[] {
+  const role = useAuth().user?.role;
+  return role ? NAV.filter((n) => canAccess(role, n.path)) : [];
+}
 
 export const GROUP_LABEL: Record<NavGroup, string> = {
   main: '',

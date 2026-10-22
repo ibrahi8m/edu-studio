@@ -41,15 +41,13 @@ test('About shows exactly the fixed project information; the greeting uses the p
   await expect(rows.locator('dt')).toHaveText(['البرنامج الأكاديمي', 'المساق', 'الجامعة', 'أستاذ المساق']);
   await expect(rows.locator('dd')).toHaveText(['ماجستير المناهج وطرق التدريس', 'تصميم المحتوى الرقمي', 'الجامعة الإسلامية – كلية التربية', 'أ.د. مجدي عقل']);
 
-  // No built-in user name: the dashboard greets without a name until the user writes it in «صفحتي».
+  // 1.5.0: the greeting and the user card show the SIGNED-IN account's name (here the test admin), never a built-in one.
   await page.goto('./');
   await expect(page.getByTestId('hero-title')).not.toContainText('إبراهيم');
-  await expect(page.getByTestId('hero-add-name')).toBeVisible();
-  await page.goto('./#/me');
-  await page.getByTestId('profile-userName').fill('سارة أحمد');
-  await page.getByTestId('profile-userRole').fill('معلمة علوم');
-  await page.getByTestId('profile-userRole').blur();
-  await expect(page.getByText('تم الحفظ').first()).toBeVisible();
+  await expect(page.getByTestId('hero-title')).toContainText('مدير الاختبار');
+  await page.goto('./#/account');
+  await page.getByTestId('account-name').fill('سارة أحمد');
+  await page.getByTestId('account-name-save').click();
   await page.goto('./');
   await expect(page.getByTestId('hero-title')).toContainText('سارة أحمد');
   if (!isPhone(test.info().project.name) && test.info().project.name !== 'tablet-ipad-mini') {
@@ -67,7 +65,7 @@ test('About shows exactly the fixed project information; the greeting uses the p
   await expect(page.getByTestId('page-more')).toContainText('المحتوى التعليمي');
   await expect(page.getByTestId('page-more')).toContainText('بيئة المتعلم');
   await expect(page.getByTestId('page-more')).toContainText('IBRAHI8M AI Design Studio');
-  await expect(page.getByTestId('page-more')).toContainText('صفحتي');
+  await expect(page.getByTestId('page-more')).toContainText('صاحب المشروع'); // renamed in 1.5.0
   await chooseStudent(page, 'زائر');
   await expect(page.getByTestId('student-shell')).toContainText('بيئة المتعلم');
   for (const r of ['', 'projects', 'learn', 'results', 'about', 'me', 'ai-studio', 'more']) {
@@ -329,7 +327,7 @@ test('trainee teacher profile: own fields, assigned programs only', async ({ pag
 
 /* ───────── «صفحتي»: CV ───────── */
 
-test('«صفحتي»: the CV shows the given data exactly, edits persist, prints alone, resets to the original', async ({ page }) => {
+test('«صاحب المشروع» (was «صفحتي»): the CV shows the given data exactly, edits persist, prints alone, resets to the original', async ({ page }) => {
   await disableSplash(page);
   await page.goto('./#/me');
   const cv = page.getByTestId('cv-sheet');
@@ -337,14 +335,18 @@ test('«صفحتي»: the CV shows the given data exactly, edits persist, prints
   await expect(cv).toContainText('إعلامي | مصمم وسائط متعددة | صانع محتوى رقمي | منسق مشاريع');
   await expect(cv).toContainText('خان يونس – قطاع غزة، فلسطين');
   await expect(cv).toContainText('2002');
-  await expect(cv.locator('.cv-contact dd')).toContainText(['خان يونس – قطاع غزة، فلسطين', '2002', 'غير محدد حاليًا', 'غير محدد حاليًا']);
+  // 1.5.0: the owner's phone and e-mail (given in the 1.5.0 order) replace «غير محدد حاليًا»
+  await expect(cv.locator('.cv-contact dd')).toContainText(['خان يونس – قطاع غزة، فلسطين', '2002', '0592780728', 'ibrahimyasf@gmail.com']);
   await expect(page.getByTestId('cv-education').locator('li')).toHaveText(['ماجستير المناهج وطرق التدريس – الجامعة الإسلامية، كلية التربية', 'بكالوريوس الوسائط المتعددة – الكلية الجامعية للعلوم والتكنولوجيا']);
   await expect(page.getByTestId('cv-experience').locator('li')).toHaveText(['إعلامي – جمعية واحة الأمل', 'إعلامي – مؤسسة سنابل', 'مصمم وسائط متعددة وصانع محتوى رقمي – عمل حر']);
   await expect(page.getByTestId('cv-techSkills').locator('li')).toHaveCount(6);
   await expect(page.getByTestId('cv-proSkills').locator('li')).toHaveCount(8);
   await expect(page.getByTestId('cv-courses')).toContainText('Golden House');
   await expect(page.getByTestId('cv-languages')).toContainText('العربية: اللغة الأم');
-  await expect(cv).toContainText('متاحة عند الطلب');
+  // 1.5.0: no «المراجع» section any more
+  await expect(cv.getByRole('heading', { name: 'المراجع' })).toHaveCount(0);
+  await expect(cv).not.toContainText('متاحة عند الطلب');
+  await expect(page.getByTestId('cv-languages')).toContainText('الإنجليزية: جيد');
   await fits(page, 'CV view');
 
   // Edit: the English level is the user's to set.
@@ -366,14 +368,14 @@ test('«صفحتي»: the CV shows the given data exactly, edits persist, prints
   expect(await page.evaluate(() => (window as unknown as { __printed: number }).__printed)).toBe(1);
   await page.emulateMedia({ media: 'print' });
   await expect(page.getByTestId('cv-sheet')).toBeVisible();
-  await expect(page.getByTestId('profile-card')).toBeHidden();
+  await expect(page.getByTestId('owner-card')).toBeHidden();
   await expect(page.getByTestId('cv-edit')).toBeHidden();
   await page.emulateMedia({ media: 'screen' });
 
   await page.getByTestId('cv-reset').click();
   await page.getByTestId('confirm-cv-reset').getByRole('button', { name: 'نعم، أعِدها' }).click();
   await expect(page.getByTestId('cv-sheet')).not.toContainText('0599 000 000');
-  await expect(page.getByTestId('cv-sheet').locator('.cv-contact dd').nth(2)).toHaveText('غير محدد حاليًا');
+  await expect(page.getByTestId('cv-sheet').locator('.cv-contact dd').nth(2)).toHaveText('0592780728');
 });
 
 /* ───────── AI Design Studio ───────── */
@@ -405,11 +407,13 @@ test('AI Design Studio: local prompt from an Arabic idea, honest notes, ratio, b
   await page.getByTestId('ai-logo-place').selectOption('bottom-left');
   await page.getByTestId('ai-generate').click();
   const prompt = page.getByTestId('ai-prompt');
-  await expect(prompt).toHaveValue(/^An educational illustration for learners about student reading book/);
+  // 1.5.0: the prompt opens with the user's own words, then the English description
+  await expect(prompt).toHaveValue(/^CORE IDEA \(the user's own words\): «طالب يقرأ كتاب في حديقة المدرسة مع زرافة»/);
+  await expect(prompt).toHaveValue(/An educational illustration for learners about student reading book in/);
   await expect(prompt).toHaveValue(/wide 16:9 aspect ratio/);
   await expect(prompt).toHaveValue(/"اقرأ كل يوم" placed at the top/);
   await expect(page.getByTestId('ai-warnings')).toContainText('زرافة'); // untranslated word is reported
-  await expect(page.getByTestId('ai-logo-rules')).toContainText('Do not redraw it in another style'); // 1.4.0 wording
+  await expect(page.getByTestId('ai-logo-rules')).toContainText('do not restyle, distort, crop, recolor, or simplify it'); // 1.5.0 wording
   await expect(page.getByTestId('ai-negative')).toContainText('invented logos');
   await expect(page.getByTestId('ai-explanation')).toContainText('لا يولّد صورًا');
   await fits(page, 'AI studio result');

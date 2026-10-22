@@ -6,6 +6,7 @@ import type { Submission } from '../learner/types';
 import type { ContentKind, EduDB, ItemStatus, Lesson, Project, ProjectColor } from './db';
 import { cleanDetails, CONTENT_KINDS, KIND_SPECS, kindOf } from './contentKinds';
 import { GRADES, KIND_STAGES, LIMITS, STATUSES } from './catalog';
+import { assertCanAuthor, assertCanEdit } from '../auth/access';
 import { newId } from './ids';
 import { matchesQuery, normalizeArabic } from './search';
 
@@ -109,6 +110,7 @@ export async function setPublished(database: EduDB, id: string, published: boole
   return database.transaction('rw', database.projects, async () => {
     const current = await database.projects.get(id);
     if (!current) throw new Error('المحتوى غير موجود.');
+    assertCanEdit(current);
     const next = { ...current, published, updatedAt: Math.max(Date.now(), current.updatedAt + 1) };
     await database.projects.put(next);
     return next;
@@ -116,6 +118,7 @@ export async function setPublished(database: EduDB, id: string, published: boole
 }
 
 export async function createProject(database: EduDB, input: ProjectInput): Promise<Project> {
+  const author = assertCanAuthor();
   assertValid(validateProject(input));
   const now = Date.now();
   const project: Project = {
@@ -130,6 +133,7 @@ export async function createProject(database: EduDB, input: ProjectInput): Promi
     createdAt: now,
     updatedAt: now,
     ...kindFields(input),
+    ...(author ? { ownerId: author.id } : {}),
   };
   await database.projects.add(project);
   return project;
@@ -139,6 +143,7 @@ export async function updateProject(database: EduDB, id: string, patch: Partial<
   return database.transaction('rw', database.projects, async () => {
     const current = await database.projects.get(id);
     if (!current) throw new Error('المشروع غير موجود.');
+    assertCanEdit(current);
     const merged: ProjectInput = { ...current, ...patch, title: patch.title ?? current.title };
     assertValid(validateProject(merged));
     const next: Project = {
@@ -175,6 +180,7 @@ export async function deleteProject(database: EduDB, id: string): Promise<Projec
   return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.quizzes, database.attempts, database.progress, database.designs, database.submissions], async () => {
     const project = await database.projects.get(id);
     if (!project) throw new Error('المشروع غير موجود.');
+    assertCanEdit(project);
     const lessons = await database.lessons.where('projectId').equals(id).toArray();
     const ids = lessons.map((l) => l.id);
     const docs = (await database.lessonDocs.bulkGet(ids)).filter((d): d is LessonDoc => !!d);
@@ -204,6 +210,7 @@ export async function deleteProject(database: EduDB, id: string): Promise<Projec
 
 export async function restoreProject(database: EduDB, snap: ProjectSnapshot): Promise<void> {
   await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.quizzes, database.attempts, database.progress, database.designs, database.submissions], async () => {
+    assertCanEdit(snap.project);
     await database.projects.put(snap.project);
     if (snap.lessons.length) await database.lessons.bulkPut(snap.lessons);
     if (snap.docs?.length) await database.lessonDocs.bulkPut(snap.docs);
@@ -230,7 +237,9 @@ export async function listLessons(database: EduDB, projectId: string): Promise<L
 export async function createLesson(database: EduDB, projectId: string, input: LessonInput): Promise<Lesson> {
   assertValid(validateLesson(input));
   return database.transaction('rw', database.projects, database.lessons, async () => {
-    if (!(await database.projects.get(projectId))) throw new Error('المشروع غير موجود.');
+    const project = await database.projects.get(projectId);
+    if (!project) throw new Error('المشروع غير موجود.');
+    assertCanEdit(project);
     const existing = await listLessons(database, projectId);
     const now = Date.now();
     const lesson: Lesson = {
@@ -256,6 +265,7 @@ export async function updateLesson(database: EduDB, id: string, patch: Partial<L
   return database.transaction('rw', database.projects, database.lessons, async () => {
     const current = await database.lessons.get(id);
     if (!current) throw new Error('الدرس غير موجود.');
+    assertCanEdit(await database.projects.get(current.projectId));
     const merged: LessonInput = { ...current, ...patch, title: patch.title ?? current.title };
     assertValid(validateLesson(merged));
     const next: Lesson = {
@@ -290,6 +300,7 @@ export async function deleteLesson(database: EduDB, id: string): Promise<LessonS
   return database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.progress, database.designs, database.submissions], async () => {
     const lesson = await database.lessons.get(id);
     if (!lesson) throw new Error('الدرس غير موجود.');
+    assertCanEdit(await database.projects.get(lesson.projectId));
     const doc = (await database.lessonDocs.get(id)) ?? null;
     const assets = await database.assets.where('lessonId').equals(id).toArray();
     await database.assets.where('lessonId').equals(id).delete();
@@ -308,7 +319,9 @@ export async function deleteLesson(database: EduDB, id: string): Promise<LessonS
 
 export async function restoreLesson(database: EduDB, snap: LessonSnapshot): Promise<void> {
   await database.transaction('rw', [database.projects, database.lessons, database.lessonDocs, database.assets, database.progress, database.designs, database.submissions], async () => {
-    if (!(await database.projects.get(snap.lesson.projectId))) throw new Error('المشروع الأصلي لم يعد موجودًا.');
+    const project = await database.projects.get(snap.lesson.projectId);
+    if (!project) throw new Error('المشروع الأصلي لم يعد موجودًا.');
+    assertCanEdit(project);
     await database.lessons.put(snap.lesson);
     if (snap.doc) await database.lessonDocs.put(snap.doc);
     if (snap.assets.length) await database.assets.bulkPut(snap.assets);
@@ -328,6 +341,7 @@ export async function moveLesson(database: EduDB, id: string, direction: -1 | 1)
   return database.transaction('rw', database.projects, database.lessons, async () => {
     const lesson = await database.lessons.get(id);
     if (!lesson) throw new Error('الدرس غير موجود.');
+    assertCanEdit(await database.projects.get(lesson.projectId));
     const list = await listLessons(database, lesson.projectId);
     const i = list.findIndex((l) => l.id === id);
     const j = i + direction;

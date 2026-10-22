@@ -34,7 +34,7 @@ test('five design kinds, two identities: what is copied carries the full logo sp
     expect(one(t, 'MANDATORY BRAND LOGO:'), idea).toBe(1);
     expect(one(t, 'LOGO SPECIFICATION:'), idea).toBe(1);
     expect(one(t, `BRAND IDENTITY — ${brand}`), idea).toBe(1);
-    for (const s of ['I-B-R-A-H-I-8-M', 'robot head', 'circuit ring', '#0E1014', '#2F7BFF', '#A9B1BC', 'Logo size:', 'No logo file is attached']) expect(t, `${idea}: ${s}`).toContain(s);
+    for (const s of ['I-B-R-A-H-I-8-M', 'robot head', 'circuit ring', '#0E1014', '#2F7BFF', '#A9B1BC', 'Logo size:', 'do not ask for a logo file']) expect(t, `${idea}: ${s}`).toContain(s);
     expect(t, idea).not.toMatch(/\.svg|\.png|\/brand\/|provided with the project/);
     expect(t.indexOf('BRAND IDENTITY')).toBeLessThan(t.indexOf('MANDATORY BRAND LOGO:'));
     if (brand === 'IBRAHIM AI UNIVERSE') {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { studentKey } from '../quiz/model';
+import { useAuth } from '../auth/session';
 
 /**
  * Who is using student mode on this device. Only the name is remembered (in this browser's storage);
@@ -34,6 +35,7 @@ let memory = '';
 
 /** The current student's name ('' = nobody chose yet) and a setter shared by every screen. */
 export function useStudent(): [string, (name: string | null) => void] {
+  const { user } = useAuth();
   const [name, setName] = useState(() => readStudent() || memory);
   useEffect(() => {
     const sync = () => setName(readStudent() || memory);
@@ -44,7 +46,14 @@ export function useStudent(): [string, (name: string | null) => void] {
       window.removeEventListener('storage', sync);
     };
   }, []);
+  // 1.5.0: a student account is bound to its own learner profile: it cannot choose or switch to another name.
+  if (user?.role === 'student') return [user.learnerName || user.displayName, noSwitch];
   return [name, writeStudent];
+}
+const noSwitch = () => undefined;
+/** True when the signed-in account is a student (no access to other learners' names or data). */
+export function useIsStudentAccount(): boolean {
+  return useAuth().user?.role === 'student';
 }
 
 export interface KnownStudent {
