@@ -90,7 +90,16 @@ interface ProfileRow {
 }
 
 async function profileFor(token: string, id: string): Promise<ProfileRow> {
-  const rows = await call<ProfileRow[]>(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`, { token });
+  let rows: ProfileRow[];
+  try {
+    rows = await call<ProfileRow[]>(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`, { token });
+  } catch (e) {
+    // 1.6.0: the password was accepted but the server refused to return the account's role (table privileges
+    // missing on the project: HTTP 403 / 42501). Say so instead of a generic message.
+    if (e instanceof CloudError && (e.status === 401 || e.status === 403))
+      throw new CloudError('كلمة المرور صحيحة، لكن الخادم رفض قراءة دور الحساب. على صاحب المشروع تنفيذ الملف supabase/fix-1.6-grants.sql في Supabase مرة واحدة.', e.status);
+    throw e;
+  }
   if (!Array.isArray(rows) || !rows[0]) throw new CloudError('لا يوجد ملف لهذا الحساب على الخادم. هل نُفّذ ملف supabase/schema.sql؟');
   return rows[0];
 }

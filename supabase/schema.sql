@@ -1,4 +1,4 @@
--- IBRAHI8M EDU STUDIO 1.5.0 — accounts and roles on Supabase.
+-- IBRAHI8M EDU STUDIO 1.6.0 — accounts and roles on Supabase.
 -- Run once: Supabase dashboard → SQL Editor → paste this file → Run.
 -- Safe to run again (idempotent).
 
@@ -69,6 +69,15 @@ end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 
--- 5) Make the owner the admin — ONCE, after creating the owner's account in the app (or in Authentication → Users).
+-- 5) Table privileges for the API roles (1.6.0). Newer Supabase projects do not add them automatically.
+--    Without them a signed-in user cannot read their own profile (403) and cloud sign-in fails.
+--    Only SELECT and UPDATE of four columns; no INSERT/DELETE/TRUNCATE; nothing for anon. RLS still applies.
+revoke all on table public.profiles from anon, authenticated;
+grant select on table public.profiles to authenticated;
+grant update (display_name, role, disabled, learner_name) on table public.profiles to authenticated;
+revoke all on function public.is_admin() from public, anon;  -- functions are executable by PUBLIC by default
+grant execute on function public.is_admin() to authenticated;
+
+-- 6) Make the owner the admin — ONCE, after creating the owner's account in the app (or in Authentication → Users).
 --    Only someone with access to this dashboard can run it; owning an e-mail address is not enough.
 -- update public.profiles set role = 'admin' where email = 'ibrahimyasf@gmail.com';
