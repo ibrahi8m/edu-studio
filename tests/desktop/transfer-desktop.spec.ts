@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { signedIn } from './signin';
 import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,6 +18,7 @@ test('desktop app: a project is exported to an .ibm file with its Arabic name an
   // ── installation A: a project with a lesson, exported and backed up ──
   const app1 = await launch(userA, downloads);
   const w1 = await app1.firstWindow();
+  await signedIn(w1);
   await expect(w1.getByTestId('page-dashboard')).toBeVisible({ timeout: 10_000 });
   await go(w1, '/settings');
   await w1.getByTestId('toggle-splash').uncheck();
@@ -44,6 +46,7 @@ test('desktop app: a project is exported to an .ibm file with its Arabic name an
   // ── installation B (empty): import the project file ──
   const app2 = await launch(userB, downloads);
   const w2 = await app2.firstWindow();
+  await signedIn(w2);
   await go(w2, '/backup');
   await w2.getByTestId('import-file').setInputFiles(projectFile);
   await expect(w2.getByTestId('import-preview')).toHaveAttribute('data-kind', 'project');
@@ -58,6 +61,7 @@ test('desktop app: a project is exported to an .ibm file with its Arabic name an
   const userC = mkdtempSync(join(tmpdir(), 'ibrahi8m-desktop-c-'));
   const app3 = await launch(userC, downloads);
   const w3 = await app3.firstWindow();
+  await signedIn(w3);
   await go(w3, '/backup');
   await w3.getByTestId('import-file').setInputFiles(backupFile);
   await expect(w3.getByTestId('import-preview')).toHaveAttribute('data-kind', 'backup');
@@ -67,6 +71,7 @@ test('desktop app: a project is exported to an .ibm file with its Arabic name an
   await app3.close();
   const app4 = await launch(userC, downloads);
   const w4 = await app4.firstWindow();
+  await signedIn(w4);
   await go(w4, '/projects');
   await w4.getByRole('link', { name: /وحدة الطاقة/ }).first().click();
   await expect(w4.getByText('مصادر الطاقة').first()).toBeVisible();

@@ -226,3 +226,131 @@ test.describe('volume control 1.5.0', () => {
     expect((await audio(page)).gain).toBeGreaterThan(low);
   });
 });
+
+test.describe('content fields 1.5.0', () => {
+  test('school / university / training: the right fields, free-text course and topic, saved and reopened intact; removed options are gone', async ({ page }, info) => {
+    test.skip(!['desktop-1440', 'phone-iphone-se'].includes(info.project.name), 'computer and the smallest phone');
+    test.setTimeout(120_000);
+    await disableSplash(page);
+    await page.goto('./#/projects');
+
+    // school
+    await page.getByTestId('new-project').click();
+    const d = page.locator('dialog[open][data-testid=project-dialog]');
+    await d.getByTestId('content-kind-school').click();
+    const grades = await d.getByTestId('project-grade').locator('option').allTextContents();
+    expect(grades).not.toContain('التعليم الجامعي');
+    expect(grades).not.toContain('تدريب المعلمين');
+    expect(grades).toContain('الصف السابع');
+    const subjects = await d.locator('datalist option').evaluateAll((o) => o.map((x) => (x as HTMLOptionElement).value));
+    expect(subjects).toContain('الرياضيات');
+    expect(subjects).not.toContain('المناهج وطرق التدريس');
+    const sem = await d.getByTestId('detail-semester').locator('option').allTextContents();
+    expect(sem).toEqual(['غير محدد', 'الفصل الأول', 'الفصل الثاني', 'الفصل الصيفي']); // «العام كاملًا» removed
+    await d.getByTestId('project-title').fill('وحدة الكسور');
+    await d.getByTestId('project-subject').fill('الرياضيات');
+    await d.getByTestId('project-grade').selectOption('الصف السابع');
+    await d.getByTestId('detail-semester').selectOption('الفصل الثاني');
+    await d.getByTestId('project-save').click();
+    await expect(page.getByTestId('page-project')).toBeVisible();
+
+    // university: course name typed freely, no school subject list
+    await page.goto('./#/projects');
+    await page.getByTestId('new-project').click();
+    await d.getByTestId('content-kind-university').click();
+    await expect(d.getByTestId('project-grade')).toHaveCount(0);
+    expect(await d.getByTestId('project-subject').getAttribute('list')).toBeNull();
+    await expect(d.getByTestId('project-subject')).toHaveAttribute('placeholder', /اسم المساق/);
+    await d.getByTestId('project-title').fill('مساق متقدم');
+    await d.getByTestId('project-subject').fill('مناهج البحث في تكنولوجيا التعليم (دكتوراه)');
+    await d.getByTestId('detail-degree').selectOption('دكتوراه');
+    await d.getByTestId('project-save').click();
+    await expect(page.getByTestId('page-project')).toBeVisible();
+
+    // training: topic typed freely
+    await page.goto('./#/projects');
+    await page.getByTestId('new-project').click();
+    await d.getByTestId('content-kind-training').click();
+    expect(await d.getByTestId('project-subject').getAttribute('list')).toBeNull();
+    await d.getByTestId('project-title').fill('برنامج التقويم');
+    await d.getByTestId('project-subject').fill('التقويم البديل في الصفوف الأساسية');
+    await d.getByTestId('project-save').click();
+    await expect(page.getByTestId('page-project')).toBeVisible();
+
+    // reopen each for editing: every value is back where it belongs
+    await page.reload();
+    for (const [title, subject] of [
+      ['وحدة الكسور', 'الرياضيات'],
+      ['مساق متقدم', 'مناهج البحث في تكنولوجيا التعليم (دكتوراه)'],
+      ['برنامج التقويم', 'التقويم البديل في الصفوف الأساسية'],
+    ]) {
+      await page.goto('./#/projects');
+      await page.getByRole('link', { name: title }).first().click();
+      await page.getByTestId('edit-project').click();
+      await expect(d.getByTestId('project-title')).toHaveValue(title);
+      await expect(d.getByTestId('project-subject')).toHaveValue(subject);
+      if (title === 'وحدة الكسور') {
+        await expect(d.getByTestId('project-grade')).toHaveValue('الصف السابع');
+        await expect(d.getByTestId('detail-semester')).toHaveValue('الفصل الثاني');
+      }
+      if (title === 'مساق متقدم') await expect(d.getByTestId('detail-degree')).toHaveValue('دكتوراه');
+      await d.getByTestId('project-save').click(); // saving again changes nothing
+      await expect(d).toHaveCount(0);
+    }
+  });
+
+  test('a value saved before 1.5.0 («العام كاملًا», a university stage) is kept, not deleted', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop-1440', 'one size');
+    await disableSplash(page);
+    await page.goto('./#/projects');
+    await page.evaluate(async () => {
+      const open = indexedDB.open('ibrahi8m-edu');
+      const db: IDBDatabase = await new Promise((ok) => (open.onsuccess = () => ok(open.result)));
+      const tx = db.transaction('projects', 'readwrite');
+      tx.objectStore('projects').put({ id: 'old-p', title: 'محتوى قديم', subject: 'المناهج وطرق التدريس', grade: 'الصف الثامن', description: '', status: 'draft', tags: [], color: 'blue', kind: 'school', published: true, details: { semester: 'العام كاملًا' }, createdAt: 1, updatedAt: 1 });
+      await new Promise((ok) => (tx.oncomplete = ok));
+      db.close();
+    });
+    await page.goto('./#/projects/old-p');
+    await page.getByTestId('edit-project').click();
+    const d = page.locator('dialog[open][data-testid=project-dialog]');
+    await expect(d.getByTestId('detail-semester')).toHaveValue('العام كاملًا');
+    await expect(d.getByTestId('project-subject')).toHaveValue('المناهج وطرق التدريس');
+    await d.getByTestId('project-description').fill('عُدّل');
+    await d.getByTestId('project-save').click();
+    await expect(d).toHaveCount(0);
+    const kept = await page.evaluate(async () => {
+      const open = indexedDB.open('ibrahi8m-edu');
+      const db: IDBDatabase = await new Promise((ok) => (open.onsuccess = () => ok(open.result)));
+      const r = db.transaction('projects').objectStore('projects').get('old-p');
+      const v = await new Promise<{ details: { semester: string }; subject: string }>((ok) => (r.onsuccess = () => ok(r.result)));
+      db.close();
+      return v;
+    });
+    expect(kept.details.semester).toBe('العام كاملًا');
+    expect(kept.subject).toBe('المناهج وطرق التدريس');
+  });
+});
+
+test('«صاحب المشروع»: renamed, the owner’s name, phone, e-mail and English level; no «المراجع»; edits by the admin persist', async ({ page }, info) => {
+  test.skip(!['desktop-1440', 'phone-pixel-7'].includes(info.project.name), 'computer and phone');
+  await disableSplash(page);
+  await page.goto('./#/me');
+  await expect(page.getByTestId('page-me').getByRole('heading', { level: 1 }).first()).toHaveText('صاحب المشروع');
+  await expect(page.getByTestId('owner-name')).toHaveText('إبراهيم سمير محمود الخطيب');
+  await expect(page.getByTestId('owner-phone')).toHaveText('0592780728');
+  await expect(page.getByTestId('owner-email')).toHaveText('ibrahimyasf@gmail.com');
+  await expect(page.getByTestId('owner-english')).toHaveText('جيد');
+  await expect(page.getByTestId('page-me')).not.toContainText('المراجع');
+  await expect(page.getByTestId('page-me')).not.toContainText('صفحتي');
+  await page.goto('./#/more');
+  await expect(page.getByTestId('page-more')).toContainText('صاحب المشروع');
+  await expect(page.getByTestId('page-more')).not.toContainText('صفحتي');
+  await page.goto('./#/me');
+  await page.getByTestId('cv-edit').click();
+  await expect(page.getByTestId('cv-editor')).not.toContainText('المراجع');
+  await page.getByTestId('cv-in-phone').fill('0592 780 728');
+  await page.getByTestId('cv-save').click();
+  await page.reload();
+  await expect(page.getByTestId('owner-phone')).toHaveText('0592 780 728');
+});

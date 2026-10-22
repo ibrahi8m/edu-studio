@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test';
+import { signedIn } from './signin';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -15,6 +16,7 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
   expect(w1.url()).toBe('app://edu/index.html');
   await expect(w1.getByTestId('splash')).toBeVisible();
   await expect(w1.getByTestId('splash')).toBeHidden({ timeout: 6000 });
+  await signedIn(w1);
   await expect(w1.getByTestId('page-dashboard')).toBeVisible();
   expect(await w1.evaluate(() => window.ibrahi8mDesktop?.platform)).toBeTruthy();
   await expect(w1.getByTestId('status-offline')).toContainText('نسخة سطح المكتب');
@@ -41,11 +43,11 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
 
   await w1.goto('app://edu/index.html#/settings');
   await w1.getByRole('radio', { name: 'نهاري' }).click();
-  await w1.goto('app://edu/index.html#/me');
-  const f = w1.getByTestId('profile-userOrganization');
-  await f.fill('جامعة — اختبار سطح المكتب');
-  await f.blur();
-  await expect(w1.getByText('تم الحفظ')).toBeVisible();
+  // 1.5.0: the account's own name (the profile fields moved to «حسابي»)
+  await w1.goto('app://edu/index.html#/account');
+  await w1.getByTestId('account-name').fill('جامعة — اختبار سطح المكتب');
+  await w1.getByTestId('account-name-save').click();
+  await expect(w1.getByTestId('toast').last()).toContainText('حُفظ الاسم');
 
   // Phase 1: a project with lessons, written to the desktop app's own database
   await w1.goto('app://edu/index.html#/projects');
@@ -80,10 +82,11 @@ test('desktop app runs from disk, blocks the network and keeps settings, project
   // Second launch: data is still there.
   const app2 = await launch(userData);
   const w2 = await app2.firstWindow();
+  await signedIn(w2);
   await expect(w2.getByTestId('page-dashboard')).toBeVisible({ timeout: 8000 });
   await expect.poll(() => w2.evaluate(() => document.documentElement.dataset.theme), { timeout: 5000 }).toBe('light');
-  await w2.goto('app://edu/index.html#/me');
-  await expect(w2.getByText('جامعة — اختبار سطح المكتب').first()).toBeVisible();
+  await w2.goto('app://edu/index.html#/account');
+  await expect(w2.getByTestId('account-name')).toHaveValue('جامعة — اختبار سطح المكتب');
   await w2.goto('app://edu/index.html#/about');
   await w2.screenshot({ path: 'docs/screenshots/desktop-app/about-light.png' });
   await w2.goto('app://edu/index.html#/projects');

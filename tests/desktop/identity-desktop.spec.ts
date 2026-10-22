@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { signedIn } from './signin';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +13,7 @@ test('desktop app: the new logo shows, the demo project installs with its pictur
   const app1 = await launch(userData);
   const w1 = await app1.firstWindow();
   await expect(w1.getByTestId('splash').locator('img.brand-glyph')).toBeVisible({ timeout: 10_000 });
+  await signedIn(w1);
   await go(w1, '/settings');
   await w1.getByTestId('toggle-splash').uncheck();
   // the sidebar shows the new mark, loaded from inside the app
@@ -28,6 +30,7 @@ test('desktop app: the new logo shows, the demo project installs with its pictur
 
   const app2 = await launch(userData);
   const w2 = await app2.firstWindow();
+  await signedIn(w2);
   await go(w2, '/results');
   await expect(w2.getByTestId('results-row')).toHaveCount(3);
   await expect(w2.getByTestId('student-row')).toHaveCount(10);

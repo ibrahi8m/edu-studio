@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test';
+import { signedIn } from './signin';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +12,7 @@ test('desktop app: animated background, light theme and generated music work; af
   const userData = mkdtempSync(join(tmpdir(), 'ibrahi8m-desktop-look-'));
   const app1 = await launch(userData);
   const w1 = await app1.firstWindow();
+  await signedIn(w1);
   await expect(w1.getByTestId('page-dashboard')).toBeVisible({ timeout: 10_000 });
   await expect(w1.getByTestId('ambient-bg')).toHaveAttribute('data-state', 'moving');
   await w1.locator('[data-testid=theme-button]:visible').click();
@@ -23,6 +25,7 @@ test('desktop app: animated background, light theme and generated music work; af
 
   const app2 = await launch(userData);
   const w2 = await app2.firstWindow();
+  await signedIn(w2);
   await expect(w2.getByTestId('page-dashboard')).toBeVisible({ timeout: 10_000 });
   await expect.poll(() => w2.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
   await w2.waitForTimeout(500);

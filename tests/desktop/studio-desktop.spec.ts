@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { signedIn } from './signin';
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,6 +15,7 @@ test('desktop app: a visual summary is designed, exported as a PNG file with its
 
   const app1 = await launch(userData, downloads);
   const w1 = await app1.firstWindow();
+  await signedIn(w1);
   await expect(w1.getByTestId('page-dashboard')).toBeVisible({ timeout: 10_000 });
   await go(w1, '/settings');
   await w1.getByTestId('toggle-splash').uncheck();
@@ -47,6 +49,7 @@ test('desktop app: a visual summary is designed, exported as a PNG file with its
 
   const app2 = await launch(userData, downloads);
   const w2 = await app2.firstWindow();
+  await signedIn(w2);
   await go(w2, '/studio');
   await w2.getByRole('link', { name: 'فتح التصميم: ملخص سطح المكتب' }).click();
   await expect(w2.getByTestId('summary-heading')).toHaveValue('مصادر الطاقة');

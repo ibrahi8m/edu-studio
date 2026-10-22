@@ -1,4 +1,5 @@
 import { _electron as electron, expect, test, type Page } from '@playwright/test';
+import { signedIn } from './signin';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +13,7 @@ test('desktop app: build a quiz, take it, close the app; the attempt and results
 
   const app1 = await launch(userData);
   const w1 = await app1.firstWindow();
+  await signedIn(w1);
   await expect(w1.getByTestId('page-dashboard')).toBeVisible({ timeout: 10_000 });
   await go(w1, '/settings');
   await w1.getByTestId('toggle-splash').uncheck();
@@ -60,6 +62,7 @@ test('desktop app: build a quiz, take it, close the app; the attempt and results
 
   const app2 = await launch(userData);
   const w2 = await app2.firstWindow();
+  await signedIn(w2);
   await go(w2, '/results');
   await w2.getByTestId('results-row').first().click();
   await expect(w2.getByTestId('sum-attempts')).toHaveText('1');
