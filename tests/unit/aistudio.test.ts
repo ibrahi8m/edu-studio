@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { buildPrompt, ensureLogo, IDENTITY_MARKER, LOGO_MARKER, mandatoryLogo, SPEC_MARKER, promptAsText, resolveBrand, roughTranslate } from '../../src/aistudio/engine';
+import { AVOID_MARKER, buildPrompt, ensureLogo, EXECUTE_LINE, EXECUTE_MARKER, IDENTITY_MARKER, LOGO_MARKER, mandatoryLogo, SPEC_MARKER, promptAsText, resolveBrand, roughTranslate } from '../../src/aistudio/engine';
 import { IBRAHI8M_MARK, IDENTITIES } from '../../src/aistudio/brandSpec';
 import { BUILTIN_BRANDS, DESIGN_TYPES, EMPTY_INPUT, RATIOS } from '../../src/aistudio/catalog';
 import { deleteBrand, deletePrompt, duplicatePrompt, listBrands, normalizeSavedPrompt, saveBrand, savePrompt } from '../../src/aistudio/store';
@@ -75,7 +75,7 @@ describe('AI Design Studio engine', () => {
               const out = buildPrompt({ ...EMPTY_INPUT, idea: 'olive tree', type: t.value, logoPlacement: placement }, mode, brand, t.value.length);
               const where = `${t.value}/${mode}/${brand?.id}/${placement}`;
               expect(out.promptEn, where).toContain(LOGO_MARKER);
-              expect(out.promptEn, where).toContain("Include the owner's original official IBRAHI8M brand logo in the final design.");
+              expect(out.promptEn, where).toContain('Draw the IBRAHI8M brand logo described below into the design yourself.');
               expect(out.promptEn, where).toContain('must never be omitted');
               // 1.4.0 self-contained: the full specification is in the text, and nothing depends on a file
               expect(out.promptEn, where).toContain(SPEC_MARKER);
@@ -84,12 +84,18 @@ describe('AI Design Studio engine', () => {
               expect(out.promptEn, where).toContain('robot head');
               expect(out.promptEn, where).toContain('circuit ring');
               expect(out.promptEn, where).toMatch(/Logo size: (about \d+–\d+% of the|large and central)/);
-              expect(out.promptEn, where).not.toMatch(/\.svg|\.png|\/brand\/|provided with the project|attached file|upload/i);
-              expect(out.promptEn, where).toContain('No logo file is attached to this prompt');
-              expect(out.promptEn, where).toContain('Do not redraw it in another style, reinterpret, distort, crop, recolor, simplify, or replace the logo');
+              expect(out.promptEn, where).not.toMatch(/\.svg|\.png|\/brand\/|provided with the project|use the (attached|uploaded)/i) // it now says «do not ask for a logo file, an upload»;
+              expect(out.promptEn, where).toContain('do not ask for a logo file, an upload or any confirmation');
+              // 1.5.0: nothing that makes ChatGPT ask for the file (it did with «original official … reproduce exactly»)
+              expect(out.promptEn, where).not.toMatch(/original official|placed over it afterwards|No logo file is attached/);
+              expect(out.promptEn, where).toContain('do not restyle, distort, crop, recolor, or simplify it');
               expect(out.promptEn.split(LOGO_MARKER)).toHaveLength(2); // exactly once
               expect(out.promptEn.split(SPEC_MARKER)).toHaveLength(2);
-              expect(out.logoRules).toBe(out.promptEn.slice(out.promptEn.indexOf(LOGO_MARKER)));
+              // 1.5.0 order: … logo block → avoid list → EXECUTE IMMEDIATELY last
+              expect(out.promptEn.split(out.logoRules)).toHaveLength(2);
+              expect(out.promptEn.endsWith(EXECUTE_LINE), where).toBe(true);
+              expect(out.promptEn.indexOf(LOGO_MARKER)).toBeLessThan(out.promptEn.indexOf(AVOID_MARKER));
+              expect(out.promptEn.split(EXECUTE_MARKER)).toHaveLength(2);
               expect(out.negative).toContain('missing logo');
             }
     } finally {
@@ -112,8 +118,8 @@ describe('AI Design Studio engine', () => {
     const own = buildPrompt({ ...EMPTY_INPUT, idea: 'poster with my logo', required: 'الشعار كبير وواضح، شجرة زيتون' }, 'pro', null);
     expect(own.promptEn.match(/\blogo\b/gi)!.length).toBeGreaterThan(3);
     expect(own.promptEn).not.toContain('with my logo');
-    expect(own.promptEn).toMatch(/must include: [^,.]*olive/); // the non-logo item stays in «must include»
-    expect(own.promptEn).not.toMatch(/must include:[^.]*logo/);
+    expect(own.promptEn).toMatch(/MUST INCLUDE: [^.]*olive/); // the non-logo item stays in «must include»
+    expect(own.promptEn).not.toMatch(/MUST INCLUDE:[^.]*logo/);
     expect(own.promptEn).toContain("Owner's note about the logo");
     expect(own.promptEn).toContain('"الشعار كبير وواضح"');
     expect(own.promptEn.split(LOGO_MARKER)).toHaveLength(2);

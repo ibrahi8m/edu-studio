@@ -45,7 +45,18 @@ export const getState = () => state;
 
 /** For automated tests and diagnostics: what the engine did (no audio data). */
 export const log: { sfx: Sfx[]; starts: number } = { sfx: [], starts: 0 };
-if (typeof window !== 'undefined') (window as unknown as { ibrahi8mAudio?: unknown }).ibrahi8mAudio = { getState, log };
+/** 1.5.0: measures what actually leaves the app (after every gain and the compressor), for tests and diagnosis. */
+let meter: AnalyserNode | null = null;
+export function outputLevel(): number {
+  if (!meter) return 0;
+  const buf = new Float32Array(meter.fftSize);
+  meter.getFloatTimeDomainData(buf);
+  let sum = 0;
+  for (const x of buf) sum += x * x;
+  return Math.sqrt(sum / buf.length);
+}
+export const masterGain = () => (master ? master.gain.value : 0);
+if (typeof window !== 'undefined') (window as unknown as { ibrahi8mAudio?: unknown }).ibrahi8mAudio = { getState, log, outputLevel, masterGain };
 
 let ctx: AC | null = null;
 let master: GainNode | null = null; // music volume
@@ -59,10 +70,16 @@ function ensure(): AC | null {
   if (!AudioCtor) return null;
   if (!ctx) {
     ctx = new AudioCtor();
-    const comp = ctx.createDynamicsCompressor(); // no sudden peaks
-    comp.threshold.value = -18;
-    comp.ratio.value = 4;
+    // 1.5.0: the compressor only catches peaks now. Before, it sat at -18 dB / 4:1 and flattened the
+    // volume slider: 25 % → 100 % changed the measured output by about 8 dB only.
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -6;
+    comp.knee.value = 6;
+    comp.ratio.value = 3;
     comp.connect(ctx.destination);
+    meter = ctx.createAnalyser();
+    meter.fftSize = 2048;
+    comp.connect(meter);
     master = ctx.createGain();
     master.gain.value = 0;
     master.connect(comp);
@@ -99,7 +116,13 @@ function rampMaster(to: number, seconds: number) {
   g.setValueAtTime(g.value, ctx.currentTime);
   g.linearRampToValueAtTime(to, ctx.currentTime + seconds);
 }
-const target = () => (muted ? 0 : musicVolume * 0.6);
+/**
+ * 1.5.0: a perceptual curve (gain ∝ volume²): equal slider steps sound like equal loudness steps,
+ * 0 is silent and 100 % is clearly louder than before (it was capped at gain 0.6, linear).
+ */
+const MAX_GAIN = 2.4;
+export const gainFor = (volume: number, isMuted: boolean) => (isMuted || volume <= 0 ? 0 : Math.min(1, volume) ** 2 * MAX_GAIN);
+const target = () => gainFor(musicVolume, muted);
 
 /** One soft note: oscillator(s) → envelope → (dry + reverb). */
 function note(c: AC, out: AudioNode, f: number, at: number, dur: number, opts: { type?: OscillatorType; gain?: number; attack?: number; release?: number; detune?: number; cutoff?: number } = {}) {
@@ -288,13 +311,13 @@ export function stop() {
 }
 
 export function setMusicVolume(v: number) {
-  musicVolume = v;
-  if (state.transport === 'playing') rampMaster(target(), 0.3);
+  musicVolume = Math.max(0, Math.min(1, v));
+  if (state.transport === 'playing') rampMaster(target(), 0.08); // follows the slider while it is dragged
 }
 
 export function setMuted(m: boolean) {
   muted = m;
-  if (state.transport === 'playing') rampMaster(target(), 0.3);
+  if (state.transport === 'playing') rampMaster(target(), 0.15);
 }
 
 /** Short interface sounds. Played only when the user enabled them and nothing is muted. */
@@ -303,7 +326,7 @@ export function sfx(kind: Sfx, enabled: boolean, volume: number, isMuted: boolea
   const c = ensure();
   if (!c || !sfxBus) return;
   log.sfx.push(kind);
-  sfxBus.gain.setValueAtTime(volume * 0.9, c.currentTime);
+  sfxBus.gain.setValueAtTime(Math.min(1, Math.max(0, volume)) ** 2 * 1.2, c.currentTime); // same perceptual curve as the music
   const t = c.currentTime + 0.01;
   const seq: Record<Sfx, [number, number, OscillatorType][]> = {
     save: [

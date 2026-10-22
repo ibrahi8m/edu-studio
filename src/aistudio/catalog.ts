@@ -212,6 +212,7 @@ export const EMPTY_INPUT: PromptInput = {
  * words it does not know are reported so the user can write the English description themselves.
  */
 export const AR_EN: Record<string, string> = {
+  يتعلم: 'learning', تتعلم: 'learning', تدرس: 'studying', تقرأ: 'reading', تكتب: 'writing', يرسم: 'drawing', ترسم: 'drawing', تلعب: 'playing', يتعلمون: 'learning',
   طالب: 'student', طلاب: 'students', طالبة: 'female student', طالبات: 'female students', معلم: 'teacher', معلمة: 'female teacher', معلمين: 'teachers', معلمون: 'teachers',
   مدرسة: 'school', مدرسي: 'school', جامعة: 'university', جامعي: 'university', فصل: 'classroom', صف: 'classroom', درس: 'lesson', دروس: 'lessons', تعليم: 'education', تعليمي: 'educational', تعليمية: 'educational',
   تعلم: 'learning', التعلم: 'learning', كتاب: 'book', كتب: 'books', قلم: 'pen', حاسوب: 'computer', كمبيوتر: 'computer', لابتوب: 'laptop', هاتف: 'smartphone', جوال: 'smartphone', شاشة: 'screen', روبوت: 'robot',
@@ -223,7 +224,7 @@ export const AR_EN: Record<string, string> = {
   مساعدات: 'humanitarian aid', إغاثة: 'relief', تبرع: 'donation', خيمة: 'tent', خيام: 'tents', مخيم: 'camp', طعام: 'food', خبز: 'bread', دواء: 'medicine', صحة: 'health', مستشفى: 'hospital', طبيب: 'doctor',
   رمضان: 'Ramadan', عيد: 'Eid', فانوس: 'lantern', هلال: 'crescent', مسجد: 'mosque', قهوة: 'coffee', شاي: 'tea', مطعم: 'restaurant', متجر: 'store', منتج: 'product', عطر: 'perfume', ساعة: 'watch', حذاء: 'shoe', ملابس: 'clothing',
   شعار: 'logo', علامة: 'brand', تجارية: 'commercial', إعلان: 'advertisement', عرض: 'offer', خصم: 'discount', بيت: 'house', منزل: 'house', غرفة: 'room', مكتب: 'office', مطبخ: 'kitchen', صالة: 'living room', أثاث: 'furniture',
-  حفل: 'celebration', زفاف: 'wedding', تخرج: 'graduation', مؤتمر: 'conference', ورشة: 'workshop', تدريب: 'training', تدريبية: 'training', دورة: 'course', مهرجان: 'festival', رياضة: 'sports', كرة: 'football',
+  حفل: 'celebration', زفاف: 'wedding', تخرج: 'graduation', مؤتمر: 'conference', ورشة: 'workshop', تدريب: 'training', تدريبية: 'training', دورة: 'course', مهرجان: 'festival', رياضة: 'sports', كرة: 'ball',
   ملصق: 'poster', بوستر: 'poster', توعوي: 'awareness', توعية: 'awareness', حملة: 'campaign', حساب: 'account', حسابك: 'your account', حماية: 'protection', خصوصية: 'privacy', قفل: 'lock', كلمة: 'word', مرور: 'password', اختراق: 'hacking', هاكر: 'hacker', درع: 'shield', مختبر: 'laboratory', تجربة: 'experiment', غلاف: 'cover', مجلة: 'magazine', دعوة: 'invitation',
   فيديو: 'video', يوتيوب: 'YouTube', بودكاست: 'podcast', كاميرا: 'camera', تصميم: 'design', تصوير: 'photography', فن: 'art', رسم: 'drawing', ألوان: 'colors', موسيقى: 'music',
   علوم: 'science', العلوم: 'science', رياضيات: 'mathematics', الرياضيات: 'mathematics', فيزياء: 'physics', كيمياء: 'chemistry', أحياء: 'biology', فضاء: 'space', كوكب: 'planet', الأرض: 'Earth', خريطة: 'map', تاريخ: 'history',
@@ -232,4 +233,17 @@ export const AR_EN: Record<string, string> = {
 };
 
 /** Words skipped when translating (particles and prepositions). */
-export const AR_STOP = new Set(['في', 'على', 'من', 'إلى', 'الى', 'عن', 'مع', 'و', 'أو', 'ثم', 'هذا', 'هذه', 'ذلك', 'التي', 'الذي', 'فيه', 'فيها', 'له', 'لها', 'عند', 'بين', 'كل', 'أن', 'ان', 'إن', 'لا', 'يا', 'قد', 'ما', 'هو', 'هي', 'حول', 'تحت', 'فوق', 'أمام', 'خلف', 'داخل', 'خارج', 'عبر', 'بعد', 'قبل', 'نحو', 'لـ', 'بـ', 'تصميم']);
+export const AR_STOP = new Set(['من', 'إلى', 'الى', 'عن', 'و', 'أو', 'ثم', 'هذا', 'هذه', 'ذلك', 'التي', 'الذي', 'فيه', 'فيها', 'له', 'لها', 'كل', 'أن', 'ان', 'إن', 'لا', 'يا', 'قد', 'ما', 'هو', 'هي', 'لـ', 'بـ', 'تصميم']);
+
+/** 1.5.0: places and relations are kept (they were dropped as stop words, which lost «between the tents»). */
+export const AR_PREP: Record<string, string> = {
+  في: 'in', على: 'on', مع: 'with', بين: 'among', تحت: 'under', فوق: 'above', أمام: 'in front of', خلف: 'behind', وراء: 'behind',
+  داخل: 'inside', خارج: 'outside', حول: 'around', نحو: 'toward', عبر: 'across', عند: 'at', قرب: 'near', بجانب: 'next to', بعد: 'after', قبل: 'before',
+};
+
+/** 1.5.0: two-word expressions translated as one (checked before single words). */
+export const AR_PHRASES: Record<string, string> = {
+  'كرة القدم': 'football (soccer)', 'كرة السلة': 'basketball', 'كرة الطائرة': 'volleyball', 'كرة اليد': 'handball',
+  'الأمن الرقمي': 'digital security', 'الذكاء الاصطناعي': 'artificial intelligence', 'دورة الماء': 'the water cycle',
+  'الطاقة الشمسية': 'solar energy', 'غرفة الصف': 'classroom', 'ساحة المدرسة': 'school yard',
+};

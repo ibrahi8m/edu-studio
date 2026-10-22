@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import type { CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { Music, Pause, Play, Square, Volume2, VolumeX, X } from 'lucide-react';
+import { Minus, Music, Pause, Play, Plus, Square, Volume2, VolumeX, X } from 'lucide-react';
 import { useSettings } from '../app/SettingsContext';
 import type { MusicTrack } from '../db/settings';
 import { getState, pause, play, resume, setMusicVolume, setMuted, sfx, stop, subscribe, TRACKS, type Sfx } from './engine';
@@ -99,14 +100,43 @@ export function SoundControls({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/**
+ * 1.5.0: the volume control. Left = quieter, right = louder (fixed left-to-right even in the Arabic
+ * interface, like the speaker icons around it), drag or tap anywhere on the bar, arrow keys / Home / End,
+ * and − / + buttons (10 % steps) for touch screens. Every change goes straight to the sound engine.
+ */
 function Slider({ label, value, onChange, testId }: { label: string; value: number; onChange: (v: number) => void; testId: string }) {
   const id = useId();
+  const pct = Math.round(value * 100);
+  const setPct = (p: number) => onChange(Math.max(0, Math.min(100, Math.round(p))) / 100);
   return (
-    <div className="field slider-field">
+    <div className="field slider-field volume-field">
       <label className="field-label" htmlFor={id}>
-        {label}: <span dir="ltr">{Math.round(value * 100)}٪</span>
+        {label}: <span dir="ltr" data-testid={`${testId}-value`}>{pct}٪</span>
       </label>
-      <input id={id} type="range" min={0} max={100} step={5} value={Math.round(value * 100)} onChange={(e) => onChange(Number(e.target.value) / 100)} data-testid={testId} />
+      <div className="volume-row" dir="ltr">
+        <button type="button" className="icon-btn" aria-label={`خفض ${label}`} onClick={() => setPct(pct - 10)} disabled={pct <= 0} data-testid={`${testId}-down`}>
+          <Minus size={16} aria-hidden="true" />
+        </button>
+        <VolumeX size={16} aria-hidden="true" className="volume-ico" />
+        <input
+          id={id}
+          type="range"
+          dir="ltr"
+          min={0}
+          max={100}
+          step={1}
+          value={pct}
+          aria-valuetext={`${pct}٪`}
+          onChange={(e) => setPct(Number(e.target.value))}
+          style={{ '--fill': `${pct}%` } as CSSProperties}
+          data-testid={testId}
+        />
+        <Volume2 size={16} aria-hidden="true" className="volume-ico" />
+        <button type="button" className="icon-btn" aria-label={`رفع ${label}`} onClick={() => setPct(pct + 10)} disabled={pct >= 100} data-testid={`${testId}-up`}>
+          <Plus size={16} aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
 }

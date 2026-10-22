@@ -117,3 +117,24 @@
 .ai-logo-note strong { color: var(--text); }
 @media (max-width: 900px) { .compose-grid { grid-template-columns: minmax(0, 1fr); } }
 .tabs { flex-wrap: wrap; }
+
+/* 1.5.0 volume control: LTR bar (quiet → loud), filled part in the accent colour, big touch target */
+.volume-row { display: flex; align-items: center; gap: 6px; }
+.volume-row .volume-ico { color: var(--text-2); flex: none; }
+.volume-row input[type='range'] {
+  flex: 1; min-inline-size: 0; block-size: 32px; margin: 0; cursor: pointer; touch-action: none;
+  -webkit-appearance: none; appearance: none; background: transparent;
+}
+.volume-row input[type='range']::-webkit-slider-runnable-track {
+  block-size: 6px; border-radius: 999px;
+  background: linear-gradient(to right, var(--accent) 0 var(--fill, 0%), var(--border-strong) var(--fill, 0%) 100%);
+}
+.volume-row input[type='range']::-moz-range-track { block-size: 6px; border-radius: 999px; background: var(--border-strong); }
+.volume-row input[type='range']::-moz-range-progress { block-size: 6px; border-radius: 999px; background: var(--accent); }
+.volume-row input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; inline-size: 20px; block-size: 20px; margin-block-start: -7px;
+  border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--accent);
+}
+.volume-row input[type='range']::-moz-range-thumb { inline-size: 18px; block-size: 18px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); }
+.volume-row input[type='range']:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.volume-row .icon-btn { inline-size: 36px; block-size: 36px; flex: none; }
