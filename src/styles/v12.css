@@ -109,3 +109,11 @@
 /* the content page actions (edit, publish, export, delete) wrap instead of widening small phones */
 .project-hero-actions { flex-wrap: wrap; }
 @media (max-width: 767px) { .project-hero-actions .btn { flex: 1 1 auto; } }
+
+/* 1.3.0 «تركيب الشعار» */
+.compose-grid { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.compose-controls { display: grid; gap: 12px; }
+.compose-preview canvas { display: block; inline-size: 100%; block-size: auto; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface-2); }
+.ai-logo-note strong { color: var(--text); }
+@media (max-width: 900px) { .compose-grid { grid-template-columns: minmax(0, 1fr); } }
+.tabs { flex-wrap: wrap; }

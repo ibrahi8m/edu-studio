@@ -409,7 +409,7 @@ test('AI Design Studio: local prompt from an Arabic idea, honest notes, ratio, b
   await expect(prompt).toHaveValue(/wide 16:9 aspect ratio/);
   await expect(prompt).toHaveValue(/"اقرأ كل يوم" placed at the top/);
   await expect(page.getByTestId('ai-warnings')).toContainText('زرافة'); // untranslated word is reported
-  await expect(page.getByTestId('ai-logo-rules')).toContainText('Do not draw, redraw');
+  await expect(page.getByTestId('ai-logo-rules')).toContainText('Do not redraw, regenerate'); // 1.3.0 wording
   await expect(page.getByTestId('ai-negative')).toContainText('invented logos');
   await expect(page.getByTestId('ai-explanation')).toContainText('لا يولّد صورًا');
   await fits(page, 'AI studio result');

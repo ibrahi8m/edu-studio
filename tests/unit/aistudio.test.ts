@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { buildPrompt, promptAsText, resolveBrand, roughTranslate } from '../../src/aistudio/engine';
+import { buildPrompt, ensureLogo, LOGO_MARKER, mandatoryLogo, promptAsText, resolveBrand, roughTranslate } from '../../src/aistudio/engine';
 import { BUILTIN_BRANDS, DESIGN_TYPES, EMPTY_INPUT, RATIOS } from '../../src/aistudio/catalog';
 import { deleteBrand, deletePrompt, duplicatePrompt, listBrands, normalizeSavedPrompt, saveBrand, savePrompt } from '../../src/aistudio/store';
 import { EduDB, SCHEMA_VERSION } from '../../src/db/db';
@@ -54,31 +54,70 @@ describe('AI Design Studio engine', () => {
     expect(own.warnings).toEqual([]);
   });
 
-  it('texts are quoted exactly; the original logo of the chosen identity is added automatically, never redrawn (1.2.0)', () => {
-    const edu = resolveBrand('brand-edu-studio', [])!;
-    // nothing chosen by hand: the default placement already carries the logo
-    expect(EMPTY_INPUT.logoPlacement).toBe('bottom-left');
-    const out = buildPrompt({ ...EMPTY_INPUT, idea: 'poster', texts: 'الأمن الرقمي\nاحمِ بياناتك', textPlacement: 'top' }, 'quick', edu);
+  it('texts are quoted exactly (Arabic letterforms requested)', () => {
+    const out = buildPrompt({ ...EMPTY_INPUT, idea: 'poster', texts: 'الأمن الرقمي\nاحمِ بياناتك', textPlacement: 'top' }, 'quick', null);
     expect(out.promptEn).toContain('"الأمن الرقمي", "احمِ بياناتك" placed at the top');
     expect(out.promptEn).toContain('right-to-left Arabic');
     expect(out.texts).toEqual(['الأمن الرقمي', 'احمِ بياناتك']);
-    expect(out.logoRules).toContain('official IBRAHI8M EDU STUDIO logo');
-    expect(out.logoRules).toContain('bottom-left corner');
-    expect(out.logoRules).toContain('ibrahi8m-mark.svg');
-    expect(out.logoRules).toContain('Do not draw, redraw, recolour, distort');
-    expect(out.logoRules).toContain('attach the original logo file');
-    expect(out.explanationAr).toContain('لا تستطيع رسم شعارك بدقة');
-    // every mode gets it, not only «هوية العلامة»
-    for (const m of ['quick', 'pro', 'brand'] as const) expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, m, edu).logoRules).toContain('official IBRAHI8M EDU STUDIO logo');
-    // the other identity names its own logo and never the studio's file
-    const uni = buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, 'pro', resolveBrand('brand-ai-universe', [])!);
-    expect(uni.logoRules).toContain('official IBRAHIM AI UNIVERSE logo');
-    expect(uni.logoRules).not.toContain('ibrahi8m-mark.svg');
-    expect(uni.logoRules).toContain('not part of this app');
-    // «بلا هوية» or «بلا شعار»: no logo at all
-    expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, 'pro', null).logoRules).toContain('Do not draw or invent any logo');
-    expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x', logoPlacement: '' }, 'pro', edu).logoRules).toContain('Do not draw or invent any logo');
-    expect(buildPrompt({ ...EMPTY_INPUT, idea: 'x' }, 'pro', null).promptEn).toContain('no text in the image');
+  });
+
+  it('1.3.0 MANDATORY: every prompt — every design type (including ones added later), ratio, mode and identity — ends with the original logo instructions, inside the prompt text itself', () => {
+    const brands = [null, resolveBrand('brand-edu-studio', [])!, resolveBrand('brand-ai-universe', [])!];
+    // a design type added in the future gets it too, with no code change
+    DESIGN_TYPES.push({ value: 'future-type', ar: 'نوع جديد', en: 'brand new kind of design', needs: 'x', ratio: '1:1', negative: '' });
+    try {
+      for (const t of DESIGN_TYPES)
+        for (const mode of ['quick', 'pro', 'brand'] as const)
+          for (const brand of brands)
+            for (const placement of ['auto', 'bottom-left', '', 'nonsense']) {
+              const out = buildPrompt({ ...EMPTY_INPUT, idea: 'olive tree', type: t.value, logoPlacement: placement }, mode, brand, t.value.length);
+              const where = `${t.value}/${mode}/${brand?.id}/${placement}`;
+              expect(out.promptEn, where).toContain(LOGO_MARKER);
+              expect(out.promptEn, where).toContain("Include the user's original official IBRAHI8M brand logo in the final design.");
+              expect(out.promptEn, where).toContain('must never be omitted');
+              expect(out.promptEn, where).toContain('Use the exact original logo asset provided with the project (ibrahi8m-mark.svg).');
+              expect(out.promptEn, where).toContain('Do not redraw, regenerate, reinterpret, distort, crop, recolor, or replace the logo.');
+              expect(out.promptEn, where).toContain('overlay the original logo asset onto the final image using an image compositing method');
+              expect(out.promptEn.split(LOGO_MARKER)).toHaveLength(2); // exactly once
+              expect(out.logoRules).toBe(out.promptEn.slice(out.promptEn.indexOf(LOGO_MARKER)));
+              expect(out.negative).toContain('missing logo');
+            }
+    } finally {
+      DESIGN_TYPES.pop();
+    }
+  });
+
+  it('1.3.0: the three owner examples carry the logo; placement is used; the owner\'s own logo remark is merged, not repeated', () => {
+    for (const [idea, type] of [
+      ['رجل يلعب كرة بين الخيام', 'campaign'],
+      ['إعلان تعليمي عن الأمن الرقمي', 'educational'],
+      ['تصميم معماري لمدرسة حديثة', 'architecture'],
+    ]) {
+      const out = buildPrompt({ ...EMPTY_INPUT, idea, type }, 'pro', resolveBrand('brand-edu-studio', [])!);
+      expect(out.promptEn, idea).toContain(LOGO_MARKER);
+      expect(out.promptEn, idea).toContain('bottom-left corner');
+    }
+    const auto = buildPrompt({ ...EMPTY_INPUT, idea: 'x', logoPlacement: 'auto' }, 'pro', null);
+    expect(auto.promptEn).toContain('a suitable, clearly visible position in the composition');
+    const own = buildPrompt({ ...EMPTY_INPUT, idea: 'poster with my logo', required: 'الشعار كبير وواضح، شجرة زيتون' }, 'pro', null);
+    expect(own.promptEn.match(/\blogo\b/gi)!.length).toBeGreaterThan(3);
+    expect(own.promptEn).not.toContain('with my logo');
+    expect(own.promptEn).toMatch(/must include: [^,.]*olive/); // the non-logo item stays in «must include»
+    expect(own.promptEn).not.toMatch(/must include:[^.]*logo/);
+    expect(own.promptEn).toContain("Owner's note about the logo");
+    expect(own.promptEn).toContain('"الشعار كبير وواضح"');
+    expect(own.promptEn.split(LOGO_MARKER)).toHaveLength(2);
+    expect(own.explanationAr).toContain('دُمجت ملاحظتك عن الشعار');
+  });
+
+  it('1.3.0: an edited or older prompt without the block gets it back, exactly once', () => {
+    const old = 'An old prompt saved in 1.2.0.';
+    const fixed = ensureLogo(old, 'top-right');
+    expect(fixed.startsWith(old)).toBe(true);
+    expect(fixed).toContain(LOGO_MARKER);
+    expect(fixed).toContain('top-right corner');
+    expect(ensureLogo(fixed)).toBe(fixed);
+    expect(mandatoryLogo('auto')).toContain('suitable, clearly visible position');
   });
 
   it('quick mode is shorter than professional; brand mode adds the saved identity rules', () => {

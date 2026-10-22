@@ -10,6 +10,7 @@ import {
   DETAIL,
   LIGHTING,
   LOGO_PLACEMENTS,
+  OFFICIAL_LOGO,
   RATIOS,
   STYLES,
   TEXT_PLACEMENTS,
@@ -86,6 +87,49 @@ const OTHER_IDENTITY: Record<string, RegExp> = {
   'brand-ai-universe': /EDU\s*STUDIO|IBRAHI8M\s*EDU|الاستوديو التعليمي/i,
 };
 
+/* ───────── 1.3.0: the mandatory brand logo ───────── */
+
+export const LOGO_MARKER = 'MANDATORY BRAND LOGO:';
+const LOGO_WORDS = /(شعار|لوغو|لوجو|\blogo\b)/i;
+
+/**
+ * The logo instructions that end EVERY prompt, whatever the design type, mode or identity.
+ * Wording from the owner's instruction; only the position and the file name are filled in.
+ */
+export function mandatoryLogo(placement: string, userNotes: string[] = []): string {
+  const at = LOGO_PLACEMENTS.find((p) => p.value === placement && p.value !== 'auto');
+  const position = at
+    ? `Integrate it professionally in the ${at.en} of the composition, a clearly visible position, with sufficient spacing and contrast.`
+    : 'Integrate it professionally into a suitable, clearly visible position in the composition, with sufficient spacing and contrast.';
+  const notes = userNotes.length
+    ? ` Owner's note about the logo (apply it only where it does not alter the original logo artwork): ${userNotes.map((n) => `"${n}"`).join('; ')}.`
+    : '';
+  return (
+    `${LOGO_MARKER} Include the user's original official ${OFFICIAL_LOGO.name} brand logo in the final design. ` +
+    'The logo is a required element and must never be omitted. ' +
+    `Use the exact original logo asset provided with the project (${OFFICIAL_LOGO.file}). ` +
+    'Preserve its original artwork, lettering, colors, proportions, and details without alteration. ' +
+    'Do not redraw, regenerate, reinterpret, distort, crop, recolor, or replace the logo. ' +
+    `${position} Keep it unobstructed and readable.${notes} ` +
+    'If the image generation tool cannot reproduce the logo accurately, reserve a clean space and overlay the original logo asset onto the final image using an image compositing method.'
+  );
+}
+
+/** Puts the mandatory logo block back if an edited or older saved prompt lost it. Idempotent. */
+export function ensureLogo(prompt: string, placement = 'auto'): string {
+  if (prompt.includes(LOGO_MARKER)) return prompt;
+  return `${prompt.trimEnd()}\n\n${mandatoryLogo(placement)}`;
+}
+
+/** Splits the owner's own mentions of the logo out of free text (to merge, not repeat, them). */
+function logoMentions(...fields: string[]): { notes: string[]; rest: string[] } {
+  const notes: string[] = [];
+  const rest: string[] = [];
+  for (const f of fields)
+    for (const part of f.split(/\n|،|,|؛|;/).map((x) => x.trim()).filter(Boolean)) (LOGO_WORDS.test(part) ? notes : rest).push(part);
+  return { notes, rest };
+}
+
 /** Builds the prompt and its Arabic explanation. Same input → same output (no randomness unless `variant` changes). */
 export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKit | null, variant = 0): PromptOutput {
   const warnings: string[] = [];
@@ -112,6 +156,8 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
           : 'الترجمة إلى الإنجليزية تقريبية (قاموس محلي صغير). راجعها، أو اكتب وصف الفكرة بالإنجليزية في الحقل المخصص.',
       );
   }
+  // The logo is handled by the mandatory block below: drop it from the subject so it is not asked twice.
+  subject = clean(subject.replace(/\b(?:(?:with|and|plus)\s+)?(?:the\s+|my\s+|our\s+|a\s+)?(?:brand\s+)?logo\b/gi, ''));
   if (!subject) {
     subject = 'a clear central subject';
     warnings.push('لم تُكتب فكرة التصميم: البرومبت عام. اكتب الفكرة لنتيجة أفضل.');
@@ -131,12 +177,13 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   const colors = clean([useBrand?.colors, input.colors].filter(Boolean).join(', '));
   const colorsEn = colors ? roughTranslate(colors).english || colors : '';
 
-  // Logo (1.2.0): added to every prompt automatically for the chosen identity. The model must use
-  // the real file (as a reference image where the tool allows it) or leave its place clean — never draw one.
-  const logoRules =
-    brand && logoAt?.en
-      ? `Brand logo: the official ${brand.name} logo goes in the ${logoAt.en}, used exactly as the original file${brand.logoFile ? ` (${brand.logoFile})` : ''} — same shapes, colours and proportions, with clear space around it. Do not draw, redraw, recolour, distort, crop, restyle or imitate it, and do not add any other logo or brand mark. If the tool accepts a reference image, attach the original logo file; otherwise keep that area clean and empty so the logo can be placed afterwards.${brand.logoRules ? ` ${brand.logoRules}` : ''}`
-      : 'Do not draw or invent any logo, emblem, watermark or brand mark.';
+  // Logo (1.3.0): mandatory in every prompt, always the owner's original IBRAHI8M logo. The owner's own
+  // logo remarks (in the idea or «عناصر مطلوبة») are merged into the block instead of being repeated.
+  // Remarks written in «عناصر مطلوبة» are kept as the owner's note; a mention in the idea itself is simply
+  // covered by the block (removed from the subject above).
+  const userLogo = logoMentions(input.required).notes;
+  const ideaMentionsLogo = LOGO_WORDS.test(`${input.idea} ${input.subjectEn}`);
+  const logoRules = mandatoryLogo(input.logoPlacement || 'auto', userLogo);
 
   const parts: string[] = [];
   const article = /^[aeiou]/i.test(type.en) ? 'An' : 'A';
@@ -156,7 +203,7 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
     if (lighting?.en) parts.push(lighting.en);
     if (background?.en) parts.push(background.en);
     if (colorsEn) parts.push(`color palette: ${colorsEn}`);
-    const req = roughTranslate(lines(input.required).join(', ')).english;
+    const req = roughTranslate(logoMentions(input.required).rest.join(', ')).english;
     if (req) parts.push(`must include: ${req}`);
     parts.push(detail.en);
   } else if (colorsEn) parts.push(`color palette: ${colorsEn}`);
@@ -189,9 +236,10 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   }
 
   const avoidEn = roughTranslate(lines(input.avoid).join(', ')).english;
-  const negative = [BASE_NEGATIVE, type.negative, avoidEn, useBrand?.avoid, 'invented logos, fake brand names'].filter(Boolean).join(', ');
+  const negative = [BASE_NEGATIVE, type.negative, avoidEn, useBrand?.avoid, 'missing logo, altered, redrawn, recolored or distorted logo, invented logos, fake brand names'].filter(Boolean).join(', ');
 
-  const promptEn = `${parts.map(clean).filter(Boolean).join(', ')}.`;
+  // The logo block is part of the prompt text itself (copied, downloaded and saved with it).
+  const promptEn = `${parts.map(clean).filter(Boolean).join(', ')}.\n\n${logoRules}`;
 
   const ar: string[] = [];
   ar.push(`يطلب هذا البرومبت ${type.ar} عن فكرتك${input.idea.trim() ? ` «${clean(input.idea)}»` : ''}، بمقاس ${ratio.ar} (${ratio.size}).`);
@@ -205,9 +253,10 @@ export function buildPrompt(input: PromptInput, mode: PromptMode, brand: BrandKi
   if (useBrand) ar.push(`طُبّقت قواعد هوية «${useBrand.name}» المحفوظة (النبرة والخطوط والقواعد والممنوعات).`);
   ar.push(texts.length ? `النصوص المطلوبة على التصميم كُتبت بين علامتي تنصيص كما هي، مع طلب كتابتها حرفيًا${textAt?.value ? ` في ${textAt.ar}` : ''}. أدوات توليد الصور قد تخطئ في الحروف العربية: راجع النص في الصورة الناتجة، أو أضفه لاحقًا ببرنامج تصميم.` : textAt?.value ? `طُلبت مساحة فارغة في ${textAt.ar} لتضيف النص لاحقًا.` : 'طُلب تصميم بلا نص.');
   ar.push(
-    brand && logoAt?.value
-      ? `الشعار: أُضيفت تلقائيًا تعليمات شعار «${brand.name}» الأصلي في ${logoAt.ar}، باستخدام ملفه كما هو دون إعادة رسم أو تغيير ألوانه ونسبه. تنبيه صريح: أدوات توليد الصور من النص لا تستطيع رسم شعارك بدقة من الوصف وحده؛ إن كانت الأداة تقبل صورة مرجعية فأرفق ملف الشعار الأصلي${brand.logoFile ? ` (${brand.logoFile})` : ''}، وإلا فاتركها تُبقي المكان فارغًا وضع الشعار بعد التوليد ببرنامج تصميم.`
-      : 'طُلب عدم رسم أي شعار (اخترت «بلا شعار» أو «بلا هوية»).',
+    `الشعار (إلزامي): أُضيفت إلى نهاية البرومبت نفسه تعليمات شعار ${OFFICIAL_LOGO.name} الأصلي (${OFFICIAL_LOGO.file})${logoAt && logoAt.value !== 'auto' ? ` في ${logoAt.ar}` : ' في موضع مناسب واضح'}، دون إعادة رسم أو تغيير ألوانه ونسبه. هذه التعليمات تُضاف دائمًا ولا يمكن إلغاؤها.${userLogo.length ? ' ودُمجت ملاحظتك عن الشعار فيها بدل تكرارها.' : ideaMentionsLogo ? ' وذكرك للشعار في الفكرة تغطيه هذه التعليمات، فلم يُكرَّر.' : ''}${brand && brand.id !== 'brand-edu-studio' ? ` الهوية المختارة «${brand.name}» تحدد الألوان والقواعد فقط؛ الشعار الإلزامي هو شعار ${OFFICIAL_LOGO.name}.` : ''}`,
+  );
+  ar.push(
+    'تنبيه صريح: النص يطلب الشعار، لكنه وحده لا يضمن ظهوره مطابقًا للأصل؛ أدوات توليد الصور لا ترسم الشعارات بدقة من الوصف. أرفق ملف الشعار الأصلي إن كانت الأداة تقبل صورة مرجعية، وبعد التوليد استخدم «تركيب الشعار» في هذا الاستوديو ليُركَّب الملف الأصلي على صورتك بدقة.',
   );
   ar.push('البرومبت السلبي (Negative prompt) يذكر ما يجب تجنبه، ويُلصق في خانته إن كانت الأداة تدعمها.');
   ar.push('هذا نص يُنسخ إلى أداة توليد صور خارجية تختارها أنت؛ التطبيق لا يولّد صورًا ولا يتصل بأي خدمة.');

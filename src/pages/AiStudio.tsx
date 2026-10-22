@@ -10,6 +10,7 @@ import { PageHeader, Pill } from '../components/ui';
 import { db } from '../db/db';
 import { download } from '../transfer/service';
 import { useSfx } from '../audio/AudioControl';
+import { LogoComposer } from '../aistudio/LogoComposer';
 import {
   ANGLES,
   BACKGROUNDS,
@@ -22,17 +23,18 @@ import {
   LOGO_PLACEMENTS,
   MODE_HINT,
   MODE_LABEL,
+  OFFICIAL_LOGO,
   PLATFORMS,
   RATIOS,
   STYLES,
   TEXT_PLACEMENTS,
   type Opt,
 } from '../aistudio/catalog';
-import { buildPrompt, promptAsText, resolveBrand } from '../aistudio/engine';
+import { buildPrompt, ensureLogo, promptAsText, resolveBrand } from '../aistudio/engine';
 import { deleteBrand, deletePrompt, duplicatePrompt, listBrands, saveBrand, savePrompt } from '../aistudio/store';
 import type { BrandKit, DetailLevel, PromptInput, PromptMode, PromptOutput, SavedPrompt } from '../aistudio/types';
 
-type Tab = 'create' | 'library' | 'brands';
+type Tab = 'create' | 'library' | 'brands' | 'compose';
 
 /** Copies text; falls back to a hidden textarea where the Clipboard API is unavailable (older WebViews, http). */
 async function copyText(text: string): Promise<boolean> {
@@ -64,7 +66,7 @@ const fileName = (title: string) => `${title.replace(/[\\/:*?"<>|\u0000-\u001f]+
 
 export function AiStudioPage() {
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'library' ? 'library' : params.get('tab') === 'brands' ? 'brands' : 'create';
+  const tab: Tab = (['library', 'brands', 'compose'] as const).find((t) => t === params.get('tab')) ?? 'create';
   const setTab = (t: Tab) => setParams(t === 'create' ? {} : { tab: t }, { replace: true });
   const prompts = useLiveQuery(() => db.prompts.toArray(), []);
   const brands = useLiveQuery(() => listBrands(db), []);
@@ -92,6 +94,9 @@ export function AiStudioPage() {
         <button type="button" role="tab" aria-selected={tab === 'brands'} className={tab === 'brands' ? 'is-active' : ''} onClick={() => setTab('brands')} data-testid="ai-tab-brands">
           الهويات
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'compose'} className={tab === 'compose' ? 'is-active' : ''} onClick={() => setTab('compose')} data-testid="ai-tab-compose">
+          تركيب الشعار
+        </button>
       </div>
       {tab === 'create' && <Creator brands={brands ?? BUILTIN_BRANDS} loaded={loaded} onClearLoaded={() => setLoaded(null)} />}
       {tab === 'library' && (
@@ -104,6 +109,7 @@ export function AiStudioPage() {
         />
       )}
       {tab === 'brands' && <Brands brands={brands} />}
+      {tab === 'compose' && <LogoComposer />}
     </div>
   );
 }
@@ -163,9 +169,10 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
     if (!loaded) return;
     setInput(loaded.input);
     setMode(loaded.mode);
-    setBrandId(loaded.brandId ?? '');
+    setBrandId(loaded.brandId ?? BUILTIN_BRANDS[0].id);
     setOut(loaded.output);
-    setPrompt(loaded.editedPrompt || loaded.output.promptEn);
+    // prompts saved before 1.3.0 get the mandatory logo block back when opened
+    setPrompt(ensureLogo(loaded.editedPrompt || loaded.output.promptEn, loaded.input.logoPlacement));
     setTitle(loaded.title);
     setSavedId(loaded.id);
     setVariant(0);
@@ -192,10 +199,13 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
   };
 
   const edited = !!out && prompt !== out.promptEn;
+  /** what leaves the studio: the prompt as shown, with the mandatory logo block guaranteed */
+  const finalPrompt = () => ensureLogo(prompt, input.logoPlacement);
   const save = async (asNew = false) => {
     if (!out) return;
     try {
-      const row = await savePrompt(db, { id: asNew ? undefined : (savedId ?? undefined), title: title || 'برومبت بلا عنوان', mode, brandId: brandId || null, input, output: out, editedPrompt: edited ? prompt : '' });
+      const row = await savePrompt(db, { id: asNew ? undefined : (savedId ?? undefined), title: title || 'برومبت بلا عنوان', mode, brandId: brandId || null, input, output: out, editedPrompt: edited ? finalPrompt() : '' });
+      if (edited && finalPrompt() !== prompt) setPrompt(finalPrompt());
       setSavedId(row.id);
       toast({ message: `حُفظ «${row.title}» في مكتبة البرومبتات على هذا الجهاز.`, sound: 'save' });
     } catch (e) {
@@ -267,25 +277,18 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
         </div>
         <TextIn label="4. النصوص المطلوبة داخل التصميم (اختياري)" multiline value={input.texts} onChange={(v) => set('texts', v)} testId="ai-texts" hint="نص في كل سطر، يُطلب كما هو حرفيًا." />
         <div className="ai-logo-note" data-testid="ai-logo-note">
-          {brand && input.logoPlacement ? (
-            <>
-              {brand.logoFile && <img src={`${import.meta.env.BASE_URL}brand/${brand.logoFile}`} alt="" className="ai-logo-thumb" />}
-              <span>
-                الشعار: تُضاف تلقائيًا تعليمات شعار <bdi>{brand.name}</bdi> الأصلي ({LOGO_PLACEMENTS.find((x) => x.value === input.logoPlacement)?.ar}).
-                {brand.logoFile && (
-                  <>
-                    {' '}
-                    <a href={`${import.meta.env.BASE_URL}brand/${brand.logoFile}`} download={brand.logoFile} data-testid="ai-logo-download">
-                      تنزيل ملف الشعار الأصلي
-                    </a>{' '}
-                    لإرفاقه بأداة التوليد.
-                  </>
-                )}
-              </span>
-            </>
-          ) : (
-            <span>بلا شعار: يُطلب عدم رسم أي شعار. غيّر ذلك من «إعدادات متقدمة».</span>
-          )}
+          <img src={`${import.meta.env.BASE_URL}brand/${OFFICIAL_LOGO.file}`} alt="" className="ai-logo-thumb" />
+          <span>
+            <strong>الشعار إلزامي:</strong> كل برومبت ينتهي تلقائيًا بتعليمات شعار <bdi>{OFFICIAL_LOGO.name}</bdi> الأصلي ({LOGO_PLACEMENTS.find((x) => x.value === input.logoPlacement)?.ar ?? 'موضع مناسب واضح'})، ولا يمكن إلغاؤها. ملف الشعار:{' '}
+            <a href={`${import.meta.env.BASE_URL}brand/${OFFICIAL_LOGO.file}`} download={OFFICIAL_LOGO.file} data-testid="ai-logo-download">
+              SVG
+            </a>{' '}
+            ·{' '}
+            <a href={`${import.meta.env.BASE_URL}brand/${OFFICIAL_LOGO.png}`} download={OFFICIAL_LOGO.png} data-testid="ai-logo-download-png">
+              PNG
+            </a>
+            . بعد التوليد ركّبه بدقة من تبويب «تركيب الشعار».
+          </span>
         </div>
         <details className="ai-more" data-testid="ai-advanced">
           <summary data-testid="ai-advanced-toggle">إعدادات متقدمة</summary>
@@ -304,7 +307,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
             <div className="form-row">
               <div className="field">
                 <label className="field-label" htmlFor="ai-brand">
-                  الهوية والشعار
+                  الهوية (الألوان والقواعد)
                 </label>
                 <select id="ai-brand" className="input" value={brandId} onChange={(e) => setBrandId(e.target.value)} data-testid="ai-brand">
                   {brands.map((b) => (
@@ -312,9 +315,8 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
                       {b.name}
                     </option>
                   ))}
-                  <option value="">بلا هوية ولا شعار</option>
                 </select>
-                <span className="field-hint">{brands.find((b) => b.id === brandId)?.description ?? 'لا تُضاف تعليمات شعار.'}</span>
+                <span className="field-hint">{brands.find((b) => b.id === brandId)?.description} الشعار الإلزامي في كل الأحوال: {OFFICIAL_LOGO.name}.</span>
               </div>
               <Select label="مكان الشعار" value={input.logoPlacement} options={LOGO_PLACEMENTS} onChange={(v) => set('logoPlacement', v)} testId="ai-logo-place" />
             </div>
@@ -395,7 +397,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
-                onClick={async () => toast(await copyText(prompt) ? { message: 'نُسخ البرومبت.', sound: 'copy' } : { message: 'تعذّر النسخ تلقائيًا: حدّد النص وانسخه يدويًا.', tone: 'danger' })}
+                onClick={async () => toast(await copyText(finalPrompt()) ? { message: 'نُسخ البرومبت كاملًا مع تعليمات الشعار.', sound: 'copy' } : { message: 'تعذّر النسخ تلقائيًا: حدّد النص وانسخه يدويًا.', tone: 'danger' })}
                 data-testid="ai-copy"
               >
                 <Copy size={16} aria-hidden="true" /> نسخ
@@ -418,7 +420,7 @@ function Creator({ brands, loaded, onClearLoaded }: { brands: BrandKit[]; loaded
                 </button>
               )}
               <button type="button" className="btn btn-sm" onClick={() => {
-                  download(new Blob([promptAsText(title || 'برومبت', out, prompt)], { type: 'text/plain;charset=utf-8' }), fileName(title));
+                  download(new Blob([promptAsText(title || 'برومبت', out, finalPrompt())], { type: 'text/plain;charset=utf-8' }), fileName(title));
                   play('export');
                 }} data-testid="ai-download">
                 <Download size={16} aria-hidden="true" /> تنزيل TXT
@@ -527,7 +529,7 @@ function PromptLibrary({ prompts, onOpen }: { prompts: SavedPrompt[] | undefined
       ) : (
         <ul className="ai-lib-list">
           {shown.map((p) => {
-            const text = p.editedPrompt || p.output.promptEn;
+            const text = ensureLogo(p.editedPrompt || p.output.promptEn, p.input.logoPlacement);
             return (
               <li key={p.id} className="ai-lib-item" data-testid="ai-lib-item">
                 <div className="ai-lib-main">

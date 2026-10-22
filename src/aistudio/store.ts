@@ -1,6 +1,7 @@
 import type { EduDB } from '../db/db';
 import { newId } from '../db/ids';
-import { BUILTIN_BRANDS, EMPTY_INPUT } from './catalog';
+import { BUILTIN_BRANDS, EMPTY_INPUT, LOGO_PLACEMENTS } from './catalog';
+import { ensureLogo } from './engine';
 import type { BrandKit, PromptInput, PromptMode, PromptOutput, SavedPrompt } from './types';
 
 const str = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : '');
@@ -12,6 +13,8 @@ export function normalizeInput(raw: unknown): PromptInput {
     if (typeof r[k] === 'string') (out as Record<string, string>)[k] = str(r[k], k === 'idea' || k === 'subjectEn' ? 3000 : 1500);
   }
   if (!['low', 'medium', 'high', 'ultra'].includes(out.detail)) out.detail = 'high';
+  // 1.3.0: the logo can no longer be switched off; old «بلا شعار» becomes «موضع مناسب».
+  if (!LOGO_PLACEMENTS.some((p) => p.value === out.logoPlacement)) out.logoPlacement = 'auto';
   return out;
 }
 
@@ -70,7 +73,10 @@ export async function duplicatePrompt(database: EduDB, id: string): Promise<Save
   const cur = await database.prompts.get(id);
   if (!cur) throw new Error('البرومبت غير موجود.');
   const now = Date.now();
-  const copy = { ...cur, id: newId(), title: `${cur.title} (نسخة)`.slice(0, 160), createdAt: now, updatedAt: now };
+  // a copy of a prompt saved before 1.3.0 gets the mandatory logo block too
+  const text = cur.editedPrompt || cur.output.promptEn;
+  const withLogo = ensureLogo(text, cur.input.logoPlacement);
+  const copy = { ...cur, id: newId(), title: `${cur.title} (نسخة)`.slice(0, 160), editedPrompt: withLogo !== cur.output.promptEn ? withLogo : cur.editedPrompt, createdAt: now, updatedAt: now };
   await database.prompts.add(copy);
   return copy;
 }

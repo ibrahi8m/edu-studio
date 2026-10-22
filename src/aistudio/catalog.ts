@@ -1,5 +1,17 @@
 import type { BrandKit, DetailLevel, PromptInput } from './types';
 
+/**
+ * 1.3.0 — the user's original, approved logo: the «الثمانية الروبوت» mark chosen in phase 7
+ * (brand-src/ibrahi8m-mark.svg, served at /brand/). Every prompt asks for this file, unaltered.
+ */
+export const OFFICIAL_LOGO = {
+  name: 'IBRAHI8M',
+  file: 'ibrahi8m-mark.svg',
+  png: 'ibrahi8m-mark-1024.png',
+  /** the same artwork without its dark tile, for placing on light or busy images */
+  bare: 'ibrahi8m-glyph.svg',
+} as const;
+
 /** An option shown in Arabic and written into the prompt in English. */
 export interface Opt {
   value: string;
@@ -111,8 +123,9 @@ export const TEXT_PLACEMENTS: Opt[] = [
   o('left', 'الجانب الأيسر', 'left side'),
 ];
 
+/** 1.3.0: the logo is mandatory, so there is no «بلا شعار»; «تلقائي» lets the composition decide. */
 export const LOGO_PLACEMENTS: Opt[] = [
-  o('', 'بلا شعار', ''),
+  o('auto', 'موضع مناسب واضح', 'a suitable, clearly visible position'),
   o('top-right', 'أعلى اليمين', 'top-right corner'),
   o('top-left', 'أعلى اليسار', 'top-left corner'),
   o('bottom-right', 'أسفل اليمين', 'bottom-right corner'),
@@ -164,7 +177,7 @@ export const BUILTIN_BRANDS: BrandKit[] = [
     colors: '',
     fonts: '',
     tone: 'creative, visionary, AI-art driven',
-    logoRules: 'The IBRAHIM AI UNIVERSE logo file is not part of this app: use your own original file.',
+    logoRules: '',
     rules: '',
     avoid: 'the IBRAHI8M EDU STUDIO educational identity and its colours, elements of other brands',
     createdAt: 0,
